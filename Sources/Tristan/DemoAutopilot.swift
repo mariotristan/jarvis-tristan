@@ -84,6 +84,7 @@ enum DemoAutopilot {
         }
         guard session.provider == .demo else { print("DEMO_ABORT provider is \(session.provider.rawValue), not DEMO"); fflush(stdout); return }
 
+        began = Date()
         session.themeChoice = "pawpatrol"
         session.orbEffects = .full
         session.orbFillsScreen = false
@@ -111,8 +112,9 @@ enum DemoAutopilot {
 
         // Trying to change settings (or switch on YOLO) needs a parent.
         session.openSettings()
+        step("kid taps settings, prompt shown: \(session.parentPrompt != nil), locked: \(session.kidsLocked), kids: \(session.kidsMode), pin set: \(ParentPIN.isSet), auth: \(session.parentAuth.rawValue)")
         await pause(2.5)
-        _ = session.submitParentPIN("1234")   // wrong guess
+        step("wrong guess accepted: \(session.submitParentPIN("1234")), failed flag: \(session.parentPINFailed)")
         await pause(2.5)
         session.cancelParentPrompt()
         await pause(1.5)
