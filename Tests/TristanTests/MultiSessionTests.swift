@@ -218,10 +218,23 @@ final class MultiSessionTests: XCTestCase {
         XCTAssertEqual(hub.label(for: second), "Session 2")
     }
 
-    func testOpenSessionsComeBackAfterARestart() throws {
-        let suite = "tristan-multi-tests-\(UUID().uuidString)"
+    /// A throwaway defaults domain that lives in a temporary folder, not in ~/Library/Preferences. A suite named like
+    /// "com.example.x" leaves a plist there that the preferences daemon rewrites at unpredictable moments, so one file per
+    /// run used to pile up. A suite named by an absolute path is stored at that path and goes away with its folder.
+    private func temporaryDefaults() -> UserDefaults {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-tests-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let suite = folder.appendingPathComponent("defaults").path
         let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        addTeardownBlock {
+            defaults.removePersistentDomain(forName: suite)
+            try? FileManager.default.removeItem(at: folder)
+        }
+        return defaults
+    }
+
+    func testOpenSessionsComeBackAfterARestart() throws {
+        let defaults = temporaryDefaults()
         let store = HistoryStore(url: base.appendingPathComponent("history.json"))
 
         let before = hub(history: store, defaults: defaults)
