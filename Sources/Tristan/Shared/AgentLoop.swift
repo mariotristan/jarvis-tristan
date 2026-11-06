@@ -49,6 +49,7 @@ struct AgentLoop {
     let backend: ChatBackend
     var maxTurns = 25
 
+    #if os(macOS)
     static let systemPrompt = """
     You are Tristan, a coding agent working in a single project folder on the user's Mac. \
     Use the tools to read, list and write files and to run shell commands. All paths are relative to the working folder. \
@@ -56,6 +57,15 @@ struct AgentLoop {
     If a tool call is denied, do not try to work around the denial; explain what you could not do. \
     When finished, reply with a short summary of what you changed.
     """
+    #else
+    static let systemPrompt = """
+    You are Tristan, a coding assistant working in a single folder on the user's iPhone or iPad. \
+    Use the tools to read, list and write files. You cannot run commands or tests on this device, so say so if the task needs them. \
+    All paths are relative to the working folder. Look before you change things and keep edits small. \
+    If a tool call is denied, do not try to work around the denial; explain what you could not do. \
+    When finished, reply with a short summary of what you changed.
+    """
+    #endif
 
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
@@ -151,10 +161,15 @@ struct AgentLoop {
             let allowed = policy.needsApproval(tool: call.name, rule: rule)
                 ? await approve(ApprovalRequest(summary: "Allow Bash?", detail: command, rule: rule))
                 : true
+            #if os(macOS)
             if allowed {
                 c.yield(.status("EXECUTING")); c.yield(.log("run_command: \(command.prefix(60))"))
                 result = await sandbox.run(command)
             } else { result = denied }
+            #else
+            _ = allowed
+            result = .init(text: "Commands cannot be run on this device. Use the file tools only.", isError: true)
+            #endif
         default:
             result = .init(text: "Unknown tool: \(call.name)", isError: true)
         }

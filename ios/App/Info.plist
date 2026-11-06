@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Tristan scans the pairing QR code shown on your Mac.</string>
 	<key>NSLocalNetworkUsageDescription</key>
@@ -39,6 +41,8 @@
 	<string>Tristan listens when you dictate a task.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Tristan turns your voice into a task.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiresFullScreen</key>

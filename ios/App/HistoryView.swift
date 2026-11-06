@@ -1,13 +1,13 @@
 import SwiftUI
 
 struct HistoryView: View {
-    @EnvironmentObject var client: RemoteClient
+    @EnvironmentObject var mission: MissionModel
     @EnvironmentObject var model: AppModel
     @State private var query = ""
     @State private var filter: HistoryFilter = .all
 
-    private var shown: [MissionRecord] { client.history.filtered(query: query, status: filter) }
-    private var busy: Bool { client.snapshot?.phase == .working || client.snapshot?.phase == .awaitingApproval }
+    private var shown: [MissionRecord] { mission.history.filtered(query: query, status: filter) }
+    private var busy: Bool { mission.snapshot?.phase == .working || mission.snapshot?.phase == .awaitingApproval }
 
     var body: some View {
         NavigationStack {
@@ -23,7 +23,7 @@ struct HistoryView: View {
                     }
                     .pickerStyle(.segmented)
                     if shown.isEmpty {
-                        Text(client.history.isEmpty ? "No missions yet." : "Nothing matches.")
+                        Text(mission.history.isEmpty ? "No missions yet." : "Nothing matches.")
                             .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5)).padding(.top, 30)
                         Spacer()
                     } else {
@@ -39,7 +39,7 @@ struct HistoryView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { model.showHistory = false } } }
         }
         .preferredColorScheme(.dark)
-        .onAppear { client.requestHistory() }
+        .onAppear { mission.requestHistory() }
     }
 
     private func row(_ record: MissionRecord) -> some View {
@@ -54,8 +54,8 @@ struct HistoryView: View {
             }
             Spacer()
             hudButton("RE-RUN", tint: Theme.cyan) {
-                client.setProvider(record.provider)
-                client.submit(record.task)
+                mission.setProvider(record.provider)
+                mission.submit(record.task)
                 model.showHistory = false
             }
             .disabled(busy)

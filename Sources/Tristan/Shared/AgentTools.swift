@@ -22,9 +22,17 @@ enum AgentToolSpec {
         ToolDefinition(name: "write_file", description: "Create or overwrite a text file inside the working folder.",
                        properties: ["path": ["type": "string", "description": "Path relative to the working folder"],
                                     "content": ["type": "string", "description": "Full file contents"]], required: ["path", "content"]),
-        ToolDefinition(name: "run_command", description: "Run a shell command (zsh) in the working folder. 60 second timeout.",
-                       properties: ["command": ["type": "string", "description": "The command to run"]], required: ["command"]),
-    ]
+    ] + shellTools
+
+    /// Running commands needs a shell, which only exists on the Mac. On iOS the model is simply never offered the tool.
+    private static var shellTools: [ToolDefinition] {
+        #if os(macOS)
+        return [ToolDefinition(name: "run_command", description: "Run a shell command (zsh) in the working folder. 60 second timeout.",
+                               properties: ["command": ["type": "string", "description": "The command to run"]], required: ["command"])]
+        #else
+        return []
+        #endif
+    }
 
     private static func schema(_ tool: ToolDefinition) -> [String: Any] {
         ["type": "object", "properties": tool.properties, "required": tool.required]
@@ -108,6 +116,7 @@ struct ToolSandbox {
         }
     }
 
+    #if os(macOS)
     func run(_ command: String, timeout: TimeInterval = 60) async -> ToolCallResult {
         await withCheckedContinuation { continuation in
             let process = Process()
@@ -133,6 +142,8 @@ struct ToolSandbox {
             }
         }
     }
+
+    #endif
 
     private func outside(_ path: String) -> ToolCallResult {
         .init(text: "\(path) is outside the working folder, which is not allowed.", isError: true)

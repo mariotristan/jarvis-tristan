@@ -8,7 +8,7 @@ struct TristanApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(model)
-                .environmentObject(model.client)
+                .environmentObject(model.mission)
                 .preferredColorScheme(.dark)
                 .onOpenURL { model.handle(url: $0) }
         }
@@ -17,11 +17,12 @@ struct TristanApp: App {
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var mission: MissionModel
 
     var body: some View {
         ZStack {
             Backdrop().ignoresSafeArea()
-            if model.pairing == nil { PairingView() } else { MissionView() }
+            if mission.mode == .remote && model.pairing == nil { PairingView() } else { MissionView() }
         }
         .sheet(isPresented: $model.showHistory) { HistoryView() }
         .sheet(isPresented: $model.showSettings) { SettingsSheet() }

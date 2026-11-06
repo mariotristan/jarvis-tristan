@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PairingView: View {
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var mission: MissionModel
     @State private var showScanner = false
     @State private var showManual = false
     @State private var host = ""
@@ -30,6 +31,7 @@ struct PairingView: View {
                 VStack(spacing: 12) {
                     hudButton("SCAN QR CODE", tint: Theme.cyan) { showScanner = true }
                     hudButton("PASTE PAIRING LINK", tint: Theme.amber) { pasteLink() }
+                    hudButton("USE WITHOUT A MAC", tint: Theme.green) { mission.mode = .standalone }
                     Button { withAnimation { showManual.toggle() } } label: {
                         Text(showManual ? "HIDE MANUAL ENTRY" : "ENTER DETAILS BY HAND")
                             .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.7))

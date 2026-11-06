@@ -55,12 +55,17 @@ final class AzureAuth: @unchecked Sendable {
 
     func headers() async throws -> [String: String] {
         if let key = KeychainStore.get(AzureConfig.keychainAccount), !key.isEmpty { return ["api-key": key] }
+        #if os(macOS)
         if let cached = cachedToken, cached.expires > Date() { return ["Authorization": "Bearer \(cached.value)"] }
         let token = try await Self.azureCLIToken()
         cachedToken = (token, Date().addingTimeInterval(20 * 60))
         return ["Authorization": "Bearer \(token)"]
+        #else
+        throw AzureError(message: "No Azure OpenAI API key is set. Add one in Settings.")
+        #endif
     }
 
+    #if os(macOS)
     private static func azureCLIToken() async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async {
@@ -90,7 +95,9 @@ final class AzureAuth: @unchecked Sendable {
             }
         }
     }
+    #endif
 }
+
 
 /// Server-sent-events assembler for streamed chat completions. Pure, so it is easy to test.
 struct SSEAssembler {

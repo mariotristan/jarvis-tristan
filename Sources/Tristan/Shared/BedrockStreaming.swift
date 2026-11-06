@@ -223,6 +223,7 @@ protocol CredentialProvider: Sendable {
     func credentials() async throws -> AWSCredentials
 }
 
+#if os(macOS)
 /// Uses `aws configure export-credentials`, which resolves the whole AWS chain (env, profiles, SSO, SAML helpers).
 final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
     private let profile: String
@@ -267,6 +268,24 @@ final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
                 continuation.resume(with: Result { try AWSCredentials.parse(data) })
             }
         }
+    }
+}
+#endif
+
+/// Access keys the user typed into the app, kept in the Keychain. This is how the iPhone and iPad get AWS credentials,
+/// since there is no AWS CLI there. Prefer short-lived keys with a session token over long-lived ones.
+struct KeychainAWSCredentials: CredentialProvider {
+    static let accessKeyAccount = "aws-access-key-id"
+    static let secretKeyAccount = "aws-secret-access-key"
+    static let sessionTokenAccount = "aws-session-token"
+
+    func credentials() async throws -> AWSCredentials {
+        guard let key = KeychainStore.get(Self.accessKeyAccount)?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty,
+              let secret = KeychainStore.get(Self.secretKeyAccount)?.trimmingCharacters(in: .whitespacesAndNewlines), !secret.isEmpty else {
+            throw BedrockError(message: "No AWS access key is set. Add an access key and secret in Settings.")
+        }
+        let token = KeychainStore.get(Self.sessionTokenAccount)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AWSCredentials(accessKey: key, secretKey: secret, sessionToken: (token?.isEmpty ?? true) ? nil : token, expiration: nil)
     }
 }
 

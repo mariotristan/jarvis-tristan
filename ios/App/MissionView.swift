@@ -1,13 +1,15 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct MissionView: View {
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var client: RemoteClient
+    @EnvironmentObject var mission: MissionModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @StateObject private var dictation = Dictation()
     @State private var draft = ""
     @State private var tab = MissionView.initialTab
     @FocusState private var typing: Bool
+    @State private var showImporter = false
 
     /// Debug launch argument `-tristanTab code` opens the code tab, for screenshots.
     private static var initialTab: Int {
@@ -18,9 +20,9 @@ struct MissionView: View {
         #endif
     }
 
-    private var phase: Phase { client.snapshot?.phase ?? .idle }
+    private var phase: Phase { mission.snapshot?.phase ?? .idle }
     private var busy: Bool { phase == .working || phase == .awaitingApproval }
-    private var connected: Bool { client.state == .connected }
+    private var connected: Bool { mission.state == .connected }
 
     var body: some View {
         ZStack {
@@ -28,40 +30,48 @@ struct MissionView: View {
                 header
                 banner
                 panels
-                if client.snapshot?.musicOn == true { MusicBar(playing: client.snapshot?.nowPlaying) { client.music($0) } }
+                if mission.snapshot?.musicOn == true { MusicBar(playing: mission.snapshot?.nowPlaying) { mission.music($0) } }
                 controls
                 inputBar
             }
             .padding(.horizontal, 14).padding(.bottom, 8)
 
-            if let request = client.approval {
+            if let request = mission.approval {
                 ZStack(alignment: .bottom) {
                     Color.black.opacity(0.55).ignoresSafeArea()
-                    ApprovalCard(request: request) { client.respond($0) }
+                    ApprovalCard(request: request) { mission.respond($0) }
                         .padding(14).frame(maxWidth: 560)
                 }
                 .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: client.approval?.id)
-        .onChange(of: client.snapshot?.phase) { _, new in haptic(for: new) }
-        .onChange(of: client.approval) { _, new in
+        .animation(.easeInOut(duration: 0.2), value: mission.approval?.id)
+        .onAppear {
+            #if DEBUG
+            model.automate()
+            #endif
+        }
+        .onChange(of: mission.snapshot?.phase) { _, new in haptic(for: new) }
+        .onChange(of: mission.approval) { _, new in
             if new != nil { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
             #if DEBUG
             model.automate()
             #endif
         }
-        .onChange(of: client.state) { _, _ in
+        .onChange(of: mission.state) { _, _ in
             #if DEBUG
             model.automate()
             #endif
         }
-        .onChange(of: client.snapshot) { _, _ in
+        .onChange(of: mission.snapshot) { _, _ in
             #if DEBUG
             model.automate()
             #endif
         }
         .onChange(of: dictation.text) { _, new in if dictation.listening { draft = new } }
+        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.folder]) { result in
+            if case .success(let url) = result { mission.local.addFolder(url) }
+        }
     }
 
     // MARK: pieces
@@ -75,8 +85,8 @@ struct MissionView: View {
                         .lineLimit(1).minimumScaleFactor(0.6)
                         .foregroundStyle(Theme.cyan).shadow(color: Theme.cyan, radius: 5)
                     HStack(spacing: 6) {
-                        Circle().fill(connected ? Theme.green : (client.state == .connecting ? Theme.amber : Theme.red)).frame(width: 7, height: 7)
-                        Text(client.snapshot?.macName ?? model.pairing?.name ?? "Mac")
+                        Circle().fill(connected ? Theme.green : (mission.state == .connecting ? Theme.amber : Theme.red)).frame(width: 7, height: 7)
+                        Text(mission.snapshot?.macName ?? model.pairing?.name ?? "Mac")
                             .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.7)).lineLimit(1)
                     }
                 }
@@ -88,10 +98,10 @@ struct MissionView: View {
                         iconButton("clock.arrow.circlepath") { model.showHistory = true }
                         iconButton("gearshape") { model.showSettings = true }
                     }
-                    Text(client.snapshot?.status ?? "OFFLINE")
+                    Text(mission.snapshot?.status ?? "OFFLINE")
                         .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.tint(for: phase))
                         .lineLimit(1).minimumScaleFactor(0.6)
-                    if let mode = client.snapshot?.mode {
+                    if let mode = mission.snapshot?.mode {
                         Text("MODE \(mode)")
                             .font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1.5)
                             .padding(.horizontal, 5).padding(.vertical, 2)
@@ -104,13 +114,21 @@ struct MissionView: View {
     }
 
     @ViewBuilder private var banner: some View {
-        switch client.state {
+        switch mission.state {
         case .connected:
-            if let message = client.notice {
+            if let message = mission.notice {
                 notice(message, Theme.amber)
+            } else if mission.mode == .standalone, let hint = StandaloneSetup.hint(for: mission.snapshot?.provider ?? "") {
+                Button { model.showSettings = true } label: {
+                    Text(hint + " Tap to open Settings.")
+                        .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.amber)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8).overlay(Rectangle().stroke(Theme.amber.opacity(0.5), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
         case .connecting:
-            notice(client.notice ?? "Connecting to your Mac…", Theme.amber)
+            notice(mission.notice ?? "Connecting to your Mac…", Theme.amber)
         case .disconnected:
             HStack { notice("Not connected.", Theme.red); hudButton("CONNECT", tint: Theme.cyan) { model.connect() } }
         case .failed(let message):
@@ -128,14 +146,14 @@ struct MissionView: View {
         Text(text).font(.system(size: 11, design: .monospaced)).foregroundStyle(tint)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8).overlay(Rectangle().stroke(tint.opacity(0.5), lineWidth: 1))
-            .onTapGesture { client.clearNotice() }
+            .onTapGesture { mission.clearNotice() }
     }
 
     @ViewBuilder private var panels: some View {
         if sizeClass == .regular {
             HStack(spacing: 10) {
-                LogPanel(lines: client.log).frame(width: 300)
-                CodePanel(code: client.code)
+                LogPanel(lines: mission.log).frame(width: 300)
+                CodePanel(code: mission.code)
             }
         } else {
             VStack(spacing: 8) {
@@ -144,7 +162,7 @@ struct MissionView: View {
                     Text("CODE").tag(1)
                 }
                 .pickerStyle(.segmented)
-                if tab == 0 { LogPanel(lines: client.log) } else { CodePanel(code: client.code) }
+                if tab == 0 { LogPanel(lines: mission.log) } else { CodePanel(code: mission.code) }
             }
         }
     }
@@ -153,9 +171,9 @@ struct MissionView: View {
         HStack(spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    ForEach(client.snapshot?.providers ?? [], id: \.self) { name in
-                        let on = client.snapshot?.provider == name
-                        Button { client.setProvider(name) } label: {
+                    ForEach(mission.snapshot?.providers ?? [], id: \.self) { name in
+                        let on = mission.snapshot?.provider == name
+                        Button { mission.setProvider(name) } label: {
                             Text(name).font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .padding(.vertical, 7).padding(.horizontal, 10)
                                 .background(on ? Theme.cyan.opacity(0.25) : .clear)
@@ -167,14 +185,17 @@ struct MissionView: View {
                 }
             }
             Menu {
-                ForEach(client.snapshot?.folders ?? []) { folder in
-                    Button(folder.name) { client.setFolder(folder.path) }
+                ForEach(mission.snapshot?.folders ?? []) { folder in
+                    Button(folder.name) { mission.setFolder(folder.path) }
+                }
+                if mission.mode == .standalone {
+                    Button("Choose a folder in Files…") { showImporter = true }
                 }
                 Divider()
-                Button("ASK mode") { client.setMode("ASK") }
-                Button("AUTO mode") { client.setMode("AUTO") }
+                Button("ASK mode") { mission.setMode("ASK") }
+                Button("AUTO mode") { mission.setMode("AUTO") }
             } label: {
-                Text("📁 \(((client.snapshot?.folder ?? "") as NSString).lastPathComponent)")
+                Text("📁 \(((mission.snapshot?.folder ?? "") as NSString).lastPathComponent)")
                     .font(.system(size: 10, design: .monospaced)).lineLimit(1)
                     .padding(.vertical, 7).padding(.horizontal, 10)
                     .overlay(Rectangle().stroke(Theme.amber.opacity(0.7), lineWidth: 1)).foregroundStyle(Theme.amber)
@@ -201,7 +222,7 @@ struct MissionView: View {
                 }
                 .buttonStyle(.plain)
                 if busy {
-                    hudButton("ABORT", tint: Theme.red) { client.cancel() }
+                    hudButton("ABORT", tint: Theme.red) { mission.cancel() }
                 } else {
                     hudButton("GO", tint: Theme.cyan, action: send).disabled(!connected || draft.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
@@ -216,7 +237,7 @@ struct MissionView: View {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard connected, !text.isEmpty, !busy else { return }
         dictation.stop()
-        client.submit(text)
+        mission.submit(text)
         draft = ""
         typing = false
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()

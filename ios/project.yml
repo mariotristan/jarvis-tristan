@@ -38,6 +38,8 @@ targets:
         UIRequiresFullScreen: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         NSLocalNetworkUsageDescription: Tristan connects to the Tristan app on your Mac over your local network.
         NSCameraUsageDescription: Tristan scans the pairing QR code shown on your Mac.
         NSMicrophoneUsageDescription: Tristan listens when you dictate a task.
