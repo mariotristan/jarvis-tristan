@@ -19,6 +19,7 @@ final class SoundFX {
 
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
+    private let keepAlive = AVAudioPlayerNode()
     private let sampleRate = 44_100.0
     private var started = false
     private let speaker = AVSpeechSynthesizer()
@@ -43,14 +44,31 @@ final class SoundFX {
     }
 
     private func startEngineIfNeeded() -> Bool {
-        if started { return engine.isRunning }
+        if started {
+            if !engine.isRunning { try? engine.start(); startKeepAlive() }   // e.g. the output device changed
+            return engine.isRunning
+        }
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
+        engine.attach(keepAlive)
+        engine.connect(keepAlive, to: engine.mainMixerNode, format: format)
         engine.mainMixerNode.outputVolume = 0.6
         started = true
         do { try engine.start() } catch { return false }
+        startKeepAlive()
         return true
+    }
+
+    /// Plays silence on a loop so the Mac's output stays open. When the last sound stops, the speakers can power down
+    /// and that is heard as a click or crack right after a spoken line ends.
+    private func startKeepAlive() {
+        guard engine.isRunning, !keepAlive.isPlaying,
+              let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1),
+              let silence = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(sampleRate)) else { return }
+        silence.frameLength = silence.frameCapacity   // zero-filled
+        keepAlive.scheduleBuffer(silence, at: nil, options: .loops, completionHandler: nil)
+        keepAlive.play()
     }
 
     private func notes(for cue: Cue) -> [Note] {
@@ -113,6 +131,7 @@ final class SoundFX {
     /// Speaks a line in a British English voice (Jarvis-style) when available, or a cheerful one in kids mode.
     func say(_ text: String, interrupt: Bool = true) {
         guard voiceOn, !text.isEmpty else { return }
+        _ = startEngineIfNeeded()   // keeps the output open, so a line ending does not click
         // Stopping at the end of the word, not mid-sample, avoids a click when one line cuts off another.
         if interrupt, speaker.isSpeaking { speaker.stopSpeaking(at: .word) }
         let utterance = AVSpeechUtterance(string: text)
