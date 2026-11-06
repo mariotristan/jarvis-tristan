@@ -1,9 +1,10 @@
 #!/bin/bash
 # Records a video of the live app on the DEMO provider (no accounts or agent needed), cropped to the Tristan window
 # so nothing else on your screen ends up in the file. Output: docs/demo/tristan-demo.mp4
-#   scripts/record-demo.sh                 records 75 seconds
+#   scripts/record-demo.sh                 records until the autopilot finishes (about 65 seconds, 75 at most)
 #   SECONDS_TO_RECORD=120 scripts/record-demo.sh
 #   DEMO_MODE=ask scripts/record-demo.sh   open in ask or auto instead of yolo (the default)
+#   MANUAL=1 scripts/record-demo.sh        no autopilot: you drive the app yourself while it records
 #   TRIM_START=4 TRIM_END=3 scripts/record-demo.sh   cut seconds off the start and the end
 # Needs Screen Recording permission for your terminal (System Settings > Privacy & Security > Screen & System Audio
 # Recording), Xcode (for the build) and ffmpeg (brew install ffmpeg).
@@ -24,27 +25,37 @@ LOG=$(mktemp)
 mkdir -p "$OUT"
 
 swift build >/dev/null
-.build/debug/Tristan --demo "${DEMO_MODE:-yolo}" > "$LOG" 2>&1 &
+.build/debug/Tristan --demo "${DEMO_MODE:-yolo}" ${MANUAL:+--manual} > "$LOG" 2>&1 &
 APP=$!
 trap 'kill $APP 2>/dev/null || true; rm -f "$LOG"' EXIT
 
 for _ in $(seq 1 50); do grep -q '^DEMO_WINDOW' "$LOG" && break; sleep 0.2; done
 read -r _ WX WY WW WH SW SH < <(grep -m1 '^DEMO_WINDOW' "$LOG") || { echo "Tristan did not report its window. Log:"; cat "$LOG"; exit 1; }
 
+if [ -n "${MANUAL:-}" ]; then
 cat <<'TXT'
 
-Recording starts in 5 seconds. Tristan is on the DEMO provider. Suggested run (about 75 seconds):
-  1. Click the Tristan window, type "write a README for this folder" and press Return.
-     Watch the big orb, rings and sparks while it works. Approve the prompt.
-  2. While it answers, press ⌥⇧ Space: nothing starts, the mic shows slashed (mic is shut while Tristan responds).
-  3. Open the gear > ORB WHILE WAITING: change size and effects, switch "ORB FILLS THE WHOLE SCREEN" on and send another task.
-  4. Gear > KIDS SAFE MODE: pick PIN, set one, switch it on. Close Settings, click the gear again: the parent unlock appears.
-     Enter the PIN to get in; switch kids mode off again.
+Recording starts in 5 seconds. Suggested run (about 75 seconds):
+  1. Click the Tristan window, type "write a README for this folder" and press Return. Watch the big orb.
+  2. While it answers, press ⌥⇧ Space: nothing starts (the mic is shut while Tristan responds).
+  3. Gear > ORB WHILE WAITING: switch "ORB FILLS THE WHOLE SCREEN" on and send another task.
+  4. Gear > KIDS SAFE MODE: set a PIN, switch it on, close Settings, click the gear: the parent unlock appears.
 Keep the window where it is.
 TXT
+else
+echo "Recording starts in 5 seconds and the demo plays by itself (about 65 seconds). Keep the window where it is."
+fi
 for i in 5 4 3 2 1; do printf "%s " "$i"; sleep 1; done; echo "recording"
 
-screencapture -v -V "$SECS" "$RAW"
+screencapture -v -V "$SECS" "$RAW" &
+REC=$!
+if [ -z "${MANUAL:-}" ]; then
+  # Stop as soon as the autopilot is done (a few seconds of tail), or at the time limit.
+  for _ in $(seq 1 $((SECS * 5))); do grep -q '^DEMO_DONE' "$LOG" && break; sleep 0.2; done
+  sleep 2
+  kill -INT "$REC" 2>/dev/null || true
+fi
+wait "$REC" || true
 
 # Crop to the window plus a small margin, converting screen points to video pixels.
 VW=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$RAW")

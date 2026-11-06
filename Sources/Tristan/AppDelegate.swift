@@ -12,7 +12,7 @@ final class HUDWindow: NSWindow {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// `Tristan --demo [ask|auto|yolo]` (used by scripts/record-demo.sh): the DEMO provider in the given mode (ASK by default) with kids mode off, nothing saved
+    /// `Tristan --demo [ask|auto|yolo] [--manual]` (used by scripts/record-demo.sh): the DEMO provider in the given mode (ASK by default) with kids mode off, nothing saved
     /// as open tabs or history, and a separate Keychain slot for the parent PIN so a demo PIN never replaces a real one.
     private let demo = CommandLine.arguments.contains("--demo")
     private var demoRestore: (() -> Void)?
@@ -97,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let screen = NotchGeometry.primaryScreen().frame
             print("DEMO_WINDOW \(Int(hud.frame.minX - screen.minX)) \(Int(screen.maxY - hud.frame.maxY)) \(Int(hud.frame.width)) \(Int(hud.frame.height)) \(Int(screen.width)) \(Int(screen.height))")
             fflush(stdout)
+            if !CommandLine.arguments.contains("--manual") { Task { await DemoAutopilot.run(on: session) } }
         }
     }
 
