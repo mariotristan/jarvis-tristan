@@ -72,6 +72,9 @@ final class Session: ObservableObject {
     }
     @Published var records: [MissionRecord] = []
 
+    /// How a provider is created. Tests and tools replace this to run sessions against stand-ins.
+    var providerFactory: (ProviderKind, ApprovalMode) -> AgentProvider? = { kind, mode in kind.makeProvider(mode: mode) }
+
     private let voice = VoiceInput()
     private let wake = WakeListener()
     let fx = SoundFX()

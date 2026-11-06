@@ -46,7 +46,14 @@ final class MissionSession: ObservableObject, Identifiable {
         code = ""
         currentTask = prompt
         recorded = false
-        guard let impl = provider.makeProvider(mode: hub?.approvalMode ?? .ask) else {
+        // A session without its hub cannot know the approval mode or the allow rules, so it must not run anything at all.
+        guard let hub else {
+            phase = .failed
+            status = "OFFLINE"
+            add("This session is detached from Tristan and cannot start a mission.", .warn)
+            return
+        }
+        guard let impl = hub.providerFactory(provider, hub.approvalMode) else {
             phase = .failed
             status = "OFFLINE"
             add("\(provider.rawValue) is not wired up yet", .warn)
@@ -56,10 +63,10 @@ final class MissionSession: ObservableObject, Identifiable {
         status = "INITIALIZING"
         announcedApproval = false
         add("Task: \(prompt)", .info)
-        if let others = hub?.sessionsBusy(in: workingDirectory, besides: self), !others.isEmpty {
+        if case let others = hub.sessionsBusy(in: workingDirectory, besides: self), !others.isEmpty {
             add("⚠︎ \(others.joined(separator: ", ")) is also working in this folder, so edits may collide.", .warn)
         }
-        hub?.missionStarted(self)
+        hub.missionStarted(self)
         let directory = workingDirectory
         runner = Task { [weak self] in
             let stream = impl.run(task: prompt, workingDirectory: directory) { [weak self] request in

@@ -14,10 +14,17 @@ final class MultiSessionTests: XCTestCase {
         for url in [folderA!, folderB!] { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
     }
 
-    override func tearDownWithError() throws { try? FileManager.default.removeItem(at: base) }
+    /// Sessions only hold their hub weakly, so the tests must keep every hub alive until they finish.
+    private var retained: [Session] = []
+
+    override func tearDownWithError() throws {
+        retained.removeAll()
+        try? FileManager.default.removeItem(at: base)
+    }
 
     private func hub(history: HistoryStore? = nil, defaults: UserDefaults = .standard) -> Session {
         let hub = Session(history: history, music: SpotifyController(runner: FakeSpotify(), isRunning: { true }, releaseDelay: .zero), defaults: defaults)
+        retained.append(hub)
         hub.soundsOn = false; hub.voiceOn = false; hub.notificationsOn = false
         hub.approvalMode = .ask
         return hub
@@ -230,6 +237,127 @@ final class MultiSessionTests: XCTestCase {
 
         let anonymous = hub(history: nil, defaults: defaults)       // an in-memory hub neither saves nor restores
         XCTAssertEqual(anonymous.sessions.count, 1)
+    }
+
+    // MARK: concurrent Copilot sessions (a stand-in process replaces the CLI)
+
+    /// Records how each stand-in Copilot process was launched.
+    final class Launches: @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [[String]] = []
+        func add(_ arguments: [String]) { lock.lock(); all.append(arguments); lock.unlock() }
+        var arguments: [[String]] { lock.lock(); defer { lock.unlock() }; return all }
+        var logDirectories: [String] {
+            arguments.compactMap { args in args.firstIndex(of: "--log-dir").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil } }
+        }
+    }
+
+    /// Makes Copilot sessions run a shell script that sleeps `seconds` and prints the task, instead of the real CLI.
+    private func copilotHub(launches: Launches, seconds: Double = 2.0, mode: ApprovalMode = .ask) -> (hub: Session, first: MissionSession, second: MissionSession) {
+        let hub = hub()
+        hub.approvalMode = mode
+        hub.providerFactory = { kind, mode in
+            guard kind == .copilot else { return nil }
+            var provider = CopilotProvider(mode: mode, model: "")
+            provider.launchOverride = { arguments in
+                launches.add(arguments)
+                let task = arguments[1]
+                return (URL(fileURLWithPath: "/bin/sh"), ["-c", "sleep \(seconds); echo 'output for \(task)'; echo; echo 'finished \(task)'"])
+            }
+            return provider
+        }
+        let first = hub.active
+        first.provider = .copilot; first.workingDirectory = folderA
+        let second = hub.newSession(provider: .copilot, folder: folderB, select: false)!
+        return (hub, first, second)
+    }
+
+    func testTwoCopilotSessionsRunAtTheSameTimeEachWithItsOwnApproval() async throws {
+        let launches = Launches()
+        let (hub, first, second) = copilotHub(launches: launches)
+        first.submit("alpha"); second.submit("beta")
+        try await eventually { first.pending != nil && second.pending != nil }
+        XCTAssertEqual(first.pending?.summary, "Run Copilot CLI with its tools allowed?")
+        XCTAssertNotNil(second.pending, "each Copilot session asks for its own up-front approval")
+        XCTAssertEqual(launches.arguments.count, 0, "nothing runs before approval")
+        XCTAssertEqual(hub.backgroundApprovals.count, 1)
+
+        let answered = Date()
+        first.resolve(true); second.resolve(true)
+        var peak = 0
+        try await eventually(timeout: 20) { peak = max(peak, [first, second].filter(\.busy).count); return first.phase == .done && second.phase == .done }
+        let elapsed = Date().timeIntervalSince(answered)
+        XCTAssertEqual(first.phase, .done); XCTAssertEqual(second.phase, .done)
+        XCTAssertEqual(peak, 2, "both were running at once")
+        XCTAssertLessThan(elapsed, 3.6, "two 2-second jobs finished in \(elapsed)s, so they ran together, not one after the other")
+
+        XCTAssertTrue(first.code.contains("output for alpha")); XCTAssertFalse(first.code.contains("beta"))
+        XCTAssertTrue(second.code.contains("output for beta")); XCTAssertFalse(second.code.contains("alpha"))
+        let directories = launches.logDirectories
+        XCTAssertEqual(directories.count, 2)
+        XCTAssertEqual(Set(directories).count, 2, "every Copilot process gets its own log directory")
+        XCTAssertEqual(Set(hub.records.map(\.provider)), ["COPILOT"])
+        XCTAssertEqual(hub.records.count, 2)
+    }
+
+    func testDenyingOneCopilotSessionLeavesTheOtherUntouched() async throws {
+        let launches = Launches()
+        let (_, first, second) = copilotHub(launches: launches)
+        first.submit("alpha"); second.submit("beta")
+        try await eventually { first.pending != nil && second.pending != nil }
+        second.resolve(false)
+        first.resolve(true)
+        try await eventually(timeout: 20) { first.phase == .done && second.phase == .failed }
+        XCTAssertEqual(second.phase, .failed)
+        XCTAssertTrue(second.log.contains { $0.text.contains("Denied by operator") })
+        XCTAssertEqual(first.phase, .done)
+        XCTAssertEqual(launches.arguments.count, 1, "the denied session never started a process")
+        XCTAssertEqual(launches.arguments.first?[1], "alpha")
+    }
+
+    func testCopilotSessionsInAutoModeStartWithoutAskingAndNeverGetBlanketPermission() async throws {
+        let launches = Launches()
+        let (_, first, second) = copilotHub(launches: launches, seconds: 0.3, mode: .auto)
+        first.submit("alpha"); second.submit("beta")
+        try await eventually(timeout: 20) { first.phase == .done && second.phase == .done }
+        XCTAssertEqual(first.phase, .done); XCTAssertEqual(second.phase, .done)
+        XCTAssertNil(first.pending); XCTAssertNil(second.pending)
+        XCTAssertEqual(launches.arguments.count, 2)
+        for arguments in launches.arguments {
+            XCTAssertFalse(arguments.contains("--allow-all-tools"), "AUTO never uses blanket permission")
+            XCTAssertTrue(arguments.contains("write"))
+            XCTAssertTrue(arguments.contains("shell(rm:*)"), "the deny list still applies")
+        }
+    }
+
+    func testAMixOfClaudeAndCopilotSessionsKeepsEachOnItsOwnProvider() async throws {
+        let launches = Launches()
+        let (hub, copilot, other) = copilotHub(launches: launches)
+        other.provider = .demo
+        let factory = hub.providerFactory
+        hub.providerFactory = { kind, mode in kind == .demo ? DemoProvider() : factory(kind, mode) }
+        copilot.submit("alpha"); other.submit("beta")
+        try await eventually { copilot.pending != nil && other.pending != nil }
+        XCTAssertEqual(copilot.pending?.summary, "Run Copilot CLI with its tools allowed?")
+        XCTAssertEqual(other.pending?.summary, "Write Sources/auth.ts", "the other session is a different provider with its own request")
+        copilot.cancel(); other.cancel()
+    }
+
+    func testASessionWithoutItsHubRefusesToRunAnythingInsteadOfFallingBackToARealProvider() async throws {
+        let launches = Launches()
+        var orphan: MissionSession?
+        do {
+            let (hub, first, _) = copilotHub(launches: launches)
+            orphan = first
+            retained.removeAll { $0 === hub }          // let the hub go
+        }
+        let session = try XCTUnwrap(orphan)
+        XCTAssertNil(session.hub, "the hub is gone")
+        session.submit("must not run")
+        XCTAssertEqual(session.phase, .failed)
+        XCTAssertEqual(session.status, "OFFLINE")
+        XCTAssertNil(session.pending, "no approval is requested and nothing is launched")
+        XCTAssertEqual(launches.arguments.count, 0)
     }
 
     func testRemoteAndMusicStillTalkToTheActiveSession() async throws {

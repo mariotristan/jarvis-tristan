@@ -13,8 +13,11 @@ enum CopilotArguments {
     static let routineShell = ["git status", "git diff", "git log", "git add", "git commit", "ls", "cat", "pwd", "grep",
                                "head", "tail", "wc", "echo", "mkdir", "touch", "swift build", "swift test", "npm test", "npm run"]
 
-    static func make(task: String, mode: ApprovalMode, model: String) -> [String] {
+    /// `logDirectory` gives this run its own log folder, so several Copilot sessions running at once never write to the
+    /// same place.
+    static func make(task: String, mode: ApprovalMode, model: String, logDirectory: String? = nil) -> [String] {
         var args = ["-p", task, "--no-color", "--stream", "on", "--disallow-temp-dir"]
+        if let logDirectory { args += ["--log-dir", logDirectory] }
         if !model.isEmpty { args += ["--model", model] }
         switch mode {
         case .yolo:
@@ -61,7 +64,10 @@ struct CopilotProvider: AgentProvider {
                     c.yield(.log("Approval mode \(mode.rawValue): mapped to Copilot's tool permissions"))
                 }
 
-                let arguments = CopilotArguments.make(task: task, mode: mode, model: model)
+                let logDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-logs-\(UUID().uuidString.prefix(8))")
+                try? FileManager.default.createDirectory(at: logDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+                defer { try? FileManager.default.removeItem(at: logDirectory) }
+                let arguments = CopilotArguments.make(task: task, mode: mode, model: model, logDirectory: logDirectory.path)
                 if let override = launchOverride {
                     let launch = override(arguments)
                     process.executableURL = launch.executable

@@ -69,19 +69,21 @@ if let flag = args.firstIndex(of: "--make-icon"), args.indices.contains(flag + 1
     exit(0)
 }
 
-// `Tristan --headless-sessions <dirA> "<taskA>" <dirB> "<taskB>"`: two real Claude sessions at the same time, each
-// answering its own approvals. Prints a timeline and how many sessions were busy at once.
+// `Tristan --headless-sessions <dirA> "<taskA>" <dirB> "<taskB>" [claude|copilot] [ask|auto]`: two real sessions at the
+// same time, each answering its own approvals. Prints a timeline and how many sessions were busy at once.
 if let flag = args.firstIndex(of: "--headless-sessions"), args.indices.contains(flag + 4) {
     let folders = [URL(fileURLWithPath: args[flag + 1]), URL(fileURLWithPath: args[flag + 3])]
     let tasks = [args[flag + 2], args[flag + 4]]
+    let kind: ProviderKind = args.indices.contains(flag + 5) && args[flag + 5] == "copilot" ? .copilot : .claude
+    let mode: ApprovalMode = args.indices.contains(flag + 6) && args[flag + 6] == "auto" ? .auto : .ask
     Task { @MainActor in
         let hub = Session(history: nil)
         hub.soundsOn = false; hub.voiceOn = false; hub.notificationsOn = false
-        hub.approvalMode = .ask
+        hub.approvalMode = mode
         hub.allowRules = []
         let first = hub.active
-        first.provider = .claude; first.workingDirectory = folders[0]
-        let second = hub.newSession(provider: .claude, folder: folders[1], select: false)!
+        first.provider = kind; first.workingDirectory = folders[0]
+        let second = hub.newSession(provider: kind, folder: folders[1], select: false)!
         let sessions = [first, second]
         let start = Date()
         func stamp() -> String { String(format: "%5.1fs", Date().timeIntervalSince(start)) }

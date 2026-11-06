@@ -47,6 +47,12 @@ final class CopilotTests: XCTestCase {
         XCTAssertTrue(zip(args, args.dropFirst()).contains { $0.0 == "--model" && $0.1 == "gpt-5" })
     }
 
+    func testEachRunCanBeGivenItsOwnLogDirectory() {
+        XCTAssertFalse(CopilotArguments.make(task: "x", mode: .ask, model: "").contains("--log-dir"))
+        let args = CopilotArguments.make(task: "x", mode: .ask, model: "", logDirectory: "/tmp/run-1")
+        XCTAssertTrue(zip(args, args.dropFirst()).contains { $0.0 == "--log-dir" && $0.1 == "/tmp/run-1" })
+    }
+
     func testANSIIsStripped() {
         XCTAssertEqual(CopilotArguments.stripANSI("\u{001B}[32mgreen\u{001B}[0m text"), "green text")
     }
