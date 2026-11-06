@@ -7,20 +7,33 @@ if let flag = args.firstIndex(of: "--mcp-permission"), args.indices.contains(fla
     PermissionShim.run(socketPath: args[flag + 1])
 }
 
-// `Tristan --headless <dir> "<task>" [allow|deny|auto|yolo]`: runs the Claude provider without UI, answering
-// every approval automatically. Used to test the real approval path end to end.
+// `Tristan --headless <dir> "<task>" [allow|deny|always|auto|yolo]`: drives a real Session (the same code the UI
+// uses) without any window, answering approvals automatically. Used to test the approval path end to end.
 if let flag = args.firstIndex(of: "--headless"), args.indices.contains(flag + 2) {
     let dir = URL(fileURLWithPath: args[flag + 1])
     let task = args[flag + 2]
     let choice = args.indices.contains(flag + 3) ? args[flag + 3] : "allow"
-    let allow = choice != "deny"
     let mode: ApprovalMode = choice == "auto" ? .auto : choice == "yolo" ? .yolo : .ask
-    Task {
-        let stream = ClaudeCodeProvider(mode: mode).run(task: task, workingDirectory: dir) { request in
-            print("APPROVAL  \(request.summary)  [\(request.detail)]  -> \(allow ? "allow" : "deny")")
-            return allow
+    Task { @MainActor in
+        let session = Session()
+        session.provider = .claude
+        session.approvalMode = mode
+        session.workingDirectory = dir
+        session.allowRules = []
+        session.submit(task)
+        var printed = 0
+        while true {
+            if let request = session.pending {
+                print("APPROVAL  \(request.summary)  [\(request.detail)]  rule=\(request.rule?.label ?? "none")  -> \(choice)")
+                session.resolve(choice != "deny", always: choice == "always")
+            }
+            while printed < session.log.count { print("LOG       \(session.log[printed].text)"); printed += 1 }
+            if session.phase == .done || session.phase == .failed { break }
+            try? await Task.sleep(for: .milliseconds(100))
         }
-        for await event in stream { print("EVENT     \(event)") }
+        while printed < session.log.count { print("LOG       \(session.log[printed].text)"); printed += 1 }
+        print("FINAL     \(session.phase)  rules=\(session.allowRules.map(\.key))")
+        session.allowRules = []
         exit(0)
     }
     dispatchMain()

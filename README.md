@@ -41,6 +41,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
   - Animated grid and scanline backdrop.
 - **Notch overlay.** A black pill around the camera notch with a mini reactor and a status dot. Hover to expand it. It also opens by itself when approval is needed and for a few seconds when a mission ends. On Macs without a notch it becomes a floating pill at the top centre of the screen.
 - **Ask-first approvals.** Every action Claude Code wants permission for shows up as an approve or deny prompt, in the HUD or in the notch.
+- **Always allow.** The approval prompt has an `ALWAYS ALLOW` button that remembers a narrow rule so you are not asked again (see [how approvals work](#how-approvals-work)). Rules are saved between launches and listed in the configuration panel, where you can remove them one by one or clear them all.
 - **Approval modes** (gear button, saved between launches):
   - `ASK`: Tristan asks before each action. This is the default.
   - `AUTO`: Claude's own safety classifier decides. Routine actions run, risky ones are blocked.
@@ -139,12 +140,22 @@ In `ASK` mode Tristan starts Claude Code with `--permission-mode manual` and `--
 3. The app shows the action in the HUD or notch and waits for you.
 4. Your answer goes back as `{"behavior":"allow"}` or `{"behavior":"deny"}`.
 
+**Always allow rules are deliberately narrow.** Tristan only offers `ALWAYS ALLOW` where generalising is reasonably safe:
+
+| Action | Rule it remembers |
+|--------|-------------------|
+| `Edit`, `Write`, `MultiEdit`, `NotebookEdit` | That tool, for files **inside the working folder** only |
+| `Bash` | The program name only (for example `npm` or `touch`) |
+
+It is **not** offered for shell commands that chain or redirect (`;`, `&&`, `|`, `>`, `<`, backticks, `$(…)`), for risky programs (`rm`, `sudo`, `dd`, `chmod`, `mv`, `curl`, `sh`, `ssh` and similar), or for any other tool. Those always ask. Note that allowing a program like `npm` lets it run any arguments you did not see, so treat it as trust in that program.
+
 Your existing Claude Code allow rules still apply, so actions you already allowed in your own settings are not asked about again. `AUTO` and `YOLO` skip the bridge and pass `--permission-mode auto` or `bypassPermissions` instead.
 
 ### Testing without the UI
 
 ```bash
-# Run the Claude provider headlessly. The last argument answers approvals: allow, deny, or picks a mode: auto, yolo
+# Drives a real Session without any window. The last argument answers approvals (allow, deny, always)
+# or picks a mode (auto, yolo)
 .build/debug/Tristan --headless /path/to/folder "Use Bash to run: echo hi > out.txt" deny
 ```
 
@@ -168,7 +179,7 @@ Your existing Claude Code allow rules still apply, so actions you already allowe
 - [x] Approval modes: ask, auto, yolo
 - [x] Voice input (push-to-talk) and spoken results
 - [ ] Voice: wake word, better testing
-- [ ] "Always allow this" option on the approval prompt
+- [x] "Always allow" option on the approval prompt
 - [ ] Own agent loop with file and shell tools for the model-only providers
 - [ ] GitHub Copilot provider
 - [ ] AWS Bedrock provider

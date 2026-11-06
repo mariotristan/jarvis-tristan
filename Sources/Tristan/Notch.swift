@@ -64,6 +64,9 @@ struct NotchView: View {
                         if session.pending != nil {
                             hudButton("DENY", tint: Theme.red) { session.resolve(false) }
                             hudButton("APPROVE", tint: Theme.green) { session.resolve(true) }
+                            if session.pending?.rule != nil {
+                                hudButton("ALWAYS", tint: Theme.cyan) { session.resolve(true, always: true) }
+                            }
                         } else {
                             hudButton("OPEN HUD", tint: Theme.cyan, action: openHUD)
                         }

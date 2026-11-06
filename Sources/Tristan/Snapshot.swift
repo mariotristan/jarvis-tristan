@@ -43,8 +43,9 @@ enum Snapshot {
         asking.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
         asking.phase = .awaitingApproval
         asking.status = "AWAITING AUTHORIZATION"
-        asking.log = [entry("Task: add login to the API", .info), entry("Let Claude Code edit files", .warn)]
-        asking.pending = ApprovalRequest(summary: "Let Claude Code edit files", detail: "Working folder: /Users/you/code/my-api")
+        asking.log = [entry("Task: add login to the API", .info), entry("Allow Bash?", .warn)]
+        asking.pending = ApprovalRequest(summary: "Allow Bash?", detail: "npm test",
+                                         rule: ApprovalRule(key: "Bash:npm", label: "Bash: npm …"))
         save(HUDView().environmentObject(asking), width: 1000, height: 640, name: "hud-approval.png")
 
         let settings = Session()
@@ -61,7 +62,8 @@ enum Snapshot {
         let notchSession = Session()
         notchSession.phase = .awaitingApproval
         notchSession.status = "AWAITING AUTHORIZATION"
-        notchSession.pending = ApprovalRequest(summary: "Let Claude Code edit files", detail: "")
+        notchSession.pending = ApprovalRequest(summary: "Allow Bash?  npm test", detail: "",
+                                               rule: ApprovalRule(key: "Bash:npm", label: "Bash: npm …"))
         let notchView = ZStack(alignment: .top) {
             LinearGradient(colors: [Color(red: 0.16, green: 0.20, blue: 0.32), Color(red: 0.05, green: 0.07, blue: 0.14)],
                            startPoint: .top, endPoint: .bottom)

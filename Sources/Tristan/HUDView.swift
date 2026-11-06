@@ -215,10 +215,19 @@ struct ApprovalOverlay: View {
                 HStack(spacing: 12) {
                     hudButton("DENY", tint: Theme.red) { session.resolve(false) }
                     hudButton("APPROVE", tint: Theme.green) { session.resolve(true) }
+                    if request.rule != nil {
+                        hudButton("ALWAYS ALLOW", tint: Theme.cyan) { session.resolve(true, always: true) }
+                    }
+                }
+                if let rule = request.rule {
+                    Text("ALWAYS ALLOW remembers: \(rule.label). Remove it any time in Configuration.")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Theme.cyan.opacity(0.55))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(24)
-            .frame(width: 460)
+            .frame(width: 520)
             .background(Theme.deep)
             .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1.5))
             .shadow(color: Theme.amber.opacity(0.5), radius: 18)
@@ -288,6 +297,34 @@ struct SettingsOverlay: View {
                     }
                     .padding(12)
                     .overlay(Rectangle().stroke(Theme.red, lineWidth: 1))
+                }
+                if !session.allowRules.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("ALWAYS-ALLOWED (ASK MODE)")
+                                .font(.system(size: 10, design: .monospaced)).tracking(2)
+                                .foregroundStyle(Theme.cyan.opacity(0.7))
+                            Spacer()
+                            Button("CLEAR ALL") { session.allowRules = [] }
+                                .buttonStyle(.plain)
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                .foregroundStyle(Theme.red)
+                        }
+                        ForEach(session.allowRules) { rule in
+                            HStack {
+                                Text(rule.label)
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(Theme.green)
+                                Spacer()
+                                Button { session.allowRules.removeAll { $0 == rule } } label: {
+                                    Text("✕").foregroundStyle(Theme.red)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
                 }
                 if session.busy {
                     Text("Mode is locked while a mission is running.")

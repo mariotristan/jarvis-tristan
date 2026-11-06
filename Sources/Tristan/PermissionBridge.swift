@@ -59,14 +59,16 @@ enum UnixSocket {
 
 /// Runs inside the app. Receives permission requests from the MCP shim and asks the operator.
 final class PermissionServer: @unchecked Sendable {
-    typealias Handler = @Sendable (_ tool: String, _ detail: String) async -> Bool
+    typealias Handler = @Sendable (_ tool: String, _ detail: String, _ rule: ApprovalRule?) async -> Bool
 
     let directory: URL
     var socketPath: String { directory.appendingPathComponent("s").path }
     private var fd: Int32 = -1
     private let handler: Handler
+    private let workingDirectory: URL
 
-    init(handler: @escaping Handler) {
+    init(workingDirectory: URL, handler: @escaping Handler) {
+        self.workingDirectory = workingDirectory
         let short = UUID().uuidString.prefix(8)
         directory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tristan-\(short)")
         self.handler = handler
@@ -95,7 +97,7 @@ final class PermissionServer: @unchecked Sendable {
     }
 
     private func serve(_ client: Int32) {
-        DispatchQueue.global().async { [handler] in
+        DispatchQueue.global().async { [handler, workingDirectory] in
             guard let line = UnixSocket.readLine(client),
                   let data = line.data(using: .utf8),
                   let request = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
@@ -104,8 +106,9 @@ final class PermissionServer: @unchecked Sendable {
             let tool = request["tool_name"] as? String ?? "tool"
             let input = request["input"] as? [String: Any] ?? [:]
             let detail = Self.describe(tool: tool, input: input)
+            let rule = ApprovalRule.make(tool: tool, input: input, workingDirectory: workingDirectory)
             Task {
-                let allowed = await handler(tool, detail)
+                let allowed = await handler(tool, detail, rule)
                 let response: [String: Any] = allowed
                     ? ["behavior": "allow", "updatedInput": input]
                     : ["behavior": "deny", "message": "Denied by the operator in Tristan."]

@@ -22,6 +22,9 @@ final class Session: ObservableObject {
     @Published var approvalMode: ApprovalMode = .ask {
         didSet { UserDefaults.standard.set(approvalMode.rawValue, forKey: "approvalMode") }
     }
+    @Published var allowRules: [ApprovalRule] = [] {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(allowRules), forKey: "allowRules") }
+    }
     @Published var showSettings = false
     @Published var draft = ""
     @Published var listening = false
@@ -37,6 +40,10 @@ final class Session: ObservableObject {
     init() {
         if let saved = UserDefaults.standard.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) {
             approvalMode = mode
+        }
+        if let data = UserDefaults.standard.data(forKey: "allowRules"),
+           let rules = try? JSONDecoder().decode([ApprovalRule].self, from: data) {
+            allowRules = rules
         }
     }
 
@@ -73,8 +80,12 @@ final class Session: ObservableObject {
         if busy { phase = .failed; status = "ABORTED"; add("Aborted by operator", .warn) }
     }
 
-    func resolve(_ approved: Bool) {
+    func resolve(_ approved: Bool, always: Bool = false) {
         guard let cont = approval else { return }
+        if approved, always, let rule = pending?.rule, !allowRules.contains(rule) {
+            allowRules.append(rule)
+            add("Always allowed: \(rule.label)", .ok)
+        }
         approval = nil
         pending = nil
         phase = .working
@@ -129,6 +140,10 @@ final class Session: ObservableObject {
     }
 
     private func ask(_ request: ApprovalRequest) async -> Bool {
+        if let rule = request.rule, allowRules.contains(rule) {
+            add("Auto-allowed by rule: \(rule.label)", .ok)
+            return true
+        }
         pending = request
         phase = .awaitingApproval
         status = "AWAITING AUTHORIZATION"
