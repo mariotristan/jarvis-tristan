@@ -133,8 +133,3 @@ extension Session {
         if kidsMode { lockKids() }
     }
 }
-
-/// Set by `Tristan --demo`: nothing in the recorded demo may read or write the Keychain.
-enum NoKeychain {
-    nonisolated(unsafe) static var enabled = false
-}
