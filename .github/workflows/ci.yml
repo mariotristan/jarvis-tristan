@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Test
+        run: swift test
+
+      - name: Build the installable app and DMG
+        run: VERSION=0.0.0-ci scripts/make-dmg.sh
+
+      - name: Check the app bundle
+        run: |
+          test -x Tristan.app/Contents/MacOS/Tristan
+          codesign --verify --deep --strict Tristan.app
+
+      - name: Upload DMG (every build is installable for testing)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tristan-dmg
+          path: dist/*.dmg*
