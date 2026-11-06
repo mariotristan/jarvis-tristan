@@ -226,11 +226,11 @@ Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mar
 
 ```bash
 # 1. Optional: check the download against the .sha256 file from the release
-cd ~/Downloads && shasum -a 256 -c Tristan-0.3.0.dmg.sha256
+cd ~/Downloads && shasum -a 256 -c Tristan-0.4.0.dmg.sha256
 
 # 2. Mount the disk image and copy the app to Applications
-hdiutil attach ~/Downloads/Tristan-0.3.0.dmg
-cp -R "/Volumes/Tristan 0.3.0/Tristan.app" /Applications/
+hdiutil attach ~/Downloads/Tristan-0.4.0.dmg
+cp -R "/Volumes/Tristan 0.4.0/Tristan.app" /Applications/
 
 # 3. Remove the quarantine flag. macOS stamps every download with it, and Gatekeeper refuses apps that
 #    are not notarized. Tristan is only ad-hoc signed, because notarization needs a paid Apple Developer account.
