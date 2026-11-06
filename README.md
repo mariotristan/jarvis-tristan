@@ -4,6 +4,16 @@ A native macOS harness for AI coding agents, wrapped in an Iron Man style heads-
 
 You give Tristan a task ("add login to the API"). It works inside a project folder on your Mac, the way Claude Code does. You watch it think, write code and run commands through a glowing HUD, a notch overlay and a lot of animation. Before it edits files or runs commands, it asks you first.
 
+[![CI](https://github.com/mariotristan/jarvis-tristan/actions/workflows/ci.yml/badge.svg)](https://github.com/mariotristan/jarvis-tristan/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Swift](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white)
+![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF?logo=swift&logoColor=white)
+![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)
+![Claude Code](https://img.shields.io/badge/Claude_Code-supported-D97757?logo=anthropic&logoColor=white)
+![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-supported-FF9900?logo=amazonwebservices&logoColor=white)
+![Azure OpenAI](https://img.shields.io/badge/Azure_OpenAI-planned-0078D4?logo=microsoftazure&logoColor=white)
+![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-planned-6e40c9?logo=githubcopilot&logoColor=white)
+
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
 > **Status: early experiment.** Working today: the HUD, the notch overlay, per-action approvals, three approval modes, a demo provider and the Claude Code CLI. Voice input is built but only lightly tested. Copilot, Bedrock and Azure OpenAI are planned, not built. See the [roadmap](#roadmap) and [known limitations](#known-limitations).
@@ -46,6 +56,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
   - `ASK`: Tristan asks before each action. This is the default.
   - `AUTO`: Claude's own safety classifier decides. Routine actions run, risky ones are blocked.
   - `YOLO`: all permission checks are skipped. Needs an explicit confirmation to turn on and shows a red badge.
+- **Movie-style sound and voice.** Synthesised sci-fi sounds (power-up, approval ping, mission complete, failure) and short spoken lines in a British voice: "On it, sir.", "Authorization required.", "Mission complete." Both can be switched off in Configuration. Run `Tristan --sound-demo` to hear every cue.
 - **Voice (push-to-talk).** Hold `⌥ ⇧ Space` and speak, release to send, or click the mic button. The transcript appears live in the input field and the notch. For tasks started by voice, Tristan reads the result aloud.
 - **Global shortcut.** `⌥ Space` shows or hides the HUD from any app. `Esc` hides it.
 - **Menu bar item** next to the clock to open Tristan or quit.
@@ -58,11 +69,23 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 |----------|--------|--------------|
 | `DEMO` | Working | Scripted run with a fake approval, for trying the HUD without spending tokens. |
 | `CLAUDE` | Working | Runs `claude -p <task> --output-format stream-json --verbose` in the chosen folder and turns the JSON events into log lines and code. In `ASK` mode, permission prompts are routed back to you (see [how approvals work](#how-approvals-work)). |
+| `BEDROCK` | Built, needs live validation | Tristan's own agent loop on Bedrock's Converse API (see [Bedrock](#aws-bedrock)). Covered by tests with a scripted model; not yet run against real AWS. |
 | `COPILOT` | Planned | Not wired up yet. |
-| `BEDROCK` | Planned | Not wired up yet. |
 | `AZURE` | Planned | Not wired up yet. |
 
-Claude Code runs its own agent loop, so Tristan only has to drive it and display the output. Copilot, Bedrock and Azure OpenAI are models, not agents. For those, Tristan will need its own small agent loop with tools to read files, write files and run commands, still gated by approvals.
+Claude Code runs its own agent loop, so Tristan only has to drive it and display the output. Bedrock, Azure OpenAI and Copilot's models are models, not agents, so Tristan runs its own small agent loop for them (built for Bedrock, reusable for the rest).
+
+### AWS Bedrock
+
+The `BEDROCK` provider calls `aws bedrock-runtime converse` through the **AWS CLI**, so your credentials, SSO and profiles work exactly as in your terminal. Set the model id, region and optional profile in Configuration (the gear button).
+
+- **Tools the model gets:** `read_file`, `list_dir`, `write_file`, `run_command`. File access is confined to the working folder (symlinks resolved, including for files that do not exist yet).
+- **Approvals:** reads and listings never ask. `ASK` mode asks before every write and command. `AUTO` skips the prompt for file writes inside the folder and for plain commands, but still asks for chained, redirected or risky ones. `YOLO` never asks. `ALWAYS ALLOW` works the same as for Claude Code.
+- **Model:** it must support tool use (Anthropic Claude models do). The default id is a guess, `us.anthropic.claude-sonnet-4-20250514-v1:0`. List what your account can use with `aws bedrock list-inference-profiles`.
+- **Errors:** expired credentials, missing model access and a wrong model id produce a readable message in the mission log.
+- **Streaming:** the CLI is not streaming, so text appears once per model turn rather than token by token.
+
+`run_command` is not sandboxed beyond the working folder as its starting directory: a command can do anything your shell can. The approval prompt is the safety net, so be careful with `YOLO`.
 
 ## Requirements
 
@@ -111,12 +134,17 @@ Sources/Tristan/
 ├── Session.swift      Observable state: phase, log, code, pending approval, provider
 ├── Providers.swift    AgentProvider protocol, approval modes, Demo and Claude Code providers, stream parser
 ├── PermissionBridge.swift  Unix-socket server in the app plus the MCP stdio shim Claude Code calls
+├── BedrockProvider.swift   Bedrock agent loop and the AWS CLI client
+├── AgentTools.swift   Sandboxed file and shell tools, safe-path resolution, tool policy per mode
+├── Audio.swift        Synthesised sound effects and spoken lines
 ├── Voice.swift        Push-to-talk speech recognition
 ├── Snapshot.swift     Renders the README screenshots from the real views
 ├── HUDView.swift      The main HUD, command bar and approval overlay
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
 ├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
+Tests/TristanTests/    Agent loop, sandbox, approval rules and audio synthesis tests
+.github/workflows/     CI: build, test and bundle on macOS
 ```
 
 A provider turns a task into a stream of events:
@@ -151,6 +179,14 @@ It is **not** offered for shell commands that chain or redirect (`;`, `&&`, `|`,
 
 Your existing Claude Code allow rules still apply, so actions you already allowed in your own settings are not asked about again. `AUTO` and `YOLO` skip the bridge and pass `--permission-mode auto` or `bypassPermissions` instead.
 
+### Running the tests
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+```
+
+The Bedrock agent loop is tested end to end with a scripted fake model: approvals in every mode, denied actions reaching the model, sandbox and symlink escapes, the turn limit and error handling.
+
 ### Testing without the UI
 
 ```bash
@@ -168,7 +204,9 @@ Your existing Claude Code allow rules still apply, so actions you already allowe
 ## Known limitations
 
 - **Approvals are coarse for Claude Code.** Tristan asks once before the run, then starts Claude Code with `--permission-mode acceptEdits`, so it can edit files in the chosen folder without asking again. Per-action approval needs Claude Code's permission prompt tool and is on the roadmap. Do not point it at a folder you are not comfortable with an agent editing.
-- Only `DEMO` and `CLAUDE` exist. The other providers show an "offline" state.
+- **Bedrock has not been run against live AWS yet.** The agent loop, tools and approvals are tested with a scripted model, and the AWS CLI request format was checked against the CLI's own skeleton, but a real call is unverified. Please report anything odd.
+- Copilot and Azure OpenAI do not exist yet and show an "offline" state.
+- Sound and voice quality depend on the voices installed on your Mac (a British English voice is preferred). They are only covered by synthesis tests, not by listening tests.
 - Voice uses Apple's speech recognition and needs microphone and speech permission. It builds and is wired up, but has had little real-world testing, and there is no wake word.
 - The notch overlay has only been tested on a notched MacBook, and the visuals have not had a design pass on other displays.
 - No automated tests yet.
@@ -180,9 +218,11 @@ Your existing Claude Code allow rules still apply, so actions you already allowe
 - [x] Voice input (push-to-talk) and spoken results
 - [ ] Voice: wake word, better testing
 - [x] "Always allow" option on the approval prompt
-- [ ] Own agent loop with file and shell tools for the model-only providers
+- [x] Own agent loop with file and shell tools for the model-only providers
+- [x] AWS Bedrock provider (needs live validation)
+- [x] Sound effects and voice feedback
+- [ ] Streaming responses for Bedrock
 - [ ] GitHub Copilot provider
-- [ ] AWS Bedrock provider
 - [ ] Azure OpenAI provider
 - [ ] Mac notifications for approvals and finished missions
 - [ ] More settings (shortcut, default folder, credentials in the Keychain)

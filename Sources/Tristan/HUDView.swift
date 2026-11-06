@@ -248,6 +248,9 @@ extension ApprovalMode {
 struct SettingsOverlay: View {
     @EnvironmentObject var session: Session
     @State private var confirmingYolo = false
+    @AppStorage("bedrock.model") private var bedrockModel = ""
+    @AppStorage("bedrock.region") private var bedrockRegion = ""
+    @AppStorage("bedrock.profile") private var bedrockProfile = ""
 
     var body: some View {
         ZStack {
@@ -298,6 +301,25 @@ struct SettingsOverlay: View {
                     .padding(12)
                     .overlay(Rectangle().stroke(Theme.red, lineWidth: 1))
                 }
+                Text("SOUND")
+                    .font(.system(size: 10, design: .monospaced)).tracking(2)
+                    .foregroundStyle(Theme.cyan.opacity(0.7))
+                HStack(spacing: 8) {
+                    toggleButton("SOUND FX", isOn: $session.soundsOn)
+                    toggleButton("VOICE FEEDBACK", isOn: $session.voiceOn)
+                }
+
+                Text("AWS BEDROCK  (uses the AWS CLI and your usual login)")
+                    .font(.system(size: 10, design: .monospaced)).tracking(2)
+                    .foregroundStyle(Theme.cyan.opacity(0.7))
+                VStack(spacing: 6) {
+                    field("Model id", text: $bedrockModel, placeholder: BedrockConfig.defaultModel)
+                    HStack(spacing: 6) {
+                        field("Region", text: $bedrockRegion, placeholder: "us-east-1")
+                        field("AWS profile (optional)", text: $bedrockProfile, placeholder: "default")
+                    }
+                }
+
                 if !session.allowRules.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -337,10 +359,35 @@ struct SettingsOverlay: View {
                 }
             }
             .padding(24)
-            .frame(width: 500)
+            .frame(width: 560)
             .background(Theme.deep)
             .overlay(Rectangle().stroke(Theme.cyan, lineWidth: 1.5))
             .shadow(color: Theme.cyan.opacity(0.4), radius: 18)
+        }
+    }
+
+    private func toggleButton(_ title: String, isOn: Binding<Bool>) -> some View {
+        Button { isOn.wrappedValue.toggle() } label: {
+            Text("\(title)  \(isOn.wrappedValue ? "ON" : "OFF")")
+                .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(1)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(isOn.wrappedValue ? Theme.cyan.opacity(0.2) : .clear)
+                .overlay(Rectangle().stroke(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.4), lineWidth: 1))
+                .foregroundStyle(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.6))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func field(_ label: String, text: Binding<String>, placeholder: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.system(size: 9, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(Theme.cyan)
+                .padding(6)
+                .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
         }
     }
 

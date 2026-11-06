@@ -16,10 +16,12 @@ if let flag = args.firstIndex(of: "--headless"), args.indices.contains(flag + 2)
     let mode: ApprovalMode = choice == "auto" ? .auto : choice == "yolo" ? .yolo : .ask
     Task { @MainActor in
         let session = Session()
-        session.provider = .claude
+        session.provider = choice.hasPrefix("bedrock") ? .bedrock : .claude
         session.approvalMode = mode
         session.workingDirectory = dir
         session.allowRules = []
+        session.soundsOn = false
+        session.voiceOn = false
         session.submit(task)
         var printed = 0
         while true {
@@ -34,6 +36,27 @@ if let flag = args.firstIndex(of: "--headless"), args.indices.contains(flag + 2)
         while printed < session.log.count { print("LOG       \(session.log[printed].text)"); printed += 1 }
         print("FINAL     \(session.phase)  rules=\(session.allowRules.map(\.key))")
         session.allowRules = []
+        exit(0)
+    }
+    dispatchMain()
+}
+
+// `Tristan --sound-demo`: plays every sound cue and sample voice line once, so you can hear them.
+if args.contains("--sound-demo") {
+    Task { @MainActor in
+        let fx = SoundFX()
+        let order: [(String, Cue, String?)] = [
+            ("listen start", .listenStart, nil), ("listen stop", .listenStop, nil),
+            ("mission start", .missionStart, SoundFX.startLines[0]), ("approval needed", .approvalNeeded, SoundFX.approvalLines[0]),
+            ("approved", .approved, nil), ("denied", .denied, nil),
+            ("mission complete", .missionComplete, SoundFX.doneLines[0]), ("mission failed", .missionFailed, SoundFX.failLines[0]),
+        ]
+        for (name, cue, line) in order {
+            print("▸ \(name)")
+            fx.play(cue)
+            try? await Task.sleep(for: .seconds(1.2))
+            if let line { fx.say(line, interrupt: false); try? await Task.sleep(for: .seconds(2.2)) }
+        }
         exit(0)
     }
     dispatchMain()

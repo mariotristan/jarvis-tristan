@@ -16,9 +16,9 @@ struct ApprovalRule: Codable, Hashable, Sendable, Identifiable {
     static func make(tool: String, input: [String: Any], workingDirectory: URL) -> ApprovalRule? {
         if fileTools.contains(tool) {
             guard let path = (input["file_path"] ?? input["notebook_path"]) as? String else { return nil }
-            let root = workingDirectory.standardizedFileURL.resolvingSymlinksInPath().path
-            let file = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
-            guard file.hasPrefix(root + "/") else { return nil }
+            guard let root = SafePath.real(workingDirectory),
+                  let file = SafePath.real(URL(fileURLWithPath: path)),
+                  file.hasPrefix(root + "/") else { return nil }
             return ApprovalRule(key: "\(tool)@\(root)", label: "\(tool) inside \(workingDirectory.lastPathComponent)")
         }
         if tool == "Bash", let command = input["command"] as? String {
@@ -66,7 +66,7 @@ enum ApprovalMode: String, CaseIterable, Identifiable {
     var summary: String {
         switch self {
         case .ask: return "Tristan asks you before every action that needs permission. Safest."
-        case .auto: return "Claude's own safety classifier decides. Routine actions run without asking, risky ones are blocked."
+        case .auto: return "Routine actions run without asking; risky ones are blocked or still ask. Claude: its own safety classifier. Bedrock: in-folder writes and plain commands."
         case .yolo: return "All permission checks are skipped. The agent can edit files and run any command without asking."
         }
     }
@@ -93,8 +93,9 @@ enum ProviderKind: String, CaseIterable, Identifiable {
     func makeProvider(mode: ApprovalMode) -> AgentProvider? {
         switch self {
         case .claude: return ClaudeCodeProvider(mode: mode)
+        case .bedrock: return BedrockProvider(mode: mode)
         case .demo: return DemoProvider()
-        case .copilot, .bedrock, .azure: return nil
+        case .copilot, .azure: return nil
         }
     }
 }
