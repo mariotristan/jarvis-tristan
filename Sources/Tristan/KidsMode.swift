@@ -80,13 +80,14 @@ extension Session {
     }
 
     func submitParentPIN(_ pin: String) -> Bool {
-        guard let prompt = parentPrompt, ParentPIN.matches(pin) else { return false }
+        guard let prompt = parentPrompt, ParentPIN.matches(pin) else { parentPINFailed = parentPrompt != nil; return false }
         parentPrompt = nil
+        parentPINFailed = false
         prompt.onApproved()
         return true
     }
 
-    func cancelParentPrompt() { parentPrompt = nil }
+    func cancelParentPrompt() { parentPrompt = nil; parentPINFailed = false }
 
     func unlockParent() {
         parentUnlocked = true

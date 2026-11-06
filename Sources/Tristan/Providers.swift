@@ -21,11 +21,47 @@ enum ProviderKind: String, CaseIterable, Identifiable {
 }
 
 /// Scripted provider so the HUD can be played with without spending tokens.
+/// Scripted answers for the recorded demo (`Tristan --demo --kids`), matched by a few words in the question.
+enum DemoAnswers {
+    static func answer(for task: String) -> String? {
+        let q = task.lowercased()
+        if q.contains("times") || q.contains("7 x 8") {
+            return "## 7 × 8 = 56\n\nHere is a trick: **5, 6, 7, 8**.\n\n- Say it in order: *five, six, seven, eight*\n- That gives you **56 = 7 × 8**\n\nTry **7 × 9** next. What do you think it is?\n"
+        }
+        if q.contains("sky") {
+            return "## Why is the sky blue?\n\nSunlight looks white, but it is made of **all the colors** of the rainbow.\n\n- Light bumps into the tiny bits of air\n- **Blue** light bounces around the most\n- So blue comes at your eyes from every part of the sky\n\nAt sunset the light travels farther, so we see **red and orange** instead.\n"
+        }
+        if q.contains("planet") {
+            return "## The biggest planet is **Jupiter**\n\n- It is so big that **1,300 Earths** could fit inside it\n- It has a giant storm called the **Great Red Spot**\n- It has at least **95 moons**\n\n> Fun fact: a day on Jupiter is only about 10 hours long!\n"
+        }
+        if q.contains("spider") || q.contains("insect") {
+            return "## Is a spider an insect?\n\n**No!** A spider is an *arachnid*.\n\n| | Insect | Spider |\n|:--|:--:|:--:|\n| Legs | 6 | 8 |\n| Body parts | 3 | 2 |\n| Antennae | yes | no |\n\nCount the legs and you can always tell.\n"
+        }
+        return nil
+    }
+}
+
 struct DemoProvider: AgentProvider {
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
             let worker = Task {
                 func pause(_ ms: Int) async { try? await Task.sleep(for: .milliseconds(ms)) }
+                // School-style questions get a scripted, friendly answer and need no approval.
+                if let answer = DemoAnswers.answer(for: task) {
+                    c.yield(.status("THINKING"))
+                    c.yield(.log("Question received: \(task)"))
+                    await pause(2200)
+                    c.yield(.status("ANSWERING"))
+                    for ch in answer {
+                        if Task.isCancelled { c.finish(); return }
+                        c.yield(.code(String(ch)))
+                        await pause(16)
+                    }
+                    await pause(800)
+                    c.yield(.done("Answered"))
+                    c.finish()
+                    return
+                }
                 c.yield(.status("PLANNING"))
                 c.yield(.log("Task received: \(task)"))
                 await pause(900)

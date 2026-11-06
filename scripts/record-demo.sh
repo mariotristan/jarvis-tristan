@@ -4,6 +4,8 @@
 #   scripts/record-demo.sh                 records until the autopilot finishes (about 65 seconds, 75 at most)
 #   SECONDS_TO_RECORD=120 scripts/record-demo.sh
 #   DEMO_MODE=ask scripts/record-demo.sh   open in ask or auto instead of yolo (the default)
+#   scripts/record-demo.sh kids            the kids video: Paw Patrol theme, kids safe mode, school questions
+#                                          (docs/demo/tristan-demo-kids.mp4)
 #   MANUAL=1 scripts/record-demo.sh        no autopilot: you drive the app yourself while it records
 #   TRIM_START=4 TRIM_END=3 scripts/record-demo.sh   cut seconds off the start and the end
 # Needs Screen Recording permission for your terminal (System Settings > Privacy & Security > Screen & System Audio
@@ -19,15 +21,17 @@ if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then export DE
 SECS="${SECONDS_TO_RECORD:-75}"
 TRIM_START="${TRIM_START:-0}"
 TRIM_END="${TRIM_END:-0}"
+KIDS=""; NAME=tristan-demo; MODE="${DEMO_MODE:-yolo}"
+[ "${1:-}" = kids ] && { KIDS=--kids; NAME=tristan-demo-kids; MODE=ask; }
 OUT=docs/demo
-RAW="$OUT/tristan-demo-raw.mov"
+RAW="$OUT/$NAME-raw.mov"
 LOG=$(mktemp)
 mkdir -p "$OUT"
 # screencapture cannot overwrite a file, and a leftover would be converted as if it were new.
-rm -f "$RAW" "$OUT/tristan-demo.mp4"
+rm -f "$RAW" "$OUT/$NAME.mp4"
 
 swift build >/dev/null
-.build/debug/Tristan --demo "${DEMO_MODE:-yolo}" ${MANUAL:+--manual} > "$LOG" 2>&1 &
+.build/debug/Tristan --demo "$MODE" ${KIDS} ${MANUAL:+--manual} > "$LOG" 2>&1 &
 APP=$!
 trap 'kill $APP 2>/dev/null || true; rm -f "$LOG"' EXIT
 
@@ -76,6 +80,6 @@ PY
 DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$RAW")
 LEN=$(python3 -c "print(max(1, float('$DUR') - $TRIM_START - $TRIM_END))")
 ffmpeg -y -loglevel error -ss "$TRIM_START" -t "$LEN" -i "$RAW" -vf "crop=$CROP" \
-  -c:v libx264 -crf 22 -preset slow -pix_fmt yuv420p -movflags +faststart "$OUT/tristan-demo.mp4"
+  -c:v libx264 -crf 22 -preset slow -pix_fmt yuv420p -movflags +faststart "$OUT/$NAME.mp4"
 [ "${KEEP_RAW:-0}" = 1 ] || rm -f "$RAW"
-echo "Done: $OUT/tristan-demo.mp4  ($(du -h "$OUT/tristan-demo.mp4" | cut -f1), cropped $CROP)"
+echo "Done: $OUT/$NAME.mp4  ($(du -h "$OUT/$NAME.mp4" | cut -f1), cropped $CROP)"

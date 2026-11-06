@@ -62,4 +62,67 @@ enum DemoAutopilot {
         print("DEMO_DONE")
         fflush(stdout)
     }
+
+    /// The kids version: Paw Patrol theme, kids safe mode on, school questions, and a try at Settings that needs a parent.
+    static func runKids(on session: Session) async {
+        func pause(_ seconds: Double) async { try? await Task.sleep(for: .seconds(seconds)) }
+        func type(_ text: String) async {
+            session.draft = ""
+            for character in text {
+                session.draft.append(character)
+                await pause(0.06)
+            }
+            await pause(0.6)
+            let task = session.draft
+            session.draft = ""
+            session.submit(task)
+        }
+        func finish() async {
+            for _ in 0..<400 {
+                if !session.busy { return }
+                await pause(0.1)
+            }
+        }
+        guard session.provider == .demo else { print("DEMO_ABORT provider is \(session.provider.rawValue), not DEMO"); fflush(stdout); return }
+
+        session.themeChoice = "pawpatrol"
+        session.orbEffects = .full
+        session.orbFillsScreen = false
+        ParentPIN.set("2468")
+        session.parentAuth = .pin
+        session.kidsMode = true
+        await pause(4)
+
+        await type("What is 7 times 8?")
+        await pause(3)
+        session.startListening()          // refused while Tristan answers
+        await finish()
+        await pause(3)
+
+        await type("Why is the sky blue?")
+        await finish()
+        await pause(3)
+
+        // The orb takes over the screen while the biggest question is answered.
+        session.orbFillsScreen = true
+        await type("What is the biggest planet?")
+        await finish()
+        session.orbFillsScreen = false
+        await pause(3)
+
+        // Trying to change settings (or switch on YOLO) needs a parent.
+        session.openSettings()
+        await pause(2.5)
+        _ = session.submitParentPIN("1234")   // wrong guess
+        await pause(2.5)
+        session.cancelParentPrompt()
+        await pause(1.5)
+
+        await type("Is a spider an insect?")
+        await finish()
+        await pause(4)
+
+        print("DEMO_DONE")
+        fflush(stdout)
+    }
 }

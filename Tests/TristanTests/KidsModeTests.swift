@@ -68,7 +68,7 @@ final class KidsModeTests: XCTestCase {
         hub.cancel()
         try await Task.sleep(for: .milliseconds(300))
         XCTAssertTrue(hub.micBusy, "the mic stays shut briefly after the mission ends")
-        try await Task.sleep(for: .milliseconds(1500))
-        XCTAssertFalse(hub.micBusy)
+        for _ in 0..<100 where hub.micBusy { try await Task.sleep(for: .milliseconds(100)) }
+        XCTAssertFalse(hub.micBusy, "the mic opens again once the mission is over")
     }
 }

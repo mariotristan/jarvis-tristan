@@ -12,7 +12,7 @@ final class HUDWindow: NSWindow {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// `Tristan --demo [ask|auto|yolo] [--manual]` (used by scripts/record-demo.sh): the DEMO provider in the given mode (ASK by default) with kids mode off, nothing saved
+    /// `Tristan --demo [ask|auto|yolo] [--kids] [--manual]` (used by scripts/record-demo.sh): the DEMO provider in the given mode (ASK by default) with kids mode off, nothing saved
     /// as open tabs or history, and a separate Keychain slot for the parent PIN so a demo PIN never replaces a real one.
     private let demo = CommandLine.arguments.contains("--demo")
     private var demoRestore: (() -> Void)?
@@ -33,9 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ParentPIN.account = "kids.pin.demo"
             // Changing the mode saves it, so put the real settings back when the demo ends (also on SIGTERM from the script).
             let defaults = UserDefaults.standard
-            let saved = (mode: defaults.object(forKey: "approvalMode"), kids: defaults.object(forKey: "kidsMode"), wake: defaults.object(forKey: "wakeOn"))
+            let keys = ["approvalMode", "kidsMode", "wakeOn", "theme", "orbEffects", "orbFill", "parentAuth"]
+            let saved = keys.map { ($0, defaults.object(forKey: $0)) }
             let restore = {
-                for (key, value) in [("approvalMode", saved.mode), ("kidsMode", saved.kids), ("wakeOn", saved.wake)] {
+                for (key, value) in saved {
                     if let value { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
                 }
             }
@@ -97,7 +98,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let screen = NotchGeometry.primaryScreen().frame
             print("DEMO_WINDOW \(Int(hud.frame.minX - screen.minX)) \(Int(screen.maxY - hud.frame.maxY)) \(Int(hud.frame.width)) \(Int(hud.frame.height)) \(Int(screen.width)) \(Int(screen.height))")
             fflush(stdout)
-            if !CommandLine.arguments.contains("--manual") { Task { await DemoAutopilot.run(on: session) } }
+            if !CommandLine.arguments.contains("--manual") {
+                let kids = CommandLine.arguments.contains("--kids")
+                Task { if kids { await DemoAutopilot.runKids(on: session) } else { await DemoAutopilot.run(on: session) } }
+            }
         }
     }
 

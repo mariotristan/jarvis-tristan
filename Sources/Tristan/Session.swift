@@ -97,6 +97,7 @@ final class Session: ObservableObject {
     }
     @Published var parentUnlocked = false
     @Published var parentPrompt: ParentPrompt?
+    @Published var parentPINFailed = false
     var relock: Task<Void, Never>?
     /// True while Tristan is working, speaking or has only just finished: the microphone stays shut so it cannot
     /// hear itself or start a second command.

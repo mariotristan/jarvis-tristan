@@ -490,7 +490,7 @@ struct ParentPINOverlay: View {
                 SecureField("PIN", text: $pin)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(submit)
-                if wrong { Text("Wrong PIN").font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.red) }
+                if wrong || session.parentPINFailed { Text("Wrong PIN").font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.red) }
                 HStack(spacing: 12) {
                     hudButton("CANCEL", tint: Theme.cyan) { session.cancelParentPrompt() }
                     hudButton("UNLOCK", tint: Theme.green, action: submit)
