@@ -107,14 +107,23 @@ final class SoundFX {
 
     // MARK: voice
 
-    /// Speaks a line in a British English voice (Jarvis-style) when available.
+    /// Kids mode: a bright, upbeat voice instead of the butler.
+    var kidsVoice = false
+
+    /// Speaks a line in a British English voice (Jarvis-style) when available, or a cheerful one in kids mode.
     func say(_ text: String, interrupt: Bool = true) {
         guard voiceOn, !text.isEmpty else { return }
         if interrupt { speaker.stopSpeaking(at: .immediate) }
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = Self.preferredVoice
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
-        utterance.pitchMultiplier = 0.92
+        if kidsVoice {
+            utterance.voice = Self.kidsPreferredVoice
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 1.0
+            utterance.pitchMultiplier = 1.3
+        } else {
+            utterance.voice = Self.preferredVoice
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
+            utterance.pitchMultiplier = 0.92
+        }
         speaker.speak(utterance)
     }
 
@@ -130,11 +139,24 @@ final class SoundFX {
         return british.max(by: { $0.quality.rawValue < $1.quality.rawValue }) ?? AVSpeechSynthesisVoice(language: "en-US")
     }()
 
+    /// The youngest, brightest voice installed: the macOS child-like voices first, then friendly American ones.
+    private static let kidsPreferredVoice: AVSpeechSynthesisVoice? = {
+        let american = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == "en-US" }
+        for name in ["Junior", "Kathy", "Samantha", "Ava", "Allison", "Nicky"] {
+            if let voice = american.filter({ $0.name.contains(name) }).max(by: { $0.quality.rawValue < $1.quality.rawValue }) { return voice }
+        }
+        return american.max(by: { $0.quality.rawValue < $1.quality.rawValue }) ?? AVSpeechSynthesisVoice(language: "en-US")
+    }()
+
     // MARK: lines
 
     static let startLines = ["On it, sir.", "Right away.", "Working on it.", "Consider it done."]
     static let approvalLines = ["Authorization required.", "I need your permission, sir.", "Awaiting your approval."]
     static let doneLines = ["Mission complete.", "All done, sir.", "As always, sir, a great pleasure watching you work.", "Task complete.", "Done, sir."]
+    static let kidsStartLines = ["Ready! Let's go!", "On it! No job is too big!", "Let's find out together!", "Here we go!"]
+    static let kidsApprovalLines = ["I need a grown-up to say okay.", "Ask a grown-up to say yes, please."]
+    static let kidsDoneLines = ["All done! Great job!", "Mission complete! Awesome!", "We did it! Hooray!"]
+    static let kidsFailLines = ["Oops! That didn't work. Let's ask a grown-up.", "Uh oh! Let's try again with a grown-up."]
     static let failLines = ["Mission failed.", "I'm afraid that didn't work, sir.", "Something went wrong."]
 }
 

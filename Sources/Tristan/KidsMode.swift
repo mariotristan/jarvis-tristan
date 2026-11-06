@@ -73,18 +73,22 @@ extension Session {
     /// Runs `action` straight away unless kids mode is locked, in which case a parent is asked first.
     func requireParent(_ reason: String, then action: @escaping () -> Void) {
         guard kidsLocked else { action(); return }
-        let unlocked: () -> Void = { [weak self] in
+        askParent(reason) { [weak self] in
             self?.unlockParent()
             action()
         }
+    }
+
+    /// Asks a parent for this one thing only; unlike `requireParent` it does not unlock kids mode afterwards.
+    func askParent(_ reason: String, onApproved: @escaping () -> Void) {
         switch parentAuth {
         case .pin where ParentPIN.isSet:
-            parentPrompt = ParentPrompt(reason: reason, method: .pin, onApproved: unlocked)
+            parentPrompt = ParentPrompt(reason: reason, method: .pin, onApproved: onApproved)
         case .system:
-            SystemAuth.evaluate(reason: reason) { ok in if ok { unlocked() } }
+            SystemAuth.evaluate(reason: reason) { ok in if ok { onApproved() } }
         default:
             // Kids mode is on with the PIN method but no PIN was stored (cleared keychain): fall back to the Mac's own login.
-            SystemAuth.evaluate(reason: reason) { ok in if ok { unlocked() } }
+            SystemAuth.evaluate(reason: reason) { ok in if ok { onApproved() } }
         }
     }
 

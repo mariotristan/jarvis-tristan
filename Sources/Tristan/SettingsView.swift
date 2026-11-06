@@ -22,6 +22,8 @@ struct SettingsOverlay: View {
     @AppStorage("azure.deployment") private var azureDeployment = ""
     @AppStorage("azure.apiVersion") private var azureAPIVersion = ""
     @AppStorage("copilot.model") private var copilotModel = ""
+    @AppStorage("ollama.model") private var ollamaModel = ""
+    @State private var ollamaInstalled: [String]?
     @AppStorage("music.focus") private var focusPlaylist = ""
 
     var body: some View {
@@ -381,7 +383,34 @@ struct SettingsOverlay: View {
 
             caption("GITHUB COPILOT  (uses the Copilot CLI and its login)")
             field("Model (optional)", text: $copilotModel, placeholder: "CLI default, e.g. claude-sonnet-4.5 or gpt-5")
+
+            caption("OLLAMA  (local models, nothing leaves this Mac)")
+            field("Model (blank = first installed)", text: $ollamaModel, placeholder: "e.g. llama3.1 or qwen2.5-coder")
+            HStack {
+                Text(ollamaStatusText)
+                    .font(.system(size: 9, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+                Spacer()
+                hudButton("REFRESH", tint: Theme.cyan) { Task { ollamaInstalled = await OllamaStatus.installedModels() } }
+            }
+            ForEach(ollamaInstalled ?? [], id: \.self) { name in
+                let chosen = OllamaStatus.resolveModel(chosen: ollamaModel, installed: [name]) == name && !ollamaModel.isEmpty
+                Button { ollamaModel = name } label: {
+                    Text("\(chosen ? "●" : "○")  \(name)")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(chosen ? Theme.green : Theme.cyan.opacity(0.8))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.hud)
+            }
+            Text("Not installed yet? Run scripts/setup-ollama.sh [model] in a terminal.")
+                .font(.system(size: 9, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.4))
+                .task { ollamaInstalled = await OllamaStatus.installedModels() }
         }
+    }
+
+    private var ollamaStatusText: String {
+        guard let models = ollamaInstalled else { return "Ollama is not running. Start it with `ollama serve`." }
+        return models.isEmpty ? "No models installed. Run `ollama pull llama3.1`." : "Installed (click to choose):"
     }
 
     @ViewBuilder

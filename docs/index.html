@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tristan—run your AI coding agents and approve every move</title>
-<meta name="description" content="Tristan is a Mac app, with an iPhone and iPad companion, that runs Claude Code, Copilot, Amazon Bedrock and Azure OpenAI side by side and asks before it acts. Free and open source.">
+<meta name="description" content="Tristan is a Mac app, with an iPhone and iPad companion, that runs Claude Code, Copilot, Amazon Bedrock, Azure OpenAI and local Ollama models side by side and asks before it acts. Free and open source.">
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="theme-color" content="#1A0A0D">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Tristan—run your AI coding agents and approve every move">
-<meta property="og:description" content="Claude Code, Copilot, Bedrock and Azure OpenAI side by side, with you approving each action. A Mac app with an iPhone and iPad companion.">
+<meta property="og:description" content="Claude Code, Copilot, Bedrock, Azure OpenAI and local Ollama models side by side, with you approving each action. A Mac app with an iPhone and iPad companion.">
 <meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/">
 <meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -186,7 +186,7 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
         <div class="reactor" aria-hidden="true"><i class="ring"></i><i class="arc"></i><i class="core"></i></div>
         <span class="eyebrow">A Mac app for AI coding agents</span>
         <h1>Run your coding agents. Approve every move.</h1>
-        <p class="lead">Tristan runs Claude Code, Copilot, Amazon Bedrock and Azure OpenAI side by side. You see what each one is doing, and by default it asks before it acts. Take it with you on your iPhone or iPad.</p>
+        <p class="lead">Tristan runs Claude Code, Copilot, Amazon Bedrock, Azure OpenAI and local Ollama models side by side. You see what each one is doing, and by default it asks before it acts. Take it with you on your iPhone or iPad.</p>
         <div class="cta">
           <a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Mac</a>
           <a class="btn ghost" href="#install">How to install</a>
@@ -236,7 +236,7 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
       </article>
       <article class="card">
         <h3>Safe for kids</h3>
-        <p>Turn on kids safe mode and Settings, YOLO and Auto need a parent. A parent unlocks with a PIN or with Touch ID or the Mac password, and it locks again by itself. A paired phone cannot change the mode.</p>
+        <p>Turn on kids safe mode and a child’s questions are answered by a local Ollama model, so they never leave the Mac. If the local model isn’t available, the child is told to ask a parent, who can allow that one question to go to the cloud. Tristan also speaks in a brighter, friendlier voice. Settings, YOLO and Auto need a parent. A parent unlocks with a PIN or with Touch ID or the Mac password, and it locks again by itself. A paired phone cannot change the mode.</p>
       </article>
       <article class="card">
         <h3>An orb you can see across the room</h3>
@@ -417,6 +417,7 @@ scripts/install.sh</pre>
         <tr><th scope="row">Amazon Bedrock</th><td><span class="pill">Stand-in only</span></td><td>Request signing matches Amazon’s published examples. <a href="https://github.com/mariotristan/jarvis-tristan/issues/1">Issue 1</a></td></tr>
         <tr><th scope="row">Azure OpenAI on the Mac</th><td><span class="pill ok">Tested for real</span></td><td>Streaming and tool calls worked against a real deployment, signed in with an API key.</td></tr>
         <tr><th scope="row">Azure OpenAI with Azure CLI sign-in, and on iPhone</th><td><span class="pill">Stand-in only</span></td><td>Entra ID sign-in and the phone’s standalone mode are not yet tried live. <a href="https://github.com/mariotristan/jarvis-tristan/issues/2">Issue 2</a></td></tr>
+        <tr><th scope="row">Ollama and kids-mode local answers</th><td><span class="pill">Stand-in only</span></td><td>The routing, the refusal and the one-time parent approval are tested with a scripted model. We haven’t run it against a real local model yet.</td></tr>
         <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
         <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
         <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>

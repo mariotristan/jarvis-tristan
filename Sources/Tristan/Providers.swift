@@ -5,6 +5,7 @@ enum ProviderKind: String, CaseIterable, Identifiable {
     case copilot = "COPILOT"
     case bedrock = "BEDROCK"
     case azure = "AZURE"
+    case ollama = "OLLAMA"
     case demo = "DEMO"
 
     var id: String { rawValue }
@@ -16,6 +17,7 @@ enum ProviderKind: String, CaseIterable, Identifiable {
         case .demo: return DemoProvider(skipApproval: mode == .yolo)
         case .azure: return AzureOpenAIProvider(mode: mode)
         case .copilot: return CopilotProvider(mode: mode)
+        case .ollama: return OllamaProvider(mode: mode)
         }
     }
 }

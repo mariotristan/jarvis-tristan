@@ -89,6 +89,7 @@ final class Session: ObservableObject {
     @Published var kidsMode = false {
         didSet {
             UserDefaults.standard.set(kidsMode, forKey: "kidsMode")
+            fx.kidsVoice = kidsMode
             if kidsMode, approvalMode != .ask, !busy { approvalMode = .ask }
         }
     }
@@ -118,6 +119,8 @@ final class Session: ObservableObject {
 
     /// How a provider is created. Tests and tools replace this to run sessions against stand-ins.
     var providerFactory: (ProviderKind, ApprovalMode) -> AgentProvider? = { kind, mode in kind.makeProvider(mode: mode) }
+    /// Whether a local model can answer right now. Kids mode asks before sending anything anywhere. Tests replace this.
+    var localModelReady: @Sendable () async -> Bool = { await OllamaStatus.ready() }
 
     private let voice = VoiceInput()
     private let wake = WakeListener()
@@ -151,6 +154,7 @@ final class Session: ObservableObject {
         kidsMode = standard.bool(forKey: "kidsMode")
         fx.soundsOn = soundsOn
         fx.voiceOn = voiceOn
+        fx.kidsVoice = kidsMode
         fx.onSpeaking = { [weak self] speaking in
             self?.music.setDuck("speech", active: speaking)
             self?.speaking = speaking
@@ -371,7 +375,7 @@ final class Session: ObservableObject {
 
     func missionStarted(_ session: MissionSession) {
         fx.play(.missionStart)
-        fx.say(spoken(SoundFX.startLines.randomElement()!, for: session), interrupt: false)
+        fx.say(spoken((kidsMode ? SoundFX.kidsStartLines : SoundFX.startLines).randomElement()!, for: session), interrupt: false)
     }
 
     func approvalNeeded(_ session: MissionSession, _ request: ApprovalRequest) {
@@ -380,7 +384,7 @@ final class Session: ObservableObject {
                              body: "\(request.summary) \(request.detail)")
         if !session.announcedApproval {
             session.announcedApproval = true
-            fx.say(spoken(SoundFX.approvalLines.randomElement()!, for: session), interrupt: false)
+            fx.say(spoken((kidsMode ? SoundFX.kidsApprovalLines : SoundFX.approvalLines).randomElement()!, for: session), interrupt: false)
         }
     }
 
@@ -394,10 +398,10 @@ final class Session: ObservableObject {
         Notifier.shared.post(title: prefix + (success ? "Mission complete" : "Mission failed"), body: summary)
         if success {
             // Tasks given by voice get the result read back; others get a short confirmation.
-            let line = session.spokenReply ? String(summary.prefix(240)) : spoken(SoundFX.doneLines.randomElement()!, for: session)
+            let line = session.spokenReply ? String(summary.prefix(240)) : spoken((kidsMode ? SoundFX.kidsDoneLines : SoundFX.doneLines).randomElement()!, for: session)
             fx.say(line, interrupt: false)
         } else {
-            fx.say(spoken(SoundFX.failLines.randomElement()!, for: session), interrupt: false)
+            fx.say(spoken((kidsMode ? SoundFX.kidsFailLines : SoundFX.failLines).randomElement()!, for: session), interrupt: false)
         }
     }
 

@@ -42,6 +42,15 @@ final class MissionSession: ObservableObject, Identifiable {
 
     // MARK: running
 
+    /// Set by a parent's approval so exactly one question may go to the chosen cloud provider in kids mode.
+    private var cloudOnce = false
+
+    /// Kids mode keeps questions on this Mac: they go to Ollama unless a parent allowed this one question to leave it.
+    private func route(_ hub: Session) -> (kind: ProviderKind, local: Bool) {
+        if hub.kidsMode, !cloudOnce { return (.ollama, true) }
+        return (provider, provider == .ollama)
+    }
+
     func submit(_ prompt: String, viaVoice: Bool = false) {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty else { return }
@@ -63,7 +72,10 @@ final class MissionSession: ObservableObject, Identifiable {
             add("This session is detached from Tristan and cannot start a mission.", .warn)
             return
         }
-        guard let impl = hub.providerFactory(provider, hub.approvalMode) else {
+        let (kind, local) = route(hub)
+        let cloudApproved = cloudOnce
+        cloudOnce = false
+        guard let impl = hub.providerFactory(kind, hub.approvalMode) else {
             phase = .failed
             status = "OFFLINE"
             add("\(provider.rawValue) is not wired up yet", .warn)
@@ -80,12 +92,37 @@ final class MissionSession: ObservableObject, Identifiable {
         let directory = workingDirectory
         let briefed = memory.compose(task: prompt, folder: directory.path)
         if briefed != prompt { add("Remembering \(memory.exchanges.filter { $0.folder == directory.path }.count) earlier mission(s) from this session", .info) }
+        let kidsLocal = hub.kidsMode && !cloudApproved
+        let localReady = hub.localModelReady
         runner = Task { [weak self] in
+            if kidsLocal, !(await localReady()) {
+                self?.refuseWithoutLocalModel(prompt: prompt, viaVoice: viaVoice)
+                return
+            }
             let stream = impl.run(task: briefed, workingDirectory: directory) { [weak self] request in
                 await self?.ask(request) ?? false
             }
             for await event in stream { self?.handle(event) }
             self?.streamEnded()
+        }
+    }
+
+    /// Kids mode with no usable local model: the question goes nowhere. The child is told to ask a parent,
+    /// who can allow this one question to go to the cloud provider.
+    private func refuseWithoutLocalModel(prompt: String, viaVoice: Bool) {
+        let text = "I can't answer that right now. Please ask a parent."
+        phase = .failed; status = "ASK A PARENT"
+        code = "## Ask a parent\n\nI can't answer that right now. Please ask a parent for help.\n"
+        add(text, .warn)
+        remember(status: "failed", summary: "Not answered: the local model was unavailable")
+        hub?.record(self, status: "failed", summary: "Not answered in kids mode: the local model was unavailable")
+        hub?.missionEnded(self, success: false, summary: text)
+        // A cloud provider is only offered when one is chosen; with Ollama itself chosen the offer goes to Claude.
+        hub?.askParent("Allow this one question to leave the Mac and go to the cloud?") { [weak self] in
+            guard let self else { return }
+            self.cloudOnce = true
+            if self.provider == .ollama { self.provider = .claude }
+            self.submit(prompt, viaVoice: viaVoice)
         }
     }
 

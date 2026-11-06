@@ -15,12 +15,13 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 ![Spotify](https://img.shields.io/badge/Spotify-controls_the_desktop_app-1DB954?logo=spotify&logoColor=white)
 ![Azure OpenAI](https://img.shields.io/badge/Azure_OpenAI-supported-0078D4?logo=microsoftazure&logoColor=white)
 ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-6e40c9?logo=githubcopilot&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-local_models-000000?logo=ollama&logoColor=white)
 
 **Website:** <https://mariotristan.github.io/jarvis-tristan/> · **Download:** [latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest) · **Backlog:** [issue #21](https://github.com/mariotristan/jarvis-tristan/issues/21)
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 190 automated tests pass (173 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 198 automated tests pass (181 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Demo videos
 
@@ -108,7 +109,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
 - **Several sessions at the same time.** Run a Claude session and a Copilot session (or two Claude sessions in different folders) side by side. Each session is a tab with its own provider, folder, mission log, code stream and approvals, and a status light (pulsing cyan while working, amber while it needs you, green when done, red on failure). **+ NEW SESSION** (`⌘T`) opens another, `⌘1`…`⌘9` switch, `⌘W` closes (a running session asks first). A session that needs approval in the background raises an amber banner, a sound, a spoken "Session 2, authorization required" and a notification, and the notch shows and answers it. Up to 8 sessions; the open sessions (provider and folder) come back after a restart. Starting a session in a folder another session is already working in warns you that edits may collide. The approval mode and always-allow rules are shared by all sessions.
 - **Rounded buttons you can hit anywhere, and a big, configurable orb.** Every button is clickable over its whole area, not just on its text. While Tristan waits for the model (or listens to you) the orb grows and, with effects on, adds a breathing halo, pulse rings and orbiting sparks. **Configuration > ORB WHILE WAITING** sets the size (60 to 160%), the effects (off, subtle, full) and a switch that lets the orb fill the whole window.
-- **Kids safe mode.** **Configuration > KIDS SAFE MODE**. While on, opening Settings needs a parent, and YOLO and AUTO are switched off (the mode goes back to ASK whenever it locks). A parent unlocks with a PIN (4 or more digits, stored hashed in the Keychain) or with Touch ID / the Mac password, whichever you choose. It locks again when Settings close or after 5 minutes, and paired phones cannot change the mode.
+- **Kids safe mode.** **Configuration > KIDS SAFE MODE**. While on, questions are answered by a local Ollama model so they stay on the Mac (see [Ollama](#ollama-local-models)), Tristan speaks in a brighter voice, opening Settings needs a parent, and YOLO and AUTO are switched off (the mode goes back to ASK whenever it locks). A parent unlocks with a PIN (4 or more digits, stored hashed in the Keychain) or with Touch ID / the Mac password, whichever you choose. It locks again when Settings close or after 5 minutes, and paired phones cannot change the mode.
 - **Session memory.** A finished mission stays in its session's context. Each session keeps the task, the actions taken and the result of its recent missions (the last 12; the newest three in detail, older ones as one line) and puts that briefing in front of the next task, so "now add tests for what you just wrote" works whichever provider runs it. Only missions from the same folder are included. The tab shows **REMEMBERS n**; click it (or open **+ NEW SESSION**, which starts empty) to forget. The memory survives a restart. On the iPhone and iPad standalone mode the same memory is kept, and **NEW CONVERSATION** in Settings clears it. The briefing is plain text in the prompt, so it costs a few thousand characters per mission at most; it is not the model's own hidden state, so details that never reached the log or the final reply are not remembered.
 - **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the whole screen, hides the Dock and menu bar completely (they do not slide in at the edges) and puts the window above everything else, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
 - **Rendered markdown in the code stream.** What an agent writes is shown as it would read: headings, bold and italic, inline code, bullet, numbered and task lists, tables with alignment, quotes, rules, and code blocks as cards with the file name, language and a COPY button. A file the agent writes is a card too, and a written `.md` file is rendered with a SOURCE switch. **RAW** shows the plain text. Links only open if they are web or mail links, so model output can never plant a `tristan://` pairing link or a `file://` link. The iPhone and iPad apps use the same renderer.
@@ -128,6 +129,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 | `CLAUDE` | Working | Runs `claude -p <task> --output-format stream-json --verbose` in the chosen folder and turns the JSON events into log lines and code. In `ASK` mode, permission prompts are routed back to you (see [how approvals work](#how-approvals-work)). |
 | `BEDROCK` | Built, needs live validation | Tristan's own agent loop on Bedrock's Converse API (see [Bedrock](#aws-bedrock)). Covered by tests with a scripted model; not yet run against real AWS. |
 | `COPILOT` | Built, needs live validation | Drives the GitHub Copilot CLI headlessly. Approval modes map onto the CLI's tool permissions (see [GitHub Copilot](#github-copilot)). |
+| `OLLAMA` | Built, needs live validation | Tristan's own agent loop on a model running on this Mac through [Ollama](https://ollama.com), so nothing leaves the machine (see [Ollama](#ollama-local-models)). Covered by tests with a scripted model; not yet run against a real Ollama model. |
 | `AZURE` | Working (tested live on the Mac) | Tristan's own agent loop on an Azure OpenAI deployment, streaming tokens, tested against a real deployment with an API key (see [Azure OpenAI](#azure-openai)). |
 
 Claude Code runs its own agent loop, so Tristan only has to drive it and display the output. Bedrock, Azure OpenAI and Copilot's models are models, not agents, so Tristan runs its own small agent loop for them (built for Bedrock, reusable for the rest).
@@ -141,6 +143,17 @@ Point Tristan at an Azure OpenAI **deployment** in Configuration: endpoint (for 
 - **Streaming:** text arrives token by token. Rate limits (429) and transient server errors are retried up to twice, honouring `Retry-After`.
 - **Tools and approvals:** identical to Bedrock, since both use the same agent loop (see below).
 - **Errors:** wrong credentials, a missing deployment, rate limits and content-filter blocks produce readable messages in the mission log.
+
+### Ollama (local models)
+
+The `OLLAMA` provider runs the same agent loop as Azure, but against a model on your own Mac, using Ollama's OpenAI-compatible endpoint (`http://localhost:11434/v1`). No account, key or network is needed.
+
+- **Setup:** run `scripts/setup-ollama.sh` (or `scripts/setup-ollama.sh qwen2.5-coder` for another model). It installs Ollama with Homebrew if missing, starts the server, pulls the model (default `llama3.1`), checks that it answers and that it supports tools. Or do it by hand: install [Ollama](https://ollama.com), start it (`ollama serve` or the app) and `ollama pull llama3.1`. In Configuration > OLLAMA, the installed models are listed (click one to choose it, **REFRESH** to rescan), or leave it blank to use the first installed one.
+- **Pick a model that supports tools.** Tristan edits files and runs commands through tool calls. Small models often handle questions well but fumble tools; `llama3.1` and `qwen2.5-coder` are reasonable starting points. A model without tool support gets a clear message saying so.
+- **Local only:** the host must be this Mac (`localhost`, `127.0.0.1` or `::1`). Anything else is refused before a prompt is sent.
+- **Errors:** Ollama not running, no model installed or a missing model each give a readable message with the command to fix it.
+
+**Kids safe mode and Ollama.** While kids safe mode is on, every question goes to Ollama, whichever provider is selected, so a child's questions stay on the Mac. If Ollama isn't running or has no model, nothing is sent anywhere: the child sees "Please ask a parent" and a parent is asked (PIN, or Touch ID / Mac password) whether this one question may go to the selected cloud provider (`CLAUDE` if Ollama itself was selected). Approving does not unlock kids mode, and the next question is local again. Kids mode also speaks in a brighter, more playful voice with friendlier lines. It uses the most child-like voice installed (macOS's "Junior" or "Kathy" if present, otherwise a friendly American voice); it does not imitate any TV character.
 
 ### GitHub Copilot
 
@@ -310,6 +323,7 @@ Sources/Tristan/
 ├── BedrockProvider.swift   Bedrock backend and the AWS CLI client
 ├── AzureProvider.swift     Azure OpenAI backend, streaming HTTP client, SSE assembler, config validation
 ├── CopilotProvider.swift   Copilot CLI driver and its permission mapping
+├── OllamaProvider.swift    Ollama (local) client, model discovery and provider
 ├── Keychain.swift     Keychain storage for provider credentials
 ├── History.swift      Mission history records and their private JSON store
 ├── BedrockStreaming.swift  SigV4 signer, event-stream decoder, ConverseStream client with CLI fallback
@@ -330,7 +344,7 @@ Sources/Tristan/
 ├── Theme.swift        Colour roles, glow panel, arc reactor, animated backdrop
 ├── Themes.swift       The palettes, contrast maths and the theme picker's data
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    167 tests: multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
+Tests/TristanTests/    181 tests: Ollama and kids-mode routing, multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
 ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
 scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
@@ -398,6 +412,7 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 
 - **Bedrock** has not run against live AWS (the AWS session was expired when it was built). Request signing is verified against AWS's published examples and the stream decoder against the wire format; the CLI request format was checked against the CLI's own skeleton. If streaming fails it falls back to the CLI path automatically.
 - **Azure OpenAI** has been tested live from the Mac app with an API key: streaming and tool calls worked against a real deployment. Not yet tried live: sign-in through the Azure CLI (Entra ID, no key) and the iOS standalone mode.
+- **Ollama** is covered by tests with a scripted model and by the kids-mode routing tests, but has not been run against a real local model (the server was not running when it was built). The kids-mode voice depends on which voices your Mac has installed. Not built yet: a child-safe system prompt and screening of the model's answers.
 - **Copilot** was not launched with real permissions during development. The command-line flags follow the CLI's own help text, and process handling is tested with a stand-in command. Its output format is unstructured, so the HUD shows it as plain text.
 - **Wake word, push-to-talk, sound and notifications** build, launch and have unit tests for the logic (matching, timing, synthesis, gating), but have not been heard or seen working by me. Voice needs microphone and speech permission; the wake word needs a language with on-device recognition.
 - **`YOLO` is exactly as risky as it sounds.** Do not use it in a folder you cannot afford to lose.
