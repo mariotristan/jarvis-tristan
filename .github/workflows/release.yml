@@ -22,7 +22,7 @@ jobs:
       - name: Build the DMG
         run: |
           # The tag (for example v1.2.3) is the version: the app reports 1.2.3.
-          VERSION="${GITHUB_REF_NAME#v}" scripts/make-dmg.sh
+          VERSION="${GITHUB_REF_NAME#v}" BUILD_NUMBER="${{ github.run_number }}" scripts/make-dmg.sh
 
       - name: Create GitHub Release and attach the DMG
         env:

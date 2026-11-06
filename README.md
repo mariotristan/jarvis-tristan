@@ -231,7 +231,7 @@ Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git pus
 
 ## Requirements
 
-- macOS 14 or later (developed on macOS 26).
+- macOS 14 or later, on an **Apple Silicon** Mac. The release DMG is built for `arm64` only; it has not been tried on an Intel Mac, so build from source there (also untested). Developed on macOS 26.
 - To build from source: Xcode installed. The command line tools alone are not enough because SwiftUI's macros need the full toolchain. `scripts/bundle.sh` picks up `/Applications/Xcode.app` automatically even if `xcode-select` points elsewhere. Installing from a release needs no Xcode.
 - For the `CLAUDE` provider: the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) installed and logged in. Tristan looks for `claude` on `PATH`, plus `/opt/homebrew/bin` and `/usr/local/bin`.
 

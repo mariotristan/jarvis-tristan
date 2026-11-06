@@ -24,7 +24,7 @@ jobs:
         run: swift test
 
       - name: Build the installable app and DMG
-        run: VERSION=0.0.0-ci scripts/make-dmg.sh
+        run: VERSION=0.0.0-ci BUILD_NUMBER="${{ github.run_number }}" scripts/make-dmg.sh
 
       - name: Check the app bundle
         run: |
