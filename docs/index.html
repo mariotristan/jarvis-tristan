@@ -189,7 +189,7 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
           <a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Mac</a>
           <a class="btn ghost" href="#install">How to install</a>
         </div>
-        <p class="meta small">Version 0.2.0 · Apple Silicon · macOS 14 or later · free and open source (MIT license)</p>
+        <p class="meta small">Version 0.3.0 · Apple Silicon · macOS 14 or later · free and open source (MIT license)</p>
       </div>
       <div>
         <img class="shot" src="assets/hud-sessions.png" width="1400" height="924"
@@ -338,18 +338,18 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
     <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task.</p>
 
     <ol class="steps">
-      <li><b>Download.</b> Get <code>Tristan-0.2.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download.</b> Get <code>Tristan-0.3.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Open the disk image</b> and drag Tristan into Applications. Or use Terminal, below.</li>
       <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and Tristan isn’t notarized yet (that needs a paid Apple account). This one line clears the flag.</li>
       <li><b>Open Tristan.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>.</li>
     </ol>
 
     <pre data-copy><span class="c"># 1. Optional: check the download</span>
-cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.2.0.dmg.sha256
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.3.0.dmg.sha256
 
 <span class="c"># 2. Install</span>
-hdiutil attach Tristan-0.2.0.dmg
-cp -R "/Volumes/Tristan 0.2.0/Tristan.app" /Applications/
+hdiutil attach Tristan-0.3.0.dmg
+cp -R "/Volumes/Tristan 0.3.0/Tristan.app" /Applications/
 
 <span class="c"># 3. Remove the quarantine flag</span>
 xattr -dr com.apple.quarantine /Applications/Tristan.app
