@@ -180,3 +180,37 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
   .ribbon { transform-origin: top right; transform: scale(.72); }
   .hero .topbar, .subhero .topbar { padding-right: 70px; }
 }
+
+/* ---------- rounded everything ---------- */
+:root { --r-sm: 8px; --r: 16px; --r-lg: 28px; }
+.btn, .skip { border-radius: 999px; }
+.skip { border-radius: var(--r-sm); }
+.pill { border-radius: 999px; padding: 2px 11px; }
+.card, .mode, .doc .note { border-radius: var(--r); }
+.card { overflow: hidden; }
+.doc .note { border-left-width: 6px; }
+.shot, video.shot, .gallery .shot, .phones .shot, .ipad .shot, .doc img.shot { border-radius: var(--r); }
+pre { border-radius: var(--r); }
+code { border-radius: 6px; }
+kbd { border-radius: 6px; }
+button.copy { border-radius: 999px; padding: 5px 12px; }
+ol.steps li::before { border-radius: 50%; }
+.tablewrap { border: 1px solid var(--line); border-radius: var(--r); overflow-x: auto; }
+.tablewrap table th:first-child, .tablewrap table td:first-child { padding-left: 18px; }
+.tablewrap tbody tr:last-child th, .tablewrap tbody tr:last-child td { border-bottom: 0; }
+.hero, .subhero { border-bottom-left-radius: var(--r-lg); border-bottom-right-radius: var(--r-lg); }
+footer { border-top-left-radius: var(--r-lg); border-top-right-radius: var(--r-lg); }
+.guides a.card, .roadmap li { border-radius: var(--r); }
+.roadmap li { padding-inline: 4px; }
+.facts { border-radius: 0; }
+figure img { border-radius: var(--r); }
+
+/* tidy the rounded edges: inset stripes instead of curved borders, quieter table rules */
+.mode { border-left: 1px solid var(--line); box-shadow: inset 6px 0 0 var(--red); padding-left: 26px; }
+.mode.gold { box-shadow: inset 6px 0 0 var(--gold); }
+.doc .note { border-left: 0; box-shadow: inset 6px 0 0 var(--gold); padding-left: 26px; }
+.doc .note.warn { box-shadow: inset 6px 0 0 var(--red); }
+pre { border-left: 0; box-shadow: inset 4px 0 0 var(--gold); padding-left: 24px; }
+tbody th { border-bottom: 1px solid var(--line); }
+.tablewrap caption { padding: 14px 18px 4px; }
+.tablewrap thead th { border-bottom: 3px solid var(--red); }
