@@ -95,6 +95,7 @@ struct NotchView: View {
                             }
                         } else {
                             hudButton("OPEN HUD", tint: Theme.cyan, action: openHUD)
+                            hudButton("QUIT", tint: Theme.red) { NSApp.terminate(nil) }
                         }
                     }
                 }
@@ -160,6 +161,13 @@ final class NotchController {
             .sink { [weak self] hovering, phase, peek, listening in
                 self?.setExpanded(hovering || phase == .awaitingApproval || peek || listening)
             }
+            .store(in: &bag)
+
+        // New colors: build the notch's view again (its background stays black, to blend with the notch).
+        session.$themeID
+            .dropFirst()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.render() }
             .store(in: &bag)
 
         // Peek open for a few seconds when a mission ends.

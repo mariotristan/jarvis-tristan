@@ -3,12 +3,19 @@ import SwiftUI
 enum Theme {
     /// Corner radius for buttons, fields and panels.
     static let corner: CGFloat = 10
-    static let cyan = Color(red: 0.10, green: 0.83, blue: 0.94)
-    static let amber = Color(red: 1.0, green: 0.70, blue: 0.28)
-    static let green = Color(red: 0.62, green: 1.0, blue: 0.69)
-    static let red = Color(red: 1.0, green: 0.32, blue: 0.32)
-    static let deep = Color(red: 0.008, green: 0.043, blue: 0.063)
-    static let panel = Color(red: 0.012, green: 0.10, blue: 0.14).opacity(0.75)
+    // The colors come from the chosen palette (see ThemeStore); the names are the HUD's original roles.
+    static var cyan: Color { ThemeStore.palette.primary.color }
+    static var amber: Color { ThemeStore.palette.accent.color }
+    static var green: Color { ThemeStore.palette.good.color }
+    static var red: Color { ThemeStore.palette.bad.color }
+    static var deep: Color { ThemeStore.palette.deep.color }
+    static var glow: Color { ThemeStore.palette.glow.color }
+    static var panel: Color { ThemeStore.palette.panel.color.opacity(0.75) }
+    /// Body text of the code stream.
+    static var prose: Color { ThemeStore.palette.prose.color }
+    /// Wash behind code cards and inline code: darkens a dark theme, tints a light one.
+    static var codeWash: Color { ThemeStore.palette.dark ? Color.black.opacity(0.28) : Color.black.opacity(0.06) }
+    static var inlineCode: Color { ThemeStore.palette.dark ? Color.white.opacity(0.10) : Color.black.opacity(0.07) }
     static let mono = Font.system(size: 12, design: .monospaced)
 
     static func tint(for phase: Phase) -> Color {
@@ -83,7 +90,7 @@ struct ReactorView: View {
 struct Backdrop: View {
     var body: some View {
         ZStack {
-            RadialGradient(colors: [Color(red: 0.02, green: 0.13, blue: 0.18), Theme.deep],
+            RadialGradient(colors: [Theme.glow, Theme.deep],
                            center: .center, startRadius: 0, endRadius: 700)
             Canvas { ctx, size in
                 var path = Path()

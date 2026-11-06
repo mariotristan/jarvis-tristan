@@ -242,7 +242,7 @@ enum MarkdownInline {
             if let link, !allowedSchemes.contains(link.scheme?.lowercased() ?? "") { result[range].link = nil }
             if intent?.contains(.code) == true {
                 result[range].foregroundColor = Theme.amber
-                result[range].backgroundColor = Color.white.opacity(0.10)
+                result[range].backgroundColor = Theme.inlineCode
             }
             if link != nil, allowedSchemes.contains(link?.scheme?.lowercased() ?? "") { result[range].foregroundColor = Theme.cyan }
         }
@@ -275,7 +275,7 @@ struct MarkdownView: View {
     }
 }
 
-private let proseColor = Color(red: 0.84, green: 0.96, blue: 1.0)
+private var proseColor: Color { Theme.prose }
 
 private struct MarkdownBlockView: View {
     let block: MarkdownBlock
@@ -432,7 +432,7 @@ struct CodeCard: View {
             }
             .padding(10)
         }
-        .background(Color.black.opacity(0.28), in: RoundedRectangle(cornerRadius: Theme.corner))
+        .background(Theme.codeWash, in: RoundedRectangle(cornerRadius: Theme.corner))
         .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.green.opacity(0.35), lineWidth: 1))
     }
 

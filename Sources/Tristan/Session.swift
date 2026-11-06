@@ -62,6 +62,19 @@ final class Session: ObservableObject {
     @Published var renderMarkdown = true {
         didSet { UserDefaults.standard.set(renderMarkdown, forKey: "renderMarkdown") }
     }
+    /// The chosen look: a palette key from ThemeStore, or "auto" to follow the system appearance.
+    @Published var themeChoice = ThemeStore.defaultKey {
+        didSet { UserDefaults.standard.set(themeChoice, forKey: "theme"); applyTheme() }
+    }
+    /// The palette in use right now. The HUD rebuilds when this changes.
+    @Published private(set) var themeID = ThemeStore.defaultKey
+
+    func applyTheme() {
+        let dark = NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) != .aqua
+        let palette = ThemeStore.resolve(themeChoice, systemIsDark: dark)
+        ThemeStore.palette = palette
+        if themeID != palette.id { themeID = palette.id }
+    }
     /// Full-screen mode. Set by the HUD button or ⌃⌘F; the window itself is resized by the AppDelegate.
     @Published var fullScreen = false
     @Published var fullScreenTopInset: CGFloat = 0
@@ -98,6 +111,8 @@ final class Session: ObservableObject {
         if standard.object(forKey: "soundsOn") != nil { soundsOn = standard.bool(forKey: "soundsOn") }
         if standard.object(forKey: "voiceOn") != nil { voiceOn = standard.bool(forKey: "voiceOn") }
         if standard.object(forKey: "notificationsOn") != nil { notificationsOn = standard.bool(forKey: "notificationsOn") }
+        if let saved = standard.string(forKey: "theme") { themeChoice = saved }
+        applyTheme()
         fx.soundsOn = soundsOn
         fx.voiceOn = voiceOn
         fx.onSpeaking = { [weak self] speaking in self?.music.setDuck("speech", active: speaking) }
@@ -266,8 +281,18 @@ final class Session: ObservableObject {
 
     // MARK: working with the active session
 
+    private static let quitPhrases: Set<String> = [
+        "quit", "exit", "close", "quit tristan", "exit tristan", "close tristan", "shut down", "shut down tristan", "goodbye tristan",
+    ]
+
     func submit(_ prompt: String, viaVoice: Bool = false) {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        // "quit" / "close tristan" (typed or spoken) closes the app, even from full screen.
+        if Self.quitPhrases.contains(prompt.lowercased().trimmingCharacters(in: .punctuationCharacters)) {
+            draft = ""
+            NSApp.terminate(nil)
+            return
+        }
         // Short music commands ("next song") never start a mission, and work even while one is running.
         if musicOn, let command = MusicCommand.parse(prompt) {
             runMusic(command, viaVoice: viaVoice)

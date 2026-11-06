@@ -96,6 +96,8 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **Session memory.** A finished mission stays in its session's context. Each session keeps the task, the actions taken and the result of its recent missions (the last 12; the newest three in detail, older ones as one line) and puts that briefing in front of the next task, so "now add tests for what you just wrote" works whichever provider runs it. Only missions from the same folder are included. The tab shows **REMEMBERS n**; click it (or open **+ NEW SESSION**, which starts empty) to forget. The memory survives a restart. On the iPhone and iPad standalone mode the same memory is kept, and **NEW CONVERSATION** in Settings clears it. The briefing is plain text in the prompt, so it costs a few thousand characters per mission at most; it is not the model's own hidden state, so details that never reached the log or the final reply are not remembered.
 - **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the whole screen, hides the Dock and menu bar completely (they do not slide in at the edges) and puts the window above everything else, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
 - **Rendered markdown in the code stream.** What an agent writes is shown as it would read: headings, bold and italic, inline code, bullet, numbered and task lists, tables with alignment, quotes, rules, and code blocks as cards with the file name, language and a COPY button. A file the agent writes is a card too, and a written `.md` file is rendered with a SOURCE switch. **RAW** shows the plain text. Links only open if they are web or mail links, so model output can never plant a `tristan://` pairing link or a `file://` link. The iPhone and iPad apps use the same renderer.
+- **Quitting.** Several ways, so you are never stuck, even in full screen: `⌘Q` (while the HUD is in front), the red power button in the command bar, the red **QUIT** button that appears when you hover the notch, typing or saying "quit", "exit" or "close Tristan", or **Quit Tristan** in the menu bar item. There is no confirmation, even if a mission is running.
+- **Themes.** Not everyone likes cyan on near-black. **Configuration > THEME** switches the whole HUD, the notch accents and the rendered markdown between 17 looks, each previewed in its own colors: Tristan (the original), Deep Blue, Graphite, Light and High contrast; dark classics (Tron, Dracula, Nord, Tokyo Night, Catppuccin, Gruvbox, Solarized Dark, Monokai, Rosé Pine); and light ones (GitHub Light, Solarized Light, Catppuccin Latte). **Match system** uses Tristan in dark mode and Light in light mode, and follows the switch live. The choice is remembered. A unit test checks that every palette keeps its text at 4.5:1 contrast or better on its backgrounds. The notch pill itself stays black so it blends with the camera notch.
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
 - **Menu bar item** next to the clock to open Tristan or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -269,6 +271,7 @@ Tristan has no Dock icon. Look for the notch overlay, the menu bar icon, or pres
 | `⌥ Space` | Show or hide the HUD from anywhere |
 | `Esc` | Leave full screen, or hide the HUD |
 | `⌃⌘F` | Full screen on and off |
+| `⌘Q` | Quit Tristan (also: the power button, the notch QUIT button, or type "quit") |
 | `⌘T` / `⌘W` | New session / close the current session |
 | `⌘1`…`⌘9` | Switch to that session |
 | `Return` | Execute the task |
@@ -307,9 +310,10 @@ Sources/Tristan/
 ├── Snapshot.swift     Renders the README screenshots from the real views
 ├── HUDView.swift      The main HUD, command bar and approval overlay
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
-├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
+├── Theme.swift        Colour roles, glow panel, arc reactor, animated backdrop
+├── Themes.swift       The palettes, contrast maths and the theme picker's data
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    156 tests: multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio
+Tests/TristanTests/    160 tests: multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast
 ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
 scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts

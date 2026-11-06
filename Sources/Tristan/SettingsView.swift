@@ -30,6 +30,7 @@ struct SettingsOverlay: View {
                             .font(.system(size: 11, design: .monospaced)).tracking(3)
                             .foregroundStyle(Theme.amber)
                         approvalSection
+                        themeSection
                         generalSection
                         voiceSection
                         musicSection
@@ -107,6 +108,56 @@ struct SettingsOverlay: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.red, lineWidth: 1))
             }
         }
+    }
+
+    private var themeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            caption("THEME")
+            themeChip(id: ThemeStore.autoKey, name: "Match system", swatch: [ThemeStore.all[0], ThemeStore.palette(for: "light")!])
+            ForEach(ThemeStore.groups, id: \.self) { group in
+                Text(group.uppercased())
+                    .font(.system(size: 9, design: .monospaced)).tracking(2)
+                    .foregroundStyle(Theme.cyan.opacity(0.5))
+                let items = ThemeStore.all.filter { $0.group == group }
+                ForEach(Array(stride(from: 0, to: items.count, by: 3)), id: \.self) { start in
+                    HStack(spacing: 8) {
+                        ForEach(0..<3, id: \.self) { offset in
+                            if start + offset < items.count {
+                                themeChip(id: items[start + offset].id, name: items[start + offset].name, swatch: [items[start + offset]])
+                            } else {
+                                Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// One theme button, shown in that theme's own colors so you can see it before choosing it.
+    private func themeChip(id: String, name: String, swatch: [ThemePalette]) -> some View {
+        let on = session.themeChoice == id
+        let first = swatch[0]
+        return Button { session.themeChoice = id } label: {
+            HStack(spacing: 6) {
+                HStack(spacing: 2) {
+                    ForEach(swatch) { palette in
+                        Circle().fill(palette.primary.color).frame(width: 9, height: 9)
+                        Circle().fill(palette.accent.color).frame(width: 9, height: 9)
+                    }
+                }
+                Text(name)
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(first.primary.color)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 7).padding(.horizontal, 10)
+            .frame(maxWidth: .infinity)
+            .background(first.deep.color, in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(on ? Theme.cyan : Theme.cyan.opacity(0.25), lineWidth: on ? 2 : 1))
+        }
+        .buttonStyle(.hud)
     }
 
     private var generalSection: some View {

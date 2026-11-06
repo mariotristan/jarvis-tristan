@@ -26,6 +26,8 @@ struct HUDView: View {
             if session.showSettings { SettingsOverlay() }
             if session.showHistory { HistoryOverlay() }
         }
+        .id(session.themeID)            // colors are read as views are built, so a new theme rebuilds the HUD
+        .preferredColorScheme(ThemeStore.palette.dark ? .dark : .light)
         .environment(\.hudScale, scale)
         .frame(minWidth: 900, minHeight: 560)
         .clipShape(RoundedRectangle(cornerRadius: session.fullScreen ? 0 : 18))
@@ -161,6 +163,13 @@ struct HUDView: View {
                 }
                 .buttonStyle(.hud)
                 .help("Full screen (⌃⌘F). Esc leaves it.")
+                Button { NSApp.terminate(nil) } label: {
+                    Image(systemName: "power")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Theme.red)
+                }
+                .buttonStyle(.hud)
+                .help("Quit Tristan (⌘Q)")
                 Button { session.showHistory.toggle() } label: {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 18))
@@ -431,6 +440,7 @@ private struct ShortcutLayer: View {
     var body: some View {
         ZStack {
             Button("") { session.fullScreen.toggle() }.keyboardShortcut("f", modifiers: [.command, .control])
+            Button("") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
             Button("") { session.newSession() }.keyboardShortcut("t", modifiers: .command)
             Button("") { session.close(session.activeID) }.keyboardShortcut("w", modifiers: .command)
             ForEach(0..<9, id: \.self) { index in

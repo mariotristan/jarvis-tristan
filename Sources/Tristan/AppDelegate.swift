@@ -55,6 +55,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Publishers.CombineLatest(session.$hotkey, session.$recordingShortcut)
             .sink { [weak self] shortcut, recording in self?.registerHotKeys(shortcut, paused: recording) }
             .store(in: &bag)
+        // "Match system" follows light and dark mode.
+        NSApp.publisher(for: \.effectiveAppearance)
+            .sink { [weak self] _ in self?.session.applyTheme() }
+            .store(in: &bag)
         session.$fullScreen
             .removeDuplicates()
             .sink { [weak self] on in self?.applyFullScreen(on) }
