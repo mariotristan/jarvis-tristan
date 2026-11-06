@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let demo = CommandLine.arguments.contains("--demo")
     private var demoRestore: (() -> Void)?
     private var demoSignal: DispatchSourceSignal?
+    private var demoStart: DispatchSourceSignal?
     private lazy var session: Session = demo ? Session(history: nil) : Session()
     private var hud: HUDWindow!
     private var notch: NotchController!
@@ -30,7 +31,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if demo {
+            ParentPIN.inMemory = true
             ParentPIN.account = "kids.pin.demo"
+            NoKeychain.enabled = true
             // Changing the mode saves it, so put the real settings back when the demo ends (also on SIGTERM from the script).
             let defaults = UserDefaults.standard
             let keys = ["approvalMode", "kidsMode", "wakeOn", "theme", "orbEffects", "orbFill", "parentAuth"]
@@ -100,7 +103,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             fflush(stdout)
             if !CommandLine.arguments.contains("--manual") {
                 let kids = CommandLine.arguments.contains("--kids")
-                Task { if kids { await DemoAutopilot.runKids(on: session) } else { await DemoAutopilot.run(on: session) } }
+                let start: @MainActor () -> Void = { [session] in
+                    Task { @MainActor in if kids { await DemoAutopilot.runKids(on: session) } else { await DemoAutopilot.run(on: session) } }
+                }
+                if CommandLine.arguments.contains("--wait-start") {
+                    // The recording script sends SIGUSR1 once the screen recorder is running, so the video starts at the beginning.
+                    signal(SIGUSR1, SIG_IGN)
+                    let go = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: .main)
+                    go.setEventHandler { start() }
+                    go.resume()
+                    demoStart = go
+                } else {
+                    start()
+                }
             }
         }
     }

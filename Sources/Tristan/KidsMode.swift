@@ -11,23 +11,32 @@ enum ParentAuth: String, CaseIterable, Identifiable {
 
 enum ParentPIN {
     nonisolated(unsafe) static var account = "kids.pin"
+    /// The recorded demo keeps its PIN in memory so it never touches (or prompts for) the real Keychain.
+    nonisolated(unsafe) static var inMemory = false
+    nonisolated(unsafe) private static var memoryHash: String?
+
+    private static func stored() -> String? { inMemory ? memoryHash : KeychainStore.get(account) }
     static let minimumLength = 4
 
     static func hash(_ pin: String) -> String {
         SHA256.hash(data: Data(("tristan-kids:" + pin).utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
-    static var isSet: Bool { KeychainStore.get(account)?.isEmpty == false }
+    static var isSet: Bool { stored()?.isEmpty == false }
 
     static func valid(_ pin: String) -> Bool {
         pin.count >= minimumLength && pin.allSatisfy(\.isNumber)
     }
 
     @discardableResult
-    static func set(_ pin: String) -> Bool { valid(pin) && KeychainStore.set(hash(pin), account: account) }
+    static func set(_ pin: String) -> Bool {
+        guard valid(pin) else { return false }
+        if inMemory { memoryHash = hash(pin); return true }
+        return KeychainStore.set(hash(pin), account: account)
+    }
 
     static func matches(_ pin: String) -> Bool {
-        guard let stored = KeychainStore.get(account), !stored.isEmpty else { return false }
+        guard let stored = stored(), !stored.isEmpty else { return false }
         return stored == hash(pin)
     }
 }
@@ -119,4 +128,9 @@ extension Session {
         showSettings = false
         if kidsMode { lockKids() }
     }
+}
+
+/// Set by `Tristan --demo`: nothing in the recorded demo may read or write the Keychain.
+enum NoKeychain {
+    nonisolated(unsafe) static var enabled = false
 }

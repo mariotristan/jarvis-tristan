@@ -5,7 +5,15 @@ import Foundation
 /// the parent unlock. `--manual` turns it off. Prints DEMO_DONE when it is finished.
 @MainActor
 enum DemoAutopilot {
+    private static var began = Date()
+    /// Progress lines for the recording script and for debugging the timing.
+    private static func step(_ text: String) {
+        print(String(format: "DEMO_STEP %5.1fs  %@", Date().timeIntervalSince(began), text))
+        fflush(stdout)
+    }
+
     static func run(on session: Session) async {
+        began = Date()
         func pause(_ seconds: Double) async { try? await Task.sleep(for: .seconds(seconds)) }
 
         func type(_ text: String) async {
@@ -34,31 +42,22 @@ enum DemoAutopilot {
         await pause(3)
         session.orbEffects = .full
         session.orbFillsScreen = false
+        step("task 1")
         await type("write a README for this folder")
         await pause(3)
         session.startListening()          // refused: the microphone is shut while Tristan answers
         await finish()
         await pause(2.5)
 
+        step("task 2, orb fills the screen")
         session.orbFillsScreen = true
         await type("now add tests for it")
         await finish()
         await pause(2)
         session.orbFillsScreen = false
-        await pause(1.5)
+        await pause(4)                    // a last look at the finished answer
 
-        ParentPIN.set("2468")
-        session.parentAuth = .pin
-        session.kidsMode = true
-        await pause(2)
-        session.openSettings()            // asks for the parent PIN
-        await pause(3.5)
-        _ = session.submitParentPIN("2468")
-        await pause(4)
-        session.kidsMode = false
-        session.closeSettings()
-        await pause(2.5)
-
+        step("done")
         print("DEMO_DONE")
         fflush(stdout)
     }

@@ -13,7 +13,7 @@ enum ProviderKind: String, CaseIterable, Identifiable {
         switch self {
         case .claude: return ClaudeCodeProvider(mode: mode)
         case .bedrock: return BedrockProvider.standard(mode: mode)
-        case .demo: return DemoProvider()
+        case .demo: return DemoProvider(skipApproval: mode == .yolo)
         case .azure: return AzureOpenAIProvider(mode: mode)
         case .copilot: return CopilotProvider(mode: mode)
         }
@@ -48,6 +48,9 @@ enum DemoAnswers {
 }
 
 struct DemoProvider: AgentProvider {
+    /// YOLO skips every permission check, the demo's one prompt included.
+    var skipApproval = false
+
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
             let worker = Task {
@@ -77,7 +80,7 @@ struct DemoProvider: AgentProvider {
                 await pause(900)
                 guard !Task.isCancelled else { c.finish(); return }
                 c.yield(.status("AWAITING AUTHORIZATION"))
-                let ok = await approve(ApprovalRequest(summary: "Write Sources/auth.ts", detail: "Create a new file in \(workingDirectory.path)"))
+                let ok = skipApproval ? true : await approve(ApprovalRequest(summary: "Write Sources/auth.ts", detail: "Create a new file in \(workingDirectory.path)"))
                 guard ok else { c.yield(.failed("Denied by operator")); c.finish(); return }
                 c.yield(.status("WRITING CODE"))
                 c.yield(.log("Writing Sources/auth.ts"))

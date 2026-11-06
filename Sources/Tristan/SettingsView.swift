@@ -66,7 +66,7 @@ struct SettingsOverlay: View {
         .onDisappear { stopRecording() }
         .onAppear {
             loginEnabled = SMAppService.mainApp.status == .enabled
-            azureKeyStored = KeychainStore.get(AzureConfig.keychainAccount)?.isEmpty == false
+            azureKeyStored = !NoKeychain.enabled && KeychainStore.get(AzureConfig.keychainAccount)?.isEmpty == false
         }
     }
 

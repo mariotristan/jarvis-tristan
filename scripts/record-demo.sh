@@ -31,7 +31,7 @@ mkdir -p "$OUT"
 rm -f "$RAW" "$OUT/$NAME.mp4"
 
 swift build >/dev/null
-.build/debug/Tristan --demo "$MODE" ${KIDS} ${MANUAL:+--manual} > "$LOG" 2>&1 &
+.build/debug/Tristan --demo "$MODE" ${KIDS} ${MANUAL:+--manual} ${MANUAL:---wait-start} > "$LOG" 2>&1 &
 APP=$!
 trap 'kill $APP 2>/dev/null || true; rm -f "$LOG"' EXIT
 
@@ -60,6 +60,8 @@ START=$(date +%s)
 screencapture -v -V "$SECS" "$RAW" 2> "$RECLOG" &
 REC=$!
 DONE_AT=""
+# The demo waits for this signal, so the video starts at its very beginning.
+[ -z "${MANUAL:-}" ] && { sleep 1.5; kill -USR1 "$APP"; }
 if [ -z "${MANUAL:-}" ]; then
   for _ in $(seq 1 $((SECS * 5))); do grep -q '^DEMO_DONE' "$LOG" && { DONE_AT=$(date +%s); break; }; sleep 0.2; done
 fi
