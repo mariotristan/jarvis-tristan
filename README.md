@@ -24,7 +24,8 @@
   <a href="https://mariotristan.github.io/jarvis-tristan/local-models.html">Local models</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/kids-mode.html">Kids safe mode</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html">iPhone and iPad</a> ·
-  <a href="https://mariotristan.github.io/jarvis-tristan/install.html">Install</a>
+  <a href="https://mariotristan.github.io/jarvis-tristan/install.html">Install</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/audio-crackle.html">Audio crackle bug</a>
 </p>
 
 </div>

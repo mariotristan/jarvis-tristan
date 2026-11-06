@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audio crackle bug—T.R.I.S.T.A.N.</title>
+<meta name="description" content="Why the voice crackled, how it was measured, what fixed it and what is still unproven.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/audio-crackle.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Audio crackle bug—T.R.I.S.T.A.N.">
+<meta property="og:description" content="Why the voice crackled, how it was measured, what fixed it and what is still unproven.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/audio-crackle.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="local-models.html">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html">Install</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Bug report</span>
+      <h1>The crackling voice.</h1>
+      <p class="lead">When T.R.I.S.T.A.N. spoke on the Mac speakers there was a crackle: at first all through the line, then at its start and its end, and later in the demo recordings. It had five separate causes. This page records each one, how it was found and what fixed it.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <h2>Summary</h2>
+    <ul class="plain">
+      <li><b>Symptom.</b> “Crackling” while it speaks, on the Mac speakers, with nothing else playing. Later: a crack at the end of a line, a crack at the start sometimes, and cracking in the demo recordings.</li>
+      <li><b>Not one bug.</b> Five causes stacked up: a low-quality voice, the speakers switching off after a line, the speakers waking up late, a sound effect landing on top of the voice, and the voice being too loud, so its peaks clipped.</li>
+      <li><b>Status.</b> All five are fixed in code, and the measurements on the new recordings are clean. <b>Not proven by ear:</b> I could not listen, and the first automatic checks missed a real problem, so the final judgement belongs to a person listening.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="soft">
+  <div class="wrap">
+    <h2>The five causes</h2>
+    <div class="tablewrap"><table><caption>What was wrong, how it was found and what fixed it</caption><thead><tr><th scope="col">#</th><th scope="col">Cause</th><th scope="col">Evidence</th><th scope="col">Fix</th></tr></thead><tbody>
+      <tr><td>1</td><td><b>Compact voice.</b> Only the lowest-quality voices were installed. The app picked Daniel (compact, 22 kHz), which macOS stretches to the speakers.</td><td>Offline render: Daniel was the roughest voice measured (roughness 0.30, against 0.21 for Samantha and Reed). No Enhanced or Premium voice was installed.</td><td>Install <b>Daniel (Enhanced)</b> with <code>scripts/install-voices.sh</code>. Configuration shows a hint while only compact voices exist. The picker already prefers the best installed voice.</td></tr>
+      <tr><td>2</td><td><b>Crack at the end.</b> When the last sound stopped, the Mac’s output went idle and the speakers powered down, which is heard as a click.</td><td>The speech audio itself ended cleanly at zero (310 to 455 silent samples at the tail), so the click was not in the waveform.</td><td>A silent looping sound keeps the output open while the app runs.</td></tr>
+      <tr><td>3</td><td><b>Crack at the start, sometimes.</b> The output was only opened on the first spoken line, so the speakers were still waking up. It also stopped silently after an output-device change.</td><td>It followed the fix for cause 2 and appeared only sometimes.</td><td>The output opens at launch and restarts when the audio device changes.</td></tr>
+      <tr><td>4</td><td><b>Effects on top of the voice.</b> The mission-start, approval and mission-complete sounds played at the same moment as the spoken line.</td><td>A recording showed the effect and the voice summing in the first seconds.</td><td>A spoken line waits for a playing effect (up to 1.3 s). An effect that lands during speech is made quieter in its own samples. The player’s volume is never changed mid-sound, because that steps the level and clicks.</td></tr>
+      <tr><td>5</td><td><b>The voice itself clipped.</b> At full volume the voice peaked above full scale in the mix, and clipped peaks are heard as crackle.</td><td>First recording with sound: peak <b>1.13</b>, with 47 samples above 1.0. The offline render had looked fine (peak 0.73), which hid it.</td><td>The speech level is 0.6. In the latest recordings the loudest peak is about −10 dB, with no clipping.</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>How it was measured</h2>
+    <p>Because I could not hear the app, every claim was turned into a number.</p>
+    <ul class="plain">
+      <li><b>Offline render.</b> <code>AVSpeechSynthesizer.write</code> renders a voice to samples without playing it. That showed the voice quality (cause 1) and that the waveform ends cleanly (cause 2).</li>
+      <li><b>Recording the app’s own sound.</b> <code>scripts/record-window.swift</code> uses ScreenCaptureKit to film the T.R.I.S.T.A.N. window and capture only that app’s audio in the same file, so the demo videos finally have sound. This is what exposed causes 4 and 5.</li>
+      <li><b>Checks on the recording.</b> Peak level and the number of samples at or above full scale; clicks found by looking for spikes in the second difference of the signal; silent gaps; and a “crackle per voiced second” score compared with a clean render. The recorder also counts timing faults between audio buffers, to rule out the capture itself.</li>
+    </ul>
+    <div class="tablewrap"><table><caption>Numbers from the demo recording</caption><thead><tr><th scope="col">Build</th><th scope="col">Voice level</th><th scope="col">Peak</th><th scope="col">Samples at or above 0.99</th></tr></thead><tbody>
+      <tr><td>Before the fix</td><td>1.0 (default)</td><td>1.13 to 1.16</td><td>46 to 54 (47 above 1.0)</td></tr>
+      <tr><td>First fix</td><td>0.7</td><td>0.53</td><td>0</td></tr>
+      <tr><td>Second step</td><td>0.85</td><td>0.76</td><td>0</td></tr>
+      <tr><td>Current</td><td>0.6</td><td>about 0.3 (−10 dB)</td><td>0</td></tr>
+    </tbody></table></div>
+    <p>The level seems to scale roughly with the square of the setting, which is why 0.7 cut the peak by more than half. The crackle score was 0.48 per voiced second for a clean offline render and 0.00 for both final videos. The recorder found 0 timing faults in about 1,800 audio buffers.</p>
+  </div>
+</section>
+
+<section class="soft">
+  <div class="wrap">
+    <h2>What was ruled out</h2>
+    <ul class="plain">
+      <li><b>Music ducking.</b> It still crackled with nothing playing. A small ramp for the volume change was added anyway, and it is harmless.</li>
+      <li><b>Bluetooth.</b> It happened on the Mac speakers.</li>
+      <li><b>Speech rate and pitch.</b> Changing them made no meaningful difference.</li>
+      <li><b>Clipping in the offline render.</b> There was none (peak 0.73). It only appeared in the live mix, so a clean-looking render does not prove clean playback.</li>
+      <li><b>The recording tool.</b> Zero timing faults between buffers, and the recording is separate from what the speakers receive.</li>
+      <li><b>The silent gaps in recordings.</b> A 128 ms gap that looked like a dropout is the designed pause between an effect and the voice.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>What is not proven</h2>
+    <ul class="plain">
+      <li>All measurements are on the audio the app hands to the system. A fault between the system and the speakers would not show up in them.</li>
+      <li>The first detector missed the clipping, because it looked for clicks and the problem was a flat-topped peak. A listener reported cracking that these metrics could not show at one point, so listening is still the deciding test.</li>
+      <li>The silent output loop uses a little power while the app runs, and a speech line can start up to about a second later after a sound effect. Both are deliberate trade-offs for a cleaner sound.</li>
+    </ul>
+    <h2>How to check it yourself</h2>
+    <ol class="plain">
+      <li>Run <code>scripts/install-voices.sh</code> and download <b>Daniel (Enhanced)</b>, then restart the app.</li>
+      <li>Start a mission and listen to the start, the approval request and the end, on the Mac speakers.</li>
+      <li>Record the demo with <code>scripts/record-demo.sh</code> and open the file: it contains the app’s own sound.</li>
+    </ol>
+    <h2>The changes</h2>
+    <p>In order, on <a href="https://github.com/mariotristan/jarvis-tristan/commits/main">GitHub</a>: <code>722a861</code> (voice hint, install script, gentler cut-off), <code>36d65ee</code> (silent output loop), <code>869cab4</code> (open at launch), <code>e2c1966</code> (no overlap with effects), <code>a6da593</code> (voice level), <code>c73b17e</code> (quality first: quieter voice, no volume steps).</p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="install.html">← Install</a><a href="index.html">Home →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="audio-crackle.html" aria-current="page">Audio crackle bug</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>
