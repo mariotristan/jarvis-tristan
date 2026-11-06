@@ -73,7 +73,7 @@ struct DemoProvider: AgentProvider {
                     return
                 }
                 c.yield(.status("PLANNING"))
-                c.yield(.log("Task received: \(task)"))
+                c.yield(.log("Task received: \(question)"))
                 await pause(900)
                 guard !Task.isCancelled else { c.finish(); return }
                 c.yield(.log("Scanning \(workingDirectory.lastPathComponent)"))
