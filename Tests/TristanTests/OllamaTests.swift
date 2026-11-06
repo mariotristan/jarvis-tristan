@@ -84,6 +84,15 @@ final class KidsLocalOnlyTests: XCTestCase {
         XCTAssertEqual(hub.active.phase, .done)
     }
 
+    func testTheScriptedDemoProviderStaysItselfInKidsMode() async throws {
+        let kinds = KindLog()
+        let hub = hub(localReady: true, kinds: kinds)
+        hub.active.provider = .demo
+        hub.submit("Why is the sky blue?")
+        try await wait { hub.active.phase == .done }
+        XCTAssertEqual(kinds.kinds, [.demo], "the recorded kids demo keeps its scripted answers even when Ollama is running")
+    }
+
     func testWithoutALocalModelTheChildIsToldToAskAParent() async throws {
         let kinds = KindLog()
         let hub = hub(localReady: false, kinds: kinds)

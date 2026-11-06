@@ -33,17 +33,17 @@ final class SoundFX {
     init() {
         speaker.delegate = speechDelegate
         speechDelegate.onChange = { [weak self] speaking in
-            // Whatever effect is still ringing drops under the voice the moment it starts, and returns afterwards.
-            // Without this an effect that began before the voice adds to it and the sum clips (heard as crackle).
-            MainActor.assumeIsolated {
-                self?.player.volume = speaking ? Self.underVoice : 1
-                self?.onSpeaking?(speaking)
-            }
+            MainActor.assumeIsolated { self?.onSpeaking?(speaking) }
         }
     }
 
-    /// Speech level. Measured on a recording: 1.0 clips, 0.85 leaves headroom for the effects underneath.
-    private static let voiceLevel: Float = 0.85
+    /// Speech level. Measured on a recording: 1.0 clips; a lower level keeps the voice clean for the effects underneath.
+    private static let voiceLevel: Float = 0.6
+
+    private static func scale(_ buffer: AVAudioPCMBuffer, by gain: Float) {
+        guard let samples = buffer.floatChannelData?[0] else { return }
+        for i in 0..<Int(buffer.frameLength) { samples[i] *= gain }
+    }
 
     /// Level of sound effects while a voice is talking.
     private static let underVoice: Float = 0.3
@@ -68,15 +68,16 @@ final class SoundFX {
     /// When the effects already queued will have finished. Effects play one after another on a single player, and a
     /// spoken line waits for them (up to `maxSpeechWait`) so the two never sound at once.
     private var effectsEnd = Date.distantPast
-    private static let maxSpeechWait = 0.45
+    private static let maxSpeechWait = 1.3
     /// Bumped whenever speech is stopped, so a line that was waiting for an effect does not start late.
     private var speechToken = 0
 
     func play(_ cue: Cue) {
         guard soundsOn, let buffer = buffer(for: cue) else { return }
         guard startEngineIfNeeded() else { return }
-        // An effect that lands while someone is talking stays under the voice instead of competing with it.
-        player.volume = (speaker.isSpeaking || speechPending) ? Self.underVoice : 1
+        // An effect that lands while someone is talking is made quieter in its own samples. Changing the player's volume
+        // while a sound plays would step the level and click.
+        if speaker.isSpeaking || speechPending { Self.scale(buffer, by: Self.underVoice) }
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         if !player.isPlaying { player.play() }
         effectsEnd = max(effectsEnd, Date()).addingTimeInterval(Double(buffer.frameLength) / sampleRate)

@@ -26,6 +26,8 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
     private var sessionStart: CMTime?
     private var videoFrames = 0
     private var audioBuffers = 0
+    private var nextAudioPTS: CMTime?
+    private var audioTimingFaults = 0
     private(set) var stream: SCStream?
 
     init(url: URL, width: Int, height: Int) throws {
@@ -70,6 +72,13 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
         case .audio:
             // Audio before the first picture would start the file with sound and no image, so it is dropped.
             guard let start = sessionStart, sampleBuffer.presentationTimeStamp >= start else { return }
+            // Count timing problems in the audio the system hands over: a gap or overlap between buffers is heard as a click.
+            let pts = sampleBuffer.presentationTimeStamp
+            if let expected = nextAudioPTS {
+                let delta = (pts - expected).seconds
+                if abs(delta) > 0.001 { audioTimingFaults += 1; if audioTimingFaults <= 10 { print("AUDIO_TIMING_FAULT at \(String(format: "%.3f", (pts - start).seconds))s off by \(String(format: "%.1f", delta * 1000)) ms") } }
+            }
+            nextAudioPTS = pts + sampleBuffer.duration
             if audio.isReadyForMoreMediaData, audio.append(sampleBuffer) { audioBuffers += 1 }
         default: break
         }
@@ -87,7 +96,7 @@ final class Recorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sen
                 self.video.markAsFinished()
                 self.audio.markAsFinished()
                 self.writer.finishWriting {
-                    print("RECORDED video_frames=\(self.videoFrames) audio_buffers=\(self.audioBuffers)")
+                    print("RECORDED video_frames=\(self.videoFrames) audio_buffers=\(self.audioBuffers) audio_timing_faults=\(self.audioTimingFaults)")
                     continuation.resume(returning: self.writer.status == .completed)
                 }
             }

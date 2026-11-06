@@ -74,7 +74,7 @@ if [ -z "${MANUAL:-}" ]; then
 fi
 wait "$REC" || true
 [ -s "$RAW" ] || { echo "Nothing was recorded. Recorder said:"; cat "$RECLOG"; rm -f "$RECLOG"; exit 1; }
-rm -f "$RECLOG"
+grep -E "AUDIO_TIMING|RECORDED" "$RECLOG" || true; rm -f "$RECLOG"
 
 DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$RAW")
 LEN=$(python3 -c "print(max(1, float('$DUR') - $TRIM_START - $TRIM_END))")
