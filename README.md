@@ -354,6 +354,7 @@ Next (every item is a GitHub issue; start from the [backlog overview](https://gi
 - [ ] Per-action approvals for Copilot, if the CLI gains a permission prompt hook
 - [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
 - [ ] Track title in the notch, and Apple Music support
+- [ ] A command-line version ([#24](https://github.com/mariotristan/jarvis-tristan/issues/24)), then Linux starting with Omarchy ([#22](https://github.com/mariotristan/jarvis-tristan/issues/22)) and Windows ([#23](https://github.com/mariotristan/jarvis-tristan/issues/23)); all three start by splitting the portable core into its own package
 
 ## Regenerating the screenshots
 
