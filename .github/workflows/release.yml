@@ -5,7 +5,11 @@ on:
     tags: ['v*']
 
 jobs:
+  secret-scan:
+    uses: ./.github/workflows/secret-scan.yml
+
   release:
+    needs: secret-scan
     runs-on: macos-15
     permissions:
       contents: write
