@@ -153,6 +153,8 @@ The `OLLAMA` provider runs the same agent loop as Azure, but against a model on 
 - **Local only:** the host must be this Mac (`localhost`, `127.0.0.1` or `::1`). Anything else is refused before a prompt is sent.
 - **Errors:** Ollama not running, no model installed or a missing model each give a readable message with the command to fix it.
 
+The full guide, with what every step of the setup script does, model advice and troubleshooting, is in [docs/ollama.md](docs/ollama.md).
+
 **Kids safe mode and Ollama.** While kids safe mode is on, every question goes to Ollama, whichever provider is selected, so a child's questions stay on the Mac. If Ollama isn't running or has no model, nothing is sent anywhere: the child sees "Please ask a parent" and a parent is asked (PIN, or Touch ID / Mac password) whether this one question may go to the selected cloud provider (`CLAUDE` if Ollama itself was selected). Approving does not unlock kids mode, and the next question is local again. Kids mode also speaks in a brighter, more playful voice with friendlier lines. It uses the most child-like voice installed (macOS's "Junior" or "Kathy" if present, otherwise a friendly American voice); it does not imitate any TV character.
 
 ### GitHub Copilot
@@ -346,7 +348,7 @@ Sources/Tristan/
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
 Tests/TristanTests/    181 tests: Ollama and kids-mode routing, multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
 ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
-scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
+scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh (local models, see docs/ollama.md), record-demo.sh, ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
 docs/ci-and-release.md How CI and releases work
 .github/workflows/     CI: build, test and bundle on macOS

@@ -28,6 +28,7 @@ The release appears under **Releases** in about three minutes. Also bump the `VE
 scripts/bundle.sh       # Tristan.app, with icon, version and an ad-hoc signature
 scripts/make-dmg.sh     # dist/Tristan-<version>.dmg and a .sha256 next to it
 scripts/install.sh      # build from source, install into /Applications and launch
+scripts/setup-ollama.sh # not part of releases: sets up Ollama for local models (see docs/ollama.md)
 VERSION=2.0.0 scripts/make-dmg.sh   # override the version
 ```
 

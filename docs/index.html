@@ -244,13 +244,13 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
       </article>
       <article class="card">
         <h3>Built to be checked</h3>
-        <p>The code is open under the MIT license, and 190 automated tests guard it. This page is honest about what has and hasn’t run for real—see <a href="#status">what’s tested</a>.</p>
+        <p>The code is open under the MIT license, and 198 automated tests guard it. This page is honest about what has and hasn’t run for real—see <a href="#status">what’s tested</a>.</p>
       </article>
     </div>
 
     <div class="facts" role="list">
       <div role="listitem"><b>4</b><span>AI providers in one window</span></div>
-      <div role="listitem"><b>190</b><span>automated tests</span></div>
+      <div role="listitem"><b>198</b><span>automated tests</span></div>
       <div role="listitem"><b>0</b><span>accounts needed to try the demo</span></div>
       <div role="listitem"><b>MIT</b><span>license, free to use and change</span></div>
     </div>
@@ -396,6 +396,17 @@ open /Applications/Tristan.app</pre>
     <pre data-copy>git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
 scripts/install.sh</pre>
+    <h3 style="margin-top: 2em;">Optional: run on a local model</h3>
+    <p>Want Tristan to work offline, or keep a child’s questions on the Mac? One script sets up <a href="https://ollama.com">Ollama</a> for you.</p>
+    <pre data-copy>scripts/setup-ollama.sh                 <span class="c"># installs Ollama if needed, pulls llama3.1</span>
+scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span></pre>
+    <ol class="steps">
+      <li><b>Finds or installs Ollama</b> (with Homebrew).</li>
+      <li><b>Starts the server</b> if it isn’t running.</li>
+      <li><b>Pulls the model</b>, about 5 GB the first time.</li>
+      <li><b>Checks that it answers,</b> and whether it can use tools. Tools are needed for coding, not for questions.</li>
+    </ol>
+    <p>Then pick <b>OLLAMA</b> at the bottom of the window. Settings lists your installed models; click one to use it. Nothing leaves your Mac. The script is short and readable, and the <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/ollama.md">Ollama guide</a> explains every step, how kids mode uses it, and troubleshooting.</p>
     <p class="small" style="color: var(--muted)">The full guide, including the iPhone and iPad app, is in the <a href="https://github.com/mariotristan/jarvis-tristan#install">README</a>.</p>
   </div>
 </section>
