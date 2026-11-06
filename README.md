@@ -200,6 +200,7 @@ git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
 scripts/install.sh      # builds, copies Tristan.app into /Applications and launches it
 scripts/bundle.sh       # or just build Tristan.app here
+scripts/uninstall.sh    # remove installed copies (add --purge for settings, history and Keychain items, --dry-run to preview)
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build   # a quick debug build
 ```
 
