@@ -43,21 +43,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
 
         // Re-register the global shortcuts whenever the preset changes (and once at launch).
-        session.$hotkey
-            .sink { [weak self] preset in self?.registerHotKeys(preset) }
+        Publishers.CombineLatest(session.$hotkey, session.$recordingShortcut)
+            .sink { [weak self] shortcut, recording in self?.registerHotKeys(shortcut, paused: recording) }
             .store(in: &bag)
         showHUD()
     }
 
-    private func registerHotKeys(_ preset: HotkeyPreset) {
+    func applicationWillTerminate(_ notification: Notification) {
+        session.music.restoreVolumeNow()
+    }
+
+    private func registerHotKeys(_ shortcut: Shortcut, paused: Bool) {
         hotKey?.unregister()
         talkKey?.unregister()
-        hotKey = GlobalHotKey(keyCode: kVK_Space, modifiers: preset.modifiers) { [weak self] in self?.toggleHUD() }
+        hotKey = nil
+        talkKey = nil
+        openItem?.title = "Open Tristan  (\(shortcut.display), hold \(shortcut.talk.display) to talk)"
+        guard !paused else { return }   // pressing the old shortcut must not fire while a new one is being recorded
+        let show = GlobalHotKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) { [weak self] in self?.toggleHUD() }
         // Hold the same combination plus Shift to talk, release to send.
-        talkKey = GlobalHotKey(keyCode: kVK_Space, modifiers: preset.modifiers | shiftKey,
-                               onRelease: { [weak self] in self?.session.stopListening() },
-                               handler: { [weak self] in self?.session.startListening() })
-        openItem?.title = "Open Tristan  (\(preset.rawValue), hold \(preset.talkLabel) to talk)"
+        let talk = GlobalHotKey(keyCode: shortcut.keyCode, modifiers: shortcut.talk.modifiers,
+                                onRelease: { [weak self] in self?.session.stopListening() },
+                                handler: { [weak self] in self?.session.startListening() })
+        hotKey = show
+        talkKey = talk
+        session.shortcutProblem = show.registered && talk.registered ? nil : "Another app or macOS already uses \(shortcut.display). Pick a different one."
     }
 
     @objc private func toggleHUD() {

@@ -1,4 +1,5 @@
 .build/
 .superpowers/
 Tristan.app/
+dist/
 .DS_Store

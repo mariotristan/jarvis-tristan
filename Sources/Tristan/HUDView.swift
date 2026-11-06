@@ -9,6 +9,7 @@ struct HUDView: View {
             Backdrop()
             VStack(spacing: 12) {
                 topBar
+                if session.musicOn { MusicStrip(music: session.music) }
                 HStack(spacing: 12) {
                     missionLog.frame(width: 270)
                     codeStream
@@ -250,5 +251,58 @@ extension ApprovalMode {
         case .auto: return Theme.amber
         case .yolo: return Theme.red
         }
+    }
+}
+
+/// Now-playing strip: track, transport controls and volume for the Spotify desktop app.
+struct MusicStrip: View {
+    @ObservedObject var music: SpotifyController
+    @State private var volume = 50.0
+    @State private var editingVolume = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("♪").foregroundStyle(Theme.amber)
+            if let playing = music.nowPlaying {
+                Text("\(playing.track)  —  \(playing.artist)")
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.cyan).lineLimit(1)
+                Spacer(minLength: 8)
+                control("backward.fill") { Task { _ = await music.perform(.previous) } }
+                control(playing.isPlaying ? "pause.fill" : "play.fill") { Task { await music.togglePlayPause() } }
+                control("forward.fill") { Task { _ = await music.perform(.next) } }
+                Image(systemName: "speaker.wave.2.fill").font(.system(size: 10)).foregroundStyle(Theme.cyan.opacity(0.6))
+                Slider(value: $volume, in: 0...100) { editing in
+                    editingVolume = editing
+                    if !editing { Task { await music.setVolume(Int(volume)) } }
+                }
+                .frame(width: 110).tint(Theme.cyan)
+                .onChange(of: playing.volume) { _, new in if !editingVolume { volume = Double(new) } }
+                .onAppear { volume = Double(playing.volume) }
+            } else {
+                Text(message)
+                    .font(.system(size: 11, design: .monospaced)).foregroundStyle(music.lastError == nil ? Theme.cyan.opacity(0.6) : Theme.amber)
+                    .lineLimit(1)
+                Spacer()
+                if !music.spotifyRunning {
+                    hudButton("PLAY FOCUS", tint: Theme.amber) { Task { _ = await music.perform(.focusPlaylist) } }
+                    hudButton("OPEN", tint: Theme.cyan) { Task { _ = await music.perform(.play) } }
+                }
+            }
+        }
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(Theme.panel)
+        .overlay(Rectangle().stroke(Theme.amber.opacity(0.4), lineWidth: 1))
+    }
+
+    private var message: String {
+        if let error = music.lastError { return error }
+        return music.spotifyRunning ? "Nothing playing in Spotify" : "Spotify is not running"
+    }
+
+    private func control(_ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(Theme.cyan).frame(width: 24, height: 20)
+        }
+        .buttonStyle(.plain)
     }
 }

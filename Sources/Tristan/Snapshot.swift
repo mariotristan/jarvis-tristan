@@ -7,7 +7,9 @@ enum Snapshot {
     static func run(into directory: URL) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let working = Session(history: nil)
+        let music = SpotifyController(runner: StaticRunner(), isRunning: { true })
+        let working = Session(history: nil, music: music)
+        working.musicOn = true
         working.provider = .claude
         working.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
         working.phase = .working
@@ -92,7 +94,17 @@ enum Snapshot {
 
     private static func entry(_ text: String, _ kind: LogEntry.Kind) -> LogEntry { LogEntry(text: text, kind: kind) }
 
+    /// Renders the app icon (a dark squircle with the arc reactor) at 1024 points, for `scripts/bundle.sh` to turn into an .icns.
+    static func renderIcon(to file: URL) {
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        write(AppIconView(), width: 1024, height: 1024, to: file)
+    }
+
     private static func save<V: View>(_ view: V, width: CGFloat, height: CGFloat, name: String) {
+        write(view, width: width, height: height, to: snapshotDirectory.appendingPathComponent(name))
+    }
+
+    private static func write<V: View>(_ view: V, width: CGFloat, height: CGFloat, to url: URL) {
         // Render through a real (offscreen) window: ImageRenderer skips ScrollViews and TextFields.
         let size = NSSize(width: width, height: height)
         let host = NSHostingView(rootView: view.frame(width: width, height: height))
@@ -105,15 +117,35 @@ enum Snapshot {
         window.orderBack(nil)
         host.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.6))
-        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { print("snapshot failed: \(name)"); return }
+        guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { print("render failed: \(url.lastPathComponent)"); return }
         host.cacheDisplay(in: host.bounds, to: rep)
-        guard let png = rep.representation(using: .png, properties: [:]) else { print("snapshot failed: \(name)"); return }
+        guard let png = rep.representation(using: .png, properties: [:]) else { print("render failed: \(url.lastPathComponent)"); return }
         window.orderOut(nil)
-        let url = snapshotDirectory.appendingPathComponent(name)
         try? png.write(to: url)
         print("wrote \(url.path)")
     }
 
     private static var snapshotDirectory = URL(fileURLWithPath: ".")
     static func setDirectory(_ url: URL) { snapshotDirectory = url }
+}
+
+struct AppIconView: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 190, style: .continuous)
+                .fill(RadialGradient(colors: [Color(red: 0.03, green: 0.20, blue: 0.27), Theme.deep],
+                                     center: .center, startRadius: 0, endRadius: 560))
+                .frame(width: 824, height: 824)
+            RoundedRectangle(cornerRadius: 190, style: .continuous)
+                .stroke(Theme.cyan.opacity(0.55), lineWidth: 8)
+                .frame(width: 824, height: 824)
+            ReactorView(active: true, tint: Theme.cyan, size: 560)
+        }
+        .frame(width: 1024, height: 1024)
+    }
+}
+
+/// Pretends to be Spotify for screenshots.
+private struct StaticRunner: ScriptRunner {
+    func run(_ source: String) async throws -> String { "playing\tDeep Focus\tSpotify\t60" }
 }

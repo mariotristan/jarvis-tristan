@@ -11,12 +11,13 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 ![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)
 ![Claude Code](https://img.shields.io/badge/Claude_Code-supported-D97757?logo=anthropic&logoColor=white)
 ![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-supported-FF9900?logo=amazonwebservices&logoColor=white)
+![Spotify](https://img.shields.io/badge/Spotify-controls_the_desktop_app-1DB954?logo=spotify&logoColor=white)
 ![Azure OpenAI](https://img.shields.io/badge/Azure_OpenAI-supported-0078D4?logo=microsoftazure&logoColor=white)
 ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-6e40c9?logo=githubcopilot&logoColor=white)
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 45 automated tests pass, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 89 automated tests pass, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Screenshots
 
@@ -63,9 +64,11 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **Movie-style sound and voice.** Synthesised sci-fi sounds (power-up, approval ping, mission complete, failure) and short spoken lines in a British voice: "On it, sir.", "Authorization required.", "Mission complete." Both can be switched off in Configuration. Run `Tristan --sound-demo` to hear every cue.
 - **Voice (push-to-talk).** Hold `⌥ ⇧ Space` and speak, release to send, or click the mic button. The transcript appears live in the input field and the notch. For tasks started by voice, Tristan reads the result aloud.
 - **Wake word (optional, off by default).** Say "Hey Tristan, …" and stop talking; Tristan sends the command after a short silence. It uses on-device speech recognition only, so audio never leaves your Mac, and it pauses while a mission runs.
-- **Mission history.** Every finished, failed or aborted mission is saved (task, provider, mode, a short summary and the folder, never code or file contents) and can be re-run in one click. The file is private to you (`0600`) in Application Support.
+- **Mission history.** Every finished, failed or aborted mission is saved (task, provider, mode, a short summary and the folder, never code or file contents) and can be searched, filtered by outcome and re-run in one click. The file is private to you (`0600`) in Application Support.
+- **Spotify (optional).** A now-playing strip with previous, play/pause, next and volume for the Spotify desktop app. Say or type short commands such as "play music", "pause", "next song", "volume 40", "what's playing" or "play my focus playlist" (set a playlist link in Configuration). These never start a coding mission and work while one is running. The music is turned down while Tristan talks or listens and restored afterwards. Works with free and Premium accounts, and needs no login or API keys (see [Spotify](#spotify)).
 - **Mac notifications** when approval is needed or a mission ends while Tristan is in the background. Clicking one brings the HUD forward.
-- **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` hides it. Pick another combination in Configuration if it clashes with another app.
+- **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` hides it. Pick a preset or record your own combination in Configuration; Tristan tells you if another app already owns it.
+- **Launch at login** switch for the installed app.
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
 - **Menu bar item** next to the clock to open Tristan or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -107,6 +110,15 @@ The `COPILOT` provider drives the [GitHub Copilot CLI](https://github.com/github
 
 So per-action approval and `ALWAYS ALLOW` are **not available for Copilot**; that is a limit of the CLI, not a choice. Output is streamed as plain text because the CLI has no structured output mode yet.
 
+### Spotify
+
+Tristan controls the **Spotify desktop app** through AppleScript, so there is no login, API key or Premium requirement. Turn on **SPOTIFY PLAYER** in Configuration. The first time, macOS asks whether Tristan may control Spotify; if you decline, allow it later in **System Settings > Privacy & Security > Automation**.
+
+- Control commands (pause, next, volume) never launch Spotify. Only an explicit "play music" or "play my focus playlist" starts it.
+- The focus playlist accepts a `spotify:playlist:…` URI or an `open.spotify.com` share link. Only well-formed identifiers are ever passed to AppleScript, so nothing else can be injected.
+- **Ducking:** while Tristan speaks or listens, Spotify drops to about 30% and returns afterwards. If you change the volume yourself during that time, Tristan leaves your choice alone. Switch it off with **LOWER MUSIC WHEN I TALK**. If the app quits mid-duck, it restores the volume first.
+- Commands only match whole short phrases, so a real task such as "add a pause button to the player" is never mistaken for a music command.
+
 ### AWS Bedrock
 
 The `BEDROCK` provider calls `aws bedrock-runtime converse` through the **AWS CLI**, so your credentials, SSO and profiles work exactly as in your terminal. Set the model id, region and optional profile in Configuration (the gear button).
@@ -115,14 +127,48 @@ The `BEDROCK` provider calls `aws bedrock-runtime converse` through the **AWS CL
 - **Approvals:** reads and listings never ask. `ASK` mode asks before every write and command. `AUTO` skips the prompt for file writes inside the folder and for plain commands, but still asks for chained, redirected or risky ones. `YOLO` never asks. `ALWAYS ALLOW` works the same as for Claude Code.
 - **Model:** it must support tool use (Anthropic Claude models do). The default id is a guess, `us.anthropic.claude-sonnet-4-20250514-v1:0`. List what your account can use with `aws bedrock list-inference-profiles`.
 - **Errors:** expired credentials, missing model access and a wrong model id produce a readable message in the mission log.
-- **Streaming:** the AWS CLI is not streaming, so text appears once per model turn rather than token by token. True streaming needs SigV4 request signing and AWS's binary event-stream format (or the AWS SDK as a dependency), which I could not validate without live credentials, so it is not built yet.
+- **Streaming:** Tristan streams over HTTPS (`ConverseStream`), signing each request with SigV4 and borrowing credentials from `aws configure export-credentials` (so SSO, profiles and SAML helpers work). If streaming cannot start for any reason it falls back to the non-streaming AWS CLI call, which also produces the clearest error messages. The signer is verified against AWS's published test vectors and the binary stream decoder against the wire format, but a real streamed call has not been made yet.
 
 `run_command` is not sandboxed beyond the working folder as its starting directory: a command can do anything your shell can. The approval prompt is the safety net, so be careful with `YOLO`.
+
+## Install
+
+### From a release (no Xcode needed)
+
+Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then either open the DMG and drag Tristan to Applications, or use the terminal:
+
+```bash
+# 1. Optional: check the download against the .sha256 file from the release
+cd ~/Downloads && shasum -a 256 -c Tristan-0.1.0.dmg.sha256
+
+# 2. Mount the disk image and copy the app to Applications
+hdiutil attach ~/Downloads/Tristan-0.1.0.dmg
+cp -R "/Volumes/Tristan 0.1.0/Tristan.app" /Applications/
+
+# 3. Remove the quarantine flag. macOS stamps every download with it, and Gatekeeper refuses apps that
+#    are not notarized. Tristan is only ad-hoc signed, because notarization needs a paid Apple Developer account.
+xattr -dr com.apple.quarantine /Applications/Tristan.app
+
+# 4. Launch it
+open /Applications/Tristan.app
+```
+
+If you skip step 3, macOS says the app "cannot be opened". You can also allow it under **System Settings > Privacy & Security > Open Anyway**.
+
+### From source
+
+```bash
+git clone https://github.com/mariotristan/jarvis-tristan.git
+cd jarvis-tristan
+scripts/install.sh      # builds, copies Tristan.app into /Applications and launches it
+```
+
+Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git push origin vX.Y.Z` publishes a release. See [docs/ci-and-release.md](docs/ci-and-release.md).
 
 ## Requirements
 
 - macOS 14 or later (developed on macOS 26).
-- Xcode installed. The command line tools alone are not enough because SwiftUI's macros need the full toolchain. `scripts/bundle.sh` picks up `/Applications/Xcode.app` automatically even if `xcode-select` points elsewhere.
+- To build from source: Xcode installed. The command line tools alone are not enough because SwiftUI's macros need the full toolchain. `scripts/bundle.sh` picks up `/Applications/Xcode.app` automatically even if `xcode-select` points elsewhere. Installing from a release needs no Xcode.
 - For the `CLAUDE` provider: the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) installed and logged in. Tristan looks for `claude` on `PATH`, plus `/opt/homebrew/bin` and `/usr/local/bin`.
 
 ## Build and run
@@ -130,7 +176,7 @@ The `BEDROCK` provider calls `aws bedrock-runtime converse` through the **AWS CL
 ```bash
 git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
-scripts/bundle.sh      # builds a release binary and wraps it into Tristan.app
+scripts/bundle.sh      # builds a release binary and wraps it into Tristan.app (with icon and version)
 open Tristan.app
 ```
 
@@ -172,6 +218,9 @@ Sources/Tristan/
 ├── CopilotProvider.swift   Copilot CLI driver and its permission mapping
 ├── Keychain.swift     Keychain storage for provider credentials
 ├── History.swift      Mission history records and their private JSON store
+├── BedrockStreaming.swift  SigV4 signer, event-stream decoder, ConverseStream client with CLI fallback
+├── Spotify.swift      Spotify control via AppleScript, music commands, ducking
+├── Shortcut.swift     Shortcut model and presets for the global hotkey
 ├── Notifier.swift     Mac notifications
 ├── WakeWord.swift     "Hey Tristan" matcher, silence-timing state machine and on-device listener
 ├── SettingsView.swift Configuration and history overlays
@@ -183,7 +232,10 @@ Sources/Tristan/
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
 ├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    45 tests: agent loop per provider, sandbox, rules, SSE, Copilot flags, wake word, history, audio
+Tests/TristanTests/    89 tests: agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, Copilot flags, wake word, history, Spotify, shortcuts, audio
+scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install)
+VERSION                Version number used by the scripts
+docs/ci-and-release.md How CI and releases work
 .github/workflows/     CI: build, test and bundle on macOS
 ```
 
@@ -245,14 +297,17 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 
 **What has actually been verified live:** the Claude Code provider (all modes, including per-action approvals), the HUD and the packaged app launching. **Everything below is built and tested with fakes but not yet run against the real thing:**
 
-- **Bedrock** has not run against live AWS (the AWS session was expired when it was built). The request format was checked against the AWS CLI's own skeleton.
+- **Bedrock** has not run against live AWS (the AWS session was expired when it was built). Request signing is verified against AWS's published examples and the stream decoder against the wire format; the CLI request format was checked against the CLI's own skeleton. If streaming fails it falls back to the CLI path automatically.
 - **Azure OpenAI** has not run against a real deployment. The streaming parser and wire format are tested with synthetic data in the OpenAI format.
 - **Copilot** was not launched with real permissions during development. The command-line flags follow the CLI's own help text, and process handling is tested with a stand-in command. Its output format is unstructured, so the HUD shows it as plain text.
 - **Wake word, push-to-talk, sound and notifications** build, launch and have unit tests for the logic (matching, timing, synthesis, gating), but have not been heard or seen working by me. Voice needs microphone and speech permission; the wake word needs a language with on-device recognition.
 - **`YOLO` is exactly as risky as it sounds.** Do not use it in a folder you cannot afford to lose.
 - **Actions you already allowed in your own Claude Code settings are not asked about again** in `ASK` mode.
 - **Copilot cannot be approved per action** (see [GitHub Copilot](#github-copilot)).
-- **Bedrock responses are not streamed** (see [AWS Bedrock](#aws-bedrock)).
+- **Spotify control** is tested against a pretend Spotify (commands, parsing, ducking, error handling) but has not been run against the real app. macOS asks for permission on first use.
+- **Launch at login** uses the system login-item service, which may ask you to approve an ad-hoc signed app in System Settings.
+- **The release workflow has not run yet** (it needs a first tag), and the CI workflow's Xcode 16.2 pin follows `catch-a-break` but is untested for this project.
+- **The app is not notarized** (see [Install](#install)); there is no auto-update.
 - The notch overlay has only been tested on a notched MacBook, and the visuals have not had a design pass on other displays.
 - Sound and voice quality depend on the voices installed on your Mac (a British English voice is preferred).
 
@@ -267,16 +322,18 @@ Done:
 - [x] Optional on-device "Hey Tristan" wake word
 - [x] Mac notifications, mission history with re-run
 - [x] Settings: shortcut, default folder, Keychain credentials, remembered choices
-- [x] Streaming for Azure OpenAI
-- [x] Automated tests (45) and CI workflow
+- [x] Streaming for Azure OpenAI and, with automatic fallback, for Bedrock
+- [x] Shortcut recorder, history search and filters
+- [x] Spotify player, voice and typed music commands, ducking, focus playlist
+- [x] Installable DMG with icon and versioning, release and CI workflows, install script, launch at login
+- [x] Automated tests (89)
 
 Next:
 
 - [ ] Live validation of Bedrock, Azure OpenAI, Copilot, wake word and notifications (needs real credentials and a human in front of the Mac)
-- [ ] Bedrock streaming (SigV4 signing plus event-stream parsing, or the AWS SDK)
 - [ ] Per-action approvals for Copilot, if the CLI gains a permission prompt hook
-- [ ] A shortcut recorder instead of presets
-- [ ] Search and filters in mission history
+- [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
+- [ ] Track title in the notch, and Apple Music support
 
 ## Regenerating the screenshots
 

@@ -1,8 +1,14 @@
 import SwiftUI
+import Carbon.HIToolbox
+import ServiceManagement
 
 struct SettingsOverlay: View {
     @EnvironmentObject var session: Session
     @State private var confirmingYolo = false
+    @State private var loginEnabled = false
+    @State private var loginMessage: String?
+    @State private var recordMonitor: Any?
+    @State private var recordError: String?
     @State private var azureKey = ""
     @State private var azureKeyStored = false
     @AppStorage("bedrock.model") private var bedrockModel = ""
@@ -12,6 +18,7 @@ struct SettingsOverlay: View {
     @AppStorage("azure.deployment") private var azureDeployment = ""
     @AppStorage("azure.apiVersion") private var azureAPIVersion = ""
     @AppStorage("copilot.model") private var copilotModel = ""
+    @AppStorage("music.focus") private var focusPlaylist = ""
 
     var body: some View {
         ZStack {
@@ -25,6 +32,7 @@ struct SettingsOverlay: View {
                         approvalSection
                         generalSection
                         voiceSection
+                        musicSection
                         providerSections
                         rulesSection
                     }
@@ -47,7 +55,9 @@ struct SettingsOverlay: View {
             .overlay(Rectangle().stroke(Theme.cyan, lineWidth: 1.5))
             .shadow(color: Theme.cyan.opacity(0.4), radius: 18)
         }
+        .onDisappear { stopRecording() }
         .onAppear {
+            loginEnabled = SMAppService.mainApp.status == .enabled
             azureKeyStored = KeychainStore.get(AzureConfig.keychainAccount)?.isEmpty == false
         }
     }
@@ -106,12 +116,18 @@ struct SettingsOverlay: View {
                 toggleButton("VOICE FEEDBACK", isOn: $session.voiceOn)
                 toggleButton("NOTIFICATIONS", isOn: $session.notificationsOn)
             }
+            if Bundle.main.bundleURL.pathExtension == "app" {
+                toggleButton("LAUNCH AT LOGIN", isOn: Binding(get: { loginEnabled }, set: { setLaunchAtLogin($0) }))
+                if let loginMessage {
+                    Text(loginMessage).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.amber)
+                }
+            }
             HStack(spacing: 8) {
                 Text("SHORTCUT")
                     .font(.system(size: 9, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
                 ForEach(HotkeyPreset.allCases) { preset in
-                    let on = session.hotkey == preset
-                    Button { session.hotkey = preset } label: {
+                    let on = session.hotkey == preset.shortcut
+                    Button { session.hotkey = preset.shortcut } label: {
                         Text(preset.rawValue)
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .frame(maxWidth: .infinity)
@@ -122,9 +138,21 @@ struct SettingsOverlay: View {
                     }
                     .buttonStyle(.plain)
                 }
+                Button { session.recordingShortcut ? stopRecording() : startRecording() } label: {
+                    Text(session.recordingShortcut ? "PRESS KEYS…" : "RECORD")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .padding(.vertical, 6).padding(.horizontal, 10)
+                        .background(session.recordingShortcut ? Theme.amber.opacity(0.25) : .clear)
+                        .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1))
+                        .foregroundStyle(Theme.amber)
+                }
+                .buttonStyle(.plain)
             }
-            Text("Shows the HUD. Hold \(session.hotkey.talkLabel) to talk.")
+            Text("Shows the HUD: \(session.hotkey.display). Hold \(session.hotkey.talk.display) to talk. Esc cancels recording.")
                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+            if let problem = recordError ?? session.shortcutProblem {
+                Text(problem).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.amber)
+            }
             HStack {
                 Text("DEFAULT FOLDER")
                     .font(.system(size: 9, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
@@ -142,6 +170,25 @@ struct SettingsOverlay: View {
             caption("VOICE")
             toggleButton("WAKE WORD  (say \"Hey Tristan\")", isOn: $session.wakeOn)
             Text("Always-on listening, off by default. Uses on-device recognition only, so audio never leaves your Mac. Pauses while a mission runs.")
+                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var musicSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            caption("MUSIC  (Spotify desktop app)")
+            HStack(spacing: 8) {
+                toggleButton("SPOTIFY PLAYER", isOn: $session.musicOn)
+                toggleButton("LOWER MUSIC WHEN I TALK", isOn: $session.duckMusic)
+            }
+            field("Focus playlist (Spotify link or URI)", text: $focusPlaylist, placeholder: "https://open.spotify.com/playlist/…")
+            if !focusPlaylist.isEmpty {
+                Text(SpotifyURI.normalize(focusPlaylist).map { "✓ \($0)" } ?? "Not a valid Spotify link")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(SpotifyURI.normalize(focusPlaylist) == nil ? Theme.red : Theme.green)
+            }
+            Text("Say or type \"play music\", \"pause\", \"next song\", \"volume 40\" or \"play my focus playlist\". macOS asks once to let Tristan control Spotify.")
                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -249,6 +296,41 @@ struct SettingsOverlay: View {
         }
     }
 
+    private func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            loginMessage = nil
+        } catch {
+            loginMessage = "Could not change Launch at login: \(error.localizedDescription)"
+        }
+        let status = SMAppService.mainApp.status
+        loginEnabled = status == .enabled
+        if status == .requiresApproval { loginMessage = "Approve Tristan in System Settings > General > Login Items." }
+    }
+
+    private func startRecording() {
+        recordError = nil
+        session.recordingShortcut = true
+        recordMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            if event.keyCode == UInt16(kVK_Escape) { stopRecording(); return nil }
+            let shortcut = Shortcut.make(keyCode: Int(event.keyCode), flags: event.modifierFlags,
+                                         characters: event.charactersIgnoringModifiers)
+            if let problem = shortcut.validationError {
+                recordError = problem
+            } else {
+                session.hotkey = shortcut
+                stopRecording()
+            }
+            return nil      // swallow the key press either way
+        }
+    }
+
+    private func stopRecording() {
+        if let recordMonitor { NSEvent.removeMonitor(recordMonitor) }
+        recordMonitor = nil
+        if session.recordingShortcut { session.recordingShortcut = false }
+    }
+
     private func choose(_ mode: ApprovalMode) {
         if mode == .yolo, session.approvalMode != .yolo {
             confirmingYolo = true
@@ -261,6 +343,10 @@ struct SettingsOverlay: View {
 
 struct HistoryOverlay: View {
     @EnvironmentObject var session: Session
+    @State private var query = ""
+    @State private var filter: HistoryFilter = .all
+
+    private var shown: [MissionRecord] { session.records.filtered(query: query, status: filter) }
 
     var body: some View {
         ZStack {
@@ -276,13 +362,37 @@ struct HistoryOverlay: View {
                             .font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Theme.red)
                     }
                 }
+                if !session.records.isEmpty {
+                    HStack(spacing: 8) {
+                        TextField("Search tasks, summaries, providers…", text: $query)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.cyan)
+                            .padding(6)
+                            .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                        ForEach(HistoryFilter.allCases) { option in
+                            let on = filter == option
+                            Button { filter = option } label: {
+                                Text(option.rawValue)
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .padding(.vertical, 7).padding(.horizontal, 8)
+                                    .background(on ? Theme.cyan.opacity(0.2) : .clear)
+                                    .overlay(Rectangle().stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
+                                    .foregroundStyle(Theme.cyan.opacity(on ? 1 : 0.6))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
                 if session.records.isEmpty {
                     Text("No missions yet.")
+                        .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+                } else if shown.isEmpty {
+                    Text("Nothing matches.")
                         .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
                 } else {
                     ScrollView {
                         VStack(spacing: 8) {
-                            ForEach(session.records) { record in row(record) }
+                            ForEach(shown) { record in row(record) }
                         }
                     }
                 }

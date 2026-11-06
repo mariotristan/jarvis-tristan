@@ -22,9 +22,16 @@ final class SoundFX {
     private let sampleRate = 44_100.0
     private var started = false
     private let speaker = AVSpeechSynthesizer()
+    private let speechDelegate = SpeechDelegate()
+    /// Called with true when a spoken line starts and false when it ends or is cut off.
+    var onSpeaking: ((Bool) -> Void)? {
+        didSet { speechDelegate.onChange = onSpeaking }
+    }
 
     var soundsOn = true
     var voiceOn = true
+
+    init() { speaker.delegate = speechDelegate }
 
     // MARK: sounds
 
@@ -129,4 +136,16 @@ final class SoundFX {
     static let approvalLines = ["Authorization required.", "I need your permission, sir.", "Awaiting your approval."]
     static let doneLines = ["Mission complete.", "All done, sir.", "Task complete.", "Done, sir."]
     static let failLines = ["Mission failed.", "I'm afraid that didn't work, sir.", "Something went wrong."]
+}
+
+/// Bridges AVSpeechSynthesizer callbacks (which arrive on arbitrary threads) to the main actor.
+private final class SpeechDelegate: NSObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
+    var onChange: ((Bool) -> Void)?
+
+    private func notify(_ speaking: Bool) {
+        DispatchQueue.main.async { [weak self] in self?.onChange?(speaking) }
+    }
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) { notify(true) }
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) { notify(false) }
+    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) { notify(false) }
 }

@@ -89,10 +89,11 @@ final class HistoryTests: XCTestCase {
 }
 
 final class SmallPiecesTests: XCTestCase {
-    func testHotkeyPresetsAreDistinct() {
-        let modifiers = HotkeyPreset.allCases.map(\.modifiers)
-        XCTAssertEqual(Set(modifiers).count, HotkeyPreset.allCases.count)
-        XCTAssertEqual(HotkeyPreset.optionSpace.talkLabel, "⌥⇧ Space")
+    func testHotkeyPresetsAreDistinctAndValid() {
+        let shortcuts = HotkeyPreset.allCases.map(\.shortcut)
+        XCTAssertEqual(Set(shortcuts.map(\.modifiers)).count, HotkeyPreset.allCases.count)
+        XCTAssertTrue(shortcuts.allSatisfy { $0.validationError == nil })
+        XCTAssertEqual(HotkeyPreset.optionSpace.shortcut, Shortcut.default)
     }
 
     func testNotificationsOnlyWhenEnabledInactiveAndBundled() {
@@ -135,5 +136,74 @@ final class SessionHistoryTests: XCTestCase {
         session.clearHistory()
         XCTAssertTrue(session.records.isEmpty)
         XCTAssertEqual(store.load(), [])
+    }
+}
+
+// MARK: shortcut recorder
+
+import Carbon.HIToolbox
+import AppKit
+
+final class ShortcutTests: XCTestCase {
+    func testDisplayAndPushToTalkVariant() {
+        XCTAssertEqual(Shortcut.default.display, "⌥ Space")
+        XCTAssertEqual(Shortcut.default.talk.display, "⌥⇧ Space")
+        let combo = Shortcut(keyCode: kVK_ANSI_J, modifiers: controlKey | optionKey | cmdKey, keyName: "J")
+        XCTAssertEqual(combo.display, "⌃⌥⌘ J", "symbols follow the macOS order")
+    }
+
+    func testBuildsFromKeyEventsWithReadableNames() {
+        let letter = Shortcut.make(keyCode: kVK_ANSI_J, flags: [.control, .option], characters: "j")
+        XCTAssertEqual(letter, Shortcut(keyCode: kVK_ANSI_J, modifiers: controlKey | optionKey, keyName: "J"))
+        XCTAssertEqual(Shortcut.make(keyCode: kVK_F5, flags: .command, characters: nil).keyName, "F5")
+        XCTAssertEqual(Shortcut.make(keyCode: kVK_UpArrow, flags: .option, characters: "\u{F700}").keyName, "↑")
+        XCTAssertEqual(Shortcut.make(keyCode: 200, flags: .option, characters: nil).keyName, "Key 200")
+    }
+
+    func testValidationRules() {
+        XCTAssertNil(Shortcut(keyCode: kVK_ANSI_J, modifiers: optionKey, keyName: "J").validationError)
+        XCTAssertNotNil(Shortcut(keyCode: kVK_ANSI_J, modifiers: 0, keyName: "J").validationError, "a bare key would steal typing")
+        XCTAssertNotNil(Shortcut(keyCode: kVK_ANSI_J, modifiers: shiftKey, keyName: "J").validationError)
+        XCTAssertNotNil(Shortcut(keyCode: kVK_ANSI_J, modifiers: optionKey | shiftKey, keyName: "J").validationError, "shift is for push-to-talk")
+        XCTAssertNotNil(Shortcut(keyCode: kVK_Space, modifiers: cmdKey, keyName: "Space").validationError, "Spotlight")
+        XCTAssertNotNil(Shortcut(keyCode: kVK_ANSI_Q, modifiers: cmdKey, keyName: "Q").validationError)
+        XCTAssertNil(Shortcut(keyCode: kVK_Space, modifiers: cmdKey | optionKey, keyName: "Space").validationError)
+    }
+
+    func testPersistsAsJSON() throws {
+        let original = Shortcut(keyCode: kVK_ANSI_K, modifiers: controlKey | cmdKey, keyName: "K")
+        XCTAssertEqual(try JSONDecoder().decode(Shortcut.self, from: JSONEncoder().encode(original)), original)
+    }
+}
+
+// MARK: history search
+
+final class HistoryFilterTests: XCTestCase {
+    private let records = [
+        MissionRecord(task: "add login to the API", provider: "CLAUDE", mode: "ASK", status: "done", summary: "Added auth.ts", folder: "/code/my-api"),
+        MissionRecord(task: "upgrade dependencies", provider: "COPILOT", mode: "ASK", status: "failed", summary: "Denied by operator", folder: "/code/my-api"),
+        MissionRecord(task: "write a README", provider: "AZURE", mode: "YOLO", status: "aborted", summary: "Aborted by operator", folder: "/code/scripts"),
+    ]
+
+    func testEmptyQueryAndAllShowsEverything() {
+        XCTAssertEqual(records.filtered(query: "", status: .all).count, 3)
+    }
+
+    func testStatusFilter() {
+        XCTAssertEqual(records.filtered(query: "", status: .failed).map(\.task), ["upgrade dependencies"])
+        XCTAssertEqual(records.filtered(query: "", status: .aborted).count, 1)
+    }
+
+    func testEveryWordMustMatchAcrossAllFieldsIgnoringCase() {
+        XCTAssertEqual(records.filtered(query: "LOGIN api", status: .all).count, 1)
+        XCTAssertEqual(records.filtered(query: "copilot denied", status: .all).count, 1)
+        XCTAssertEqual(records.filtered(query: "my-api", status: .all).count, 2, "matches the folder name")
+        XCTAssertEqual(records.filtered(query: "yolo readme", status: .all).count, 1)
+        XCTAssertTrue(records.filtered(query: "login scripts", status: .all).isEmpty)
+    }
+
+    func testSearchAndStatusCombine() {
+        XCTAssertEqual(records.filtered(query: "operator", status: .failed).count, 1)
+        XCTAssertTrue(records.filtered(query: "login", status: .failed).isEmpty)
     }
 }

@@ -62,6 +62,12 @@ if args.contains("--sound-demo") {
     dispatchMain()
 }
 
+// `Tristan --make-icon <file.png>`: renders the app icon (used by scripts/bundle.sh).
+if let flag = args.firstIndex(of: "--make-icon"), args.indices.contains(flag + 1) {
+    MainActor.assumeIsolated { Snapshot.renderIcon(to: URL(fileURLWithPath: args[flag + 1])) }
+    exit(0)
+}
+
 let app = NSApplication.shared
 
 if let flag = args.firstIndex(of: "--snapshot") {

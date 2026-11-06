@@ -39,14 +39,23 @@ final class Session: ObservableObject {
     @Published var wakeOn = false {
         didSet { UserDefaults.standard.set(wakeOn, forKey: "wakeOn"); refreshWake() }
     }
-    @Published var hotkey: HotkeyPreset = .optionSpace {
-        didSet { UserDefaults.standard.set(hotkey.rawValue, forKey: "hotkey") }
+    @Published var hotkey: Shortcut = .default {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(hotkey), forKey: "shortcut") }
+    }
+    /// True while the settings panel is capturing a new shortcut (the global ones are paused meanwhile).
+    @Published var recordingShortcut = false
+    @Published var shortcutProblem: String?
+    @Published var musicOn = false {
+        didSet { music.enabled = musicOn; UserDefaults.standard.set(musicOn, forKey: "musicOn") }
+    }
+    @Published var duckMusic = true {
+        didSet { music.duckingEnabled = duckMusic; UserDefaults.standard.set(duckMusic, forKey: "duckMusic") }
     }
     @Published var showSettings = false
     @Published var showHistory = false
     @Published var draft = ""
     @Published var listening = false {
-        didSet { refreshWake() }
+        didSet { refreshWake(); music.setDuck("mic", active: listening) }
     }
     @Published var provider: ProviderKind = .demo {
         didSet { UserDefaults.standard.set(provider.rawValue, forKey: "provider") }
@@ -61,6 +70,7 @@ final class Session: ObservableObject {
     private let voice = VoiceInput()
     private let wake = WakeListener()
     private let fx = SoundFX()
+    let music: SpotifyController
     private let history: HistoryStore?
     private var announcedApproval = false
     private var spokenReply = false
@@ -68,18 +78,26 @@ final class Session: ObservableObject {
     private var recorded = false
 
     /// `history: nil` keeps everything in memory (tests, headless runs, screenshots).
-    init(history: HistoryStore? = HistoryStore.standard) {
+    init(history: HistoryStore? = HistoryStore.standard, music: SpotifyController? = nil) {
         self.history = history
+        self.music = music ?? SpotifyController()
         let defaults = UserDefaults.standard
         if defaults.object(forKey: "soundsOn") != nil { soundsOn = defaults.bool(forKey: "soundsOn") }
         if defaults.object(forKey: "voiceOn") != nil { voiceOn = defaults.bool(forKey: "voiceOn") }
         if defaults.object(forKey: "notificationsOn") != nil { notificationsOn = defaults.bool(forKey: "notificationsOn") }
         fx.soundsOn = soundsOn
         fx.voiceOn = voiceOn
+        fx.onSpeaking = { [weak self] speaking in self?.music.setDuck("speech", active: speaking) }
+        if defaults.object(forKey: "duckMusic") != nil { duckMusic = defaults.bool(forKey: "duckMusic") }
+        self.music.duckingEnabled = duckMusic
         Notifier.shared.enabled = notificationsOn
         if let saved = defaults.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) { approvalMode = mode }
         if let saved = defaults.string(forKey: "provider"), let kind = ProviderKind(rawValue: saved) { provider = kind }
-        if let saved = defaults.string(forKey: "hotkey"), let preset = HotkeyPreset(rawValue: saved) { hotkey = preset }
+        if let data = defaults.data(forKey: "shortcut"), let saved = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            hotkey = saved
+        } else if let legacy = defaults.string(forKey: "hotkey"), let preset = HotkeyPreset(rawValue: legacy) {
+            hotkey = preset.shortcut      // settings saved by an earlier version
+        }
         if let path = defaults.string(forKey: "workingDirectory"), FileManager.default.fileExists(atPath: path) {
             workingDirectory = URL(fileURLWithPath: path)
         }
@@ -97,13 +115,23 @@ final class Session: ObservableObject {
             self?.add(message, .warn)
         }
         if defaults.bool(forKey: "wakeOn") { wakeOn = true }
+        if defaults.bool(forKey: "musicOn") { musicOn = true }
     }
 
     var busy: Bool { phase == .working || phase == .awaitingApproval }
 
     func submit(_ prompt: String, viaVoice: Bool = false) {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty, !busy else { return }
+        // Short music commands ("next song") never start a mission, and work even while one is running.
+        if musicOn, let command = MusicCommand.parse(prompt) {
+            runMusic(command, viaVoice: viaVoice)
+            return
+        }
+        guard !prompt.isEmpty else { return }
+        guard !busy else {
+            if viaVoice { add("A mission is running. Abort it or wait before giving another task.", .warn) }
+            return
+        }
         spokenReply = viaVoice
         log = []
         code = ""
@@ -154,14 +182,26 @@ final class Session: ObservableObject {
         cont.resume(returning: approved)
     }
 
+    // MARK: music
+
+    private func runMusic(_ command: MusicCommand, viaVoice: Bool) {
+        draft = ""
+        Task { [weak self] in
+            guard let self else { return }
+            let reply = await self.music.perform(command)
+            self.add("♪ \(reply)", .info)
+            if viaVoice { self.fx.say(reply) }
+        }
+    }
+
     // MARK: voice
 
     /// Push-to-talk: transcript streams into `draft`; releasing sends it as a task.
     func startListening() {
-        guard !busy, !listening else { return }
+        guard !listening else { return }
         listening = true
         draft = ""
-        status = "LISTENING"
+        if !busy { status = "LISTENING" }
         fx.stopSpeaking()
         fx.play(.listenStart)
         voice.start(onText: { [weak self] in self?.draft = $0 }, onError: { [weak self] message in
@@ -197,6 +237,7 @@ final class Session: ObservableObject {
     }
 
     private func wakeStarted() {
+        music.setDuck("mic", active: true)
         status = "LISTENING"
         draft = ""
         fx.stopSpeaking()
@@ -204,12 +245,14 @@ final class Session: ObservableObject {
     }
 
     private func wakeSubmit(_ text: String) {
+        music.setDuck("mic", active: false)
         fx.play(.listenStop)
         draft = ""
         submit(text, viaVoice: true)
     }
 
     private func wakeCancelled() {
+        music.setDuck("mic", active: false)
         draft = ""
         if phase == .idle { status = "STANDING BY" }
     }

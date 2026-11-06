@@ -19,6 +19,14 @@ struct BedrockConfig {
 /// One model call. The real implementation shells out to the AWS CLI; tests use a scripted fake.
 protocol ConverseClient: Sendable {
     func converse(_ request: [String: Any]) async throws -> [String: Any]
+    /// Streams text through `onText` when the client can; the result is always the complete response.
+    func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any]
+}
+
+extension ConverseClient {
+    func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
+        try await converse(request)
+    }
 }
 
 struct BedrockError: LocalizedError {
@@ -108,7 +116,8 @@ struct BedrockBackend: ChatBackend {
             "toolConfig": ["tools": AgentToolSpec.converseTools],
             "inferenceConfig": ["maxTokens": 4096],
         ]
-        let response = try await client.converse(request)
+        let tally = StreamTally()
+        let response = try await client.converseStreaming(request) { delta in tally.note(); onText(delta) }
         guard let message = (response["output"] as? [String: Any])?["message"] as? [String: Any],
               let content = message["content"] as? [[String: Any]] else {
             throw BedrockError(message: "Unexpected response from Bedrock")
@@ -129,7 +138,7 @@ struct BedrockBackend: ChatBackend {
         case "content_filtered", "guardrail_intervened": stop = .filtered
         default: stop = .end
         }
-        return ModelTurn(text: text, calls: calls, stop: stop)
+        return ModelTurn(text: text, calls: calls, stop: stop, streamed: tally.count > 0)
     }
 
     static func wire(_ message: ChatMessage) -> [String: Any] {
@@ -151,7 +160,12 @@ struct BedrockBackend: ChatBackend {
 /// Bedrock agent: the shared agent loop on top of Bedrock's Converse API.
 struct BedrockProvider: AgentProvider {
     var mode: ApprovalMode = .ask
-    var client: ConverseClient = AWSCLIConverseClient(config: .load())
+    /// Streams over HTTPS when possible and falls back to the AWS CLI (which also gives the clearest error messages).
+    var client: ConverseClient = {
+        let config = BedrockConfig.load()
+        return FallbackConverseClient(primary: BedrockStreamingClient(config: config, credentialProvider: AWSCLICredentials(profile: config.profile)),
+                                      fallback: AWSCLIConverseClient(config: config))
+    }()
     var maxTurns = 25
 
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
