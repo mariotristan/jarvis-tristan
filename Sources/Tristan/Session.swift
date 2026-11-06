@@ -14,7 +14,9 @@ struct LogEntry: Identifiable {
 
 @MainActor
 final class Session: ObservableObject {
-    @Published var phase: Phase = .idle
+    @Published var phase: Phase = .idle {
+        didSet { refreshWake() }
+    }
     @Published var log: [LogEntry] = []
     @Published var code = ""
     @Published var status = "STANDING BY"
@@ -31,31 +33,70 @@ final class Session: ObservableObject {
     @Published var voiceOn = true {
         didSet { fx.voiceOn = voiceOn; UserDefaults.standard.set(voiceOn, forKey: "voiceOn") }
     }
+    @Published var notificationsOn = true {
+        didSet { Notifier.shared.enabled = notificationsOn; UserDefaults.standard.set(notificationsOn, forKey: "notificationsOn") }
+    }
+    @Published var wakeOn = false {
+        didSet { UserDefaults.standard.set(wakeOn, forKey: "wakeOn"); refreshWake() }
+    }
+    @Published var hotkey: HotkeyPreset = .optionSpace {
+        didSet { UserDefaults.standard.set(hotkey.rawValue, forKey: "hotkey") }
+    }
     @Published var showSettings = false
+    @Published var showHistory = false
     @Published var draft = ""
-    @Published var listening = false
-    @Published var provider: ProviderKind = .demo
-    @Published var workingDirectory = FileManager.default.homeDirectoryForCurrentUser
+    @Published var listening = false {
+        didSet { refreshWake() }
+    }
+    @Published var provider: ProviderKind = .demo {
+        didSet { UserDefaults.standard.set(provider.rawValue, forKey: "provider") }
+    }
+    @Published var workingDirectory = FileManager.default.homeDirectoryForCurrentUser {
+        didSet { UserDefaults.standard.set(workingDirectory.path, forKey: "workingDirectory") }
+    }
+    @Published var records: [MissionRecord] = []
 
     private var approval: CheckedContinuation<Bool, Never>?
     private var runner: Task<Void, Never>?
     private let voice = VoiceInput()
+    private let wake = WakeListener()
     private let fx = SoundFX()
+    private let history: HistoryStore?
     private var announcedApproval = false
     private var spokenReply = false
+    private var currentTask = ""
+    private var recorded = false
 
-    init() {
-        if UserDefaults.standard.object(forKey: "soundsOn") != nil { soundsOn = UserDefaults.standard.bool(forKey: "soundsOn") }
-        if UserDefaults.standard.object(forKey: "voiceOn") != nil { voiceOn = UserDefaults.standard.bool(forKey: "voiceOn") }
+    /// `history: nil` keeps everything in memory (tests, headless runs, screenshots).
+    init(history: HistoryStore? = HistoryStore.standard) {
+        self.history = history
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: "soundsOn") != nil { soundsOn = defaults.bool(forKey: "soundsOn") }
+        if defaults.object(forKey: "voiceOn") != nil { voiceOn = defaults.bool(forKey: "voiceOn") }
+        if defaults.object(forKey: "notificationsOn") != nil { notificationsOn = defaults.bool(forKey: "notificationsOn") }
         fx.soundsOn = soundsOn
         fx.voiceOn = voiceOn
-        if let saved = UserDefaults.standard.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) {
-            approvalMode = mode
+        Notifier.shared.enabled = notificationsOn
+        if let saved = defaults.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) { approvalMode = mode }
+        if let saved = defaults.string(forKey: "provider"), let kind = ProviderKind(rawValue: saved) { provider = kind }
+        if let saved = defaults.string(forKey: "hotkey"), let preset = HotkeyPreset(rawValue: saved) { hotkey = preset }
+        if let path = defaults.string(forKey: "workingDirectory"), FileManager.default.fileExists(atPath: path) {
+            workingDirectory = URL(fileURLWithPath: path)
         }
-        if let data = UserDefaults.standard.data(forKey: "allowRules"),
-           let rules = try? JSONDecoder().decode([ApprovalRule].self, from: data) {
+        if let data = defaults.data(forKey: "allowRules"), let rules = try? JSONDecoder().decode([ApprovalRule].self, from: data) {
             allowRules = rules
         }
+        records = history?.load() ?? []
+
+        wake.onStarted = { [weak self] in self?.wakeStarted() }
+        wake.onUpdate = { [weak self] in self?.draft = $0 }
+        wake.onSubmit = { [weak self] in self?.wakeSubmit($0) }
+        wake.onCancel = { [weak self] in self?.wakeCancelled() }
+        wake.onError = { [weak self] message in
+            self?.wakeOn = false
+            self?.add(message, .warn)
+        }
+        if defaults.bool(forKey: "wakeOn") { wakeOn = true }
     }
 
     var busy: Bool { phase == .working || phase == .awaitingApproval }
@@ -66,6 +107,8 @@ final class Session: ObservableObject {
         spokenReply = viaVoice
         log = []
         code = ""
+        currentTask = prompt
+        recorded = false
         guard let impl = provider.makeProvider(mode: approvalMode) else {
             phase = .failed
             status = "OFFLINE"
@@ -91,7 +134,10 @@ final class Session: ObservableObject {
     func cancel() {
         runner?.cancel()
         resolve(false)
-        if busy { phase = .failed; status = "ABORTED"; add("Aborted by operator", .warn) }
+        if busy {
+            phase = .failed; status = "ABORTED"; add("Aborted by operator", .warn)
+            record(status: "aborted", summary: "Aborted by operator")
+        }
     }
 
     func resolve(_ approved: Bool, always: Bool = false) {
@@ -107,6 +153,8 @@ final class Session: ObservableObject {
         fx.play(approved ? .approved : .denied)
         cont.resume(returning: approved)
     }
+
+    // MARK: voice
 
     /// Push-to-talk: transcript streams into `draft`; releasing sends it as a task.
     func startListening() {
@@ -143,6 +191,55 @@ final class Session: ObservableObject {
         }
     }
 
+    /// The wake listener only runs while the feature is on and nothing else needs the microphone.
+    private func refreshWake() {
+        wake.setRunning(wakeOn && !busy && !listening)
+    }
+
+    private func wakeStarted() {
+        status = "LISTENING"
+        draft = ""
+        fx.stopSpeaking()
+        fx.play(.listenStart)
+    }
+
+    private func wakeSubmit(_ text: String) {
+        fx.play(.listenStop)
+        draft = ""
+        submit(text, viaVoice: true)
+    }
+
+    private func wakeCancelled() {
+        draft = ""
+        if phase == .idle { status = "STANDING BY" }
+    }
+
+    // MARK: history
+
+    func rerun(_ record: MissionRecord) {
+        guard !busy else { return }
+        if let kind = ProviderKind(rawValue: record.provider) { provider = kind }
+        if FileManager.default.fileExists(atPath: record.folder) { workingDirectory = URL(fileURLWithPath: record.folder) }
+        draft = record.task
+        showHistory = false
+    }
+
+    func clearHistory() {
+        records = []
+        history?.save([])
+    }
+
+    private func record(status: String, summary: String) {
+        guard !recorded, !currentTask.isEmpty else { return }
+        recorded = true
+        records.insert(MissionRecord(task: currentTask, provider: provider.rawValue, mode: approvalMode.rawValue, status: status,
+                                     summary: String(summary.prefix(240)), folder: workingDirectory.path), at: 0)
+        if records.count > 100 { records.removeLast(records.count - 100) }
+        history?.save(records)
+    }
+
+    // MARK: folders
+
     func chooseFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -150,6 +247,8 @@ final class Session: ObservableObject {
         panel.directoryURL = workingDirectory
         if panel.runModal() == .OK, let url = panel.url { workingDirectory = url }
     }
+
+    // MARK: agent events
 
     private func ask(_ request: ApprovalRequest) async -> Bool {
         if let rule = request.rule, allowRules.contains(rule) {
@@ -161,6 +260,7 @@ final class Session: ObservableObject {
         status = "AWAITING AUTHORIZATION"
         add(request.summary, .warn)
         fx.play(.approvalNeeded)
+        Notifier.shared.post(title: "Tristan needs your approval", body: "\(request.summary) \(request.detail)")
         if !announcedApproval {
             announcedApproval = true
             fx.say(SoundFX.approvalLines.randomElement()!)
@@ -175,18 +275,25 @@ final class Session: ObservableObject {
         case .code(let s): code += s
         case .done(let s):
             phase = .done; status = "MISSION COMPLETE"; add(s, .ok)
+            record(status: "done", summary: s)
             fx.play(.missionComplete)
+            Notifier.shared.post(title: "Mission complete", body: s)
             // Tasks given by voice get the result read back; others get a short confirmation.
             if spokenReply { fx.say(String(s.prefix(240))) } else { fx.say(SoundFX.doneLines.randomElement()!) }
         case .failed(let s):
             phase = .failed; status = "MISSION FAILED"; add(s, .warn)
+            record(status: "failed", summary: s)
             fx.play(.missionFailed)
+            Notifier.shared.post(title: "Mission failed", body: s)
             fx.say(SoundFX.failLines.randomElement()!)
         }
     }
 
     private func streamEnded() {
-        if busy { phase = .done; status = "MISSION COMPLETE" }
+        if busy {
+            phase = .done; status = "MISSION COMPLETE"
+            record(status: "done", summary: "Complete")
+        }
     }
 
     private func add(_ text: String, _ kind: LogEntry.Kind) {

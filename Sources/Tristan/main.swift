@@ -15,7 +15,7 @@ if let flag = args.firstIndex(of: "--headless"), args.indices.contains(flag + 2)
     let choice = args.indices.contains(flag + 3) ? args[flag + 3] : "allow"
     let mode: ApprovalMode = choice == "auto" ? .auto : choice == "yolo" ? .yolo : .ask
     Task { @MainActor in
-        let session = Session()
+        let session = Session(history: nil)
         session.provider = choice.hasPrefix("bedrock") ? .bedrock : .claude
         session.approvalMode = mode
         session.workingDirectory = dir

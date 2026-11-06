@@ -5,26 +5,39 @@ struct ToolCallResult {
     let isError: Bool
 }
 
-/// Tool definitions in the Bedrock Converse `toolSpec` format, for providers that need their own agent loop.
+struct ToolDefinition {
+    let name: String
+    let description: String
+    let properties: [String: [String: String]]
+    let required: [String]
+}
+
+/// Tool definitions, rendered in whichever wire format a provider needs.
 enum AgentToolSpec {
-    static var converseTools: [[String: Any]] {
-        [
-            spec("read_file", "Read a UTF-8 text file inside the working folder.",
-                 ["path": ["type": "string", "description": "Path relative to the working folder"]], required: ["path"]),
-            spec("list_dir", "List the entries of a directory inside the working folder. Use \".\" for the folder itself.",
-                 ["path": ["type": "string", "description": "Directory path relative to the working folder"]], required: ["path"]),
-            spec("write_file", "Create or overwrite a text file inside the working folder.",
-                 ["path": ["type": "string", "description": "Path relative to the working folder"],
-                  "content": ["type": "string", "description": "Full file contents"]], required: ["path", "content"]),
-            spec("run_command", "Run a shell command (zsh) in the working folder. 60 second timeout.",
-                 ["command": ["type": "string", "description": "The command to run"]], required: ["command"]),
-        ]
+    static let definitions: [ToolDefinition] = [
+        ToolDefinition(name: "read_file", description: "Read a UTF-8 text file inside the working folder.",
+                       properties: ["path": ["type": "string", "description": "Path relative to the working folder"]], required: ["path"]),
+        ToolDefinition(name: "list_dir", description: "List the entries of a directory inside the working folder. Use \".\" for the folder itself.",
+                       properties: ["path": ["type": "string", "description": "Directory path relative to the working folder"]], required: ["path"]),
+        ToolDefinition(name: "write_file", description: "Create or overwrite a text file inside the working folder.",
+                       properties: ["path": ["type": "string", "description": "Path relative to the working folder"],
+                                    "content": ["type": "string", "description": "Full file contents"]], required: ["path", "content"]),
+        ToolDefinition(name: "run_command", description: "Run a shell command (zsh) in the working folder. 60 second timeout.",
+                       properties: ["command": ["type": "string", "description": "The command to run"]], required: ["command"]),
+    ]
+
+    private static func schema(_ tool: ToolDefinition) -> [String: Any] {
+        ["type": "object", "properties": tool.properties, "required": tool.required]
     }
 
-    private static func spec(_ name: String, _ description: String, _ properties: [String: [String: String]],
-                             required: [String]) -> [String: Any] {
-        ["toolSpec": ["name": name, "description": description,
-                      "inputSchema": ["json": ["type": "object", "properties": properties, "required": required]]]]
+    /// Bedrock Converse `toolSpec` format.
+    static var converseTools: [[String: Any]] {
+        definitions.map { ["toolSpec": ["name": $0.name, "description": $0.description, "inputSchema": ["json": schema($0)]]] }
+    }
+
+    /// OpenAI / Azure OpenAI function-calling format.
+    static var openAITools: [[String: Any]] {
+        definitions.map { ["type": "function", "function": ["name": $0.name, "description": $0.description, "parameters": schema($0)]] }
     }
 }
 

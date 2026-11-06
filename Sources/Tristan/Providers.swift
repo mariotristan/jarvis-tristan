@@ -95,7 +95,8 @@ enum ProviderKind: String, CaseIterable, Identifiable {
         case .claude: return ClaudeCodeProvider(mode: mode)
         case .bedrock: return BedrockProvider(mode: mode)
         case .demo: return DemoProvider()
-        case .copilot, .azure: return nil
+        case .azure: return AzureOpenAIProvider(mode: mode)
+        case .copilot: return CopilotProvider(mode: mode)
         }
     }
 }

@@ -97,122 +97,65 @@ struct AWSCLIConverseClient: ConverseClient {
     }
 }
 
-/// A small agent loop on top of Bedrock's Converse API: the model asks for tools, Tristan runs them
-/// (asking the operator first, per approval mode) and feeds the results back until the model is done.
+/// Translates the neutral transcript to and from Bedrock's Converse wire format.
+struct BedrockBackend: ChatBackend {
+    let client: ConverseClient
+
+    func nextTurn(system: String, history: [ChatMessage], onText: @escaping @Sendable (String) -> Void) async throws -> ModelTurn {
+        let request: [String: Any] = [
+            "messages": history.map(Self.wire),
+            "system": [["text": system]],
+            "toolConfig": ["tools": AgentToolSpec.converseTools],
+            "inferenceConfig": ["maxTokens": 4096],
+        ]
+        let response = try await client.converse(request)
+        guard let message = (response["output"] as? [String: Any])?["message"] as? [String: Any],
+              let content = message["content"] as? [[String: Any]] else {
+            throw BedrockError(message: "Unexpected response from Bedrock")
+        }
+        var text = ""
+        var calls: [ToolCall] = []
+        for block in content {
+            if let t = block["text"] as? String { text += t }
+            if let use = block["toolUse"] as? [String: Any] {
+                calls.append(ToolCall(id: use["toolUseId"] as? String ?? "", name: use["name"] as? String ?? "",
+                                      input: use["input"] as? [String: Any] ?? [:]))
+            }
+        }
+        let stop: StopReason
+        switch response["stopReason"] as? String {
+        case "tool_use": stop = .toolUse
+        case "max_tokens": stop = .truncated
+        case "content_filtered", "guardrail_intervened": stop = .filtered
+        default: stop = .end
+        }
+        return ModelTurn(text: text, calls: calls, stop: stop)
+    }
+
+    static func wire(_ message: ChatMessage) -> [String: Any] {
+        switch message {
+        case .user(let text):
+            return ["role": "user", "content": [["text": text]]]
+        case .assistant(let text, let calls):
+            var content: [[String: Any]] = text.isEmpty ? [] : [["text": text]]
+            content += calls.map { ["toolUse": ["toolUseId": $0.id, "name": $0.name, "input": $0.input]] }
+            return ["role": "assistant", "content": content]
+        case .toolResults(let outcomes):
+            return ["role": "user", "content": outcomes.map {
+                ["toolResult": ["toolUseId": $0.id, "content": [["text": $0.text]], "status": $0.isError ? "error" : "success"]]
+            }]
+        }
+    }
+}
+
+/// Bedrock agent: the shared agent loop on top of Bedrock's Converse API.
 struct BedrockProvider: AgentProvider {
     var mode: ApprovalMode = .ask
     var client: ConverseClient = AWSCLIConverseClient(config: .load())
     var maxTurns = 25
 
-    private let systemPrompt = """
-    You are Tristan, a coding agent working in a single project folder on the user's Mac. \
-    Use the tools to read, list and write files and to run shell commands. All paths are relative to the working folder. \
-    Look before you change things, keep edits small, and run tests when they exist. \
-    If a tool call is denied, do not try to work around the denial; explain what you could not do. \
-    When finished, reply with a short summary of what you changed.
-    """
-
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
-        AsyncStream { c in
-            let worker = Task {
-                let sandbox = ToolSandbox(root: workingDirectory)
-                let policy = ToolPolicy(mode: mode)
-                var messages: [[String: Any]] = [["role": "user", "content": [["text": task]]]]
-                c.yield(.log("Bedrock agent, approval mode \(mode.rawValue)"))
-
-                for turn in 0..<maxTurns {
-                    if Task.isCancelled { c.finish(); return }
-                    c.yield(.status(turn == 0 ? "THINKING" : "REASONING"))
-                    let request: [String: Any] = [
-                        "messages": messages,
-                        "system": [["text": systemPrompt]],
-                        "toolConfig": ["tools": AgentToolSpec.converseTools],
-                        "inferenceConfig": ["maxTokens": 4096],
-                    ]
-                    let response: [String: Any]
-                    do { response = try await client.converse(request) } catch is CancellationError {
-                        c.finish(); return
-                    } catch {
-                        c.yield(.failed(error.localizedDescription)); c.finish(); return
-                    }
-                    guard let message = (response["output"] as? [String: Any])?["message"] as? [String: Any],
-                          let content = message["content"] as? [[String: Any]] else {
-                        c.yield(.failed("Unexpected response from Bedrock")); c.finish(); return
-                    }
-                    messages.append(message)
-
-                    var finalText = ""
-                    var results: [[String: Any]] = []
-                    for block in content {
-                        if let text = block["text"] as? String {
-                            finalText += text
-                            c.yield(.status("RESPONDING"))
-                            c.yield(.code(text + "\n"))
-                        }
-                        if let use = block["toolUse"] as? [String: Any] {
-                            results.append(await execute(use, sandbox: sandbox, policy: policy, approve: approve, events: c))
-                        }
-                    }
-                    if (response["stopReason"] as? String) == "tool_use", !results.isEmpty {
-                        messages.append(["role": "user", "content": results])
-                        continue
-                    }
-                    c.yield(.done(finalText.isEmpty ? "Complete" : finalText))
-                    c.finish(); return
-                }
-                c.yield(.failed("Stopped after \(maxTurns) turns without finishing"))
-                c.finish()
-            }
-            c.onTermination = { _ in worker.cancel() }
-        }
-    }
-
-    private func execute(_ use: [String: Any], sandbox: ToolSandbox, policy: ToolPolicy, approve: Approver,
-                         events c: AsyncStream<AgentEvent>.Continuation) async -> [String: Any] {
-        let id = use["toolUseId"] as? String ?? ""
-        let name = use["name"] as? String ?? ""
-        let input = use["input"] as? [String: Any] ?? [:]
-        let denied = ToolCallResult(text: "The operator denied this action. Do not retry it; explain what you could not do.", isError: true)
-        var result: ToolCallResult
-
-        switch name {
-        case "read_file":
-            let path = input["path"] as? String ?? ""
-            c.yield(.status("READING")); c.yield(.log("read_file \(path)"))
-            result = sandbox.read(path)
-        case "list_dir":
-            let path = input["path"] as? String ?? "."
-            c.yield(.status("SCANNING")); c.yield(.log("list_dir \(path)"))
-            result = sandbox.list(path)
-        case "write_file":
-            let path = input["path"] as? String ?? ""
-            let text = input["content"] as? String ?? ""
-            if let url = sandbox.resolve(path) {
-                let rule = ApprovalRule.make(tool: "Write", input: ["file_path": url.path], workingDirectory: sandbox.root)
-                let allowed = policy.needsApproval(tool: name, rule: rule)
-                    ? await approve(ApprovalRequest(summary: "Allow Write?", detail: "\(sandbox.relative(url)) (\(text.utf8.count) bytes)", rule: rule))
-                    : true
-                if allowed {
-                    c.yield(.status("WRITING CODE")); c.yield(.log("write_file \(sandbox.relative(url))"))
-                    c.yield(.code("// \(sandbox.relative(url))\n\(text)\n\n"))
-                    result = sandbox.write(path, content: text)
-                } else { result = denied }
-            } else {
-                result = sandbox.write(path, content: text)   // returns the "outside the folder" error
-            }
-        case "run_command":
-            let command = input["command"] as? String ?? ""
-            let rule = ApprovalRule.make(tool: "Bash", input: ["command": command], workingDirectory: sandbox.root)
-            let allowed = policy.needsApproval(tool: name, rule: rule)
-                ? await approve(ApprovalRequest(summary: "Allow Bash?", detail: command, rule: rule))
-                : true
-            if allowed {
-                c.yield(.status("EXECUTING")); c.yield(.log("run_command: \(command.prefix(60))"))
-                result = await sandbox.run(command)
-            } else { result = denied }
-        default:
-            result = .init(text: "Unknown tool: \(name)", isError: true)
-        }
-        return ["toolResult": ["toolUseId": id, "content": [["text": result.text]], "status": result.isError ? "error" : "success"]]
+        AgentLoop(label: "Bedrock", mode: mode, backend: BedrockBackend(client: client), maxTurns: maxTurns)
+            .run(task: task, workingDirectory: workingDirectory, approve: approve)
     }
 }

@@ -7,7 +7,7 @@ enum Snapshot {
     static func run(into directory: URL) {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let working = Session()
+        let working = Session(history: nil)
         working.provider = .claude
         working.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
         working.phase = .working
@@ -36,9 +36,9 @@ enum Snapshot {
           res.json({ token: login(user) });
         });
         """
-        save(HUDView().environmentObject(working), width: 1000, height: 640, name: "hud-working.png")
+        save(HUDView().environmentObject(working), width: 1000, height: 660, name: "hud-working.png")
 
-        let asking = Session()
+        let asking = Session(history: nil)
         asking.provider = .claude
         asking.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
         asking.phase = .awaitingApproval
@@ -46,20 +46,36 @@ enum Snapshot {
         asking.log = [entry("Task: add login to the API", .info), entry("Allow Bash?", .warn)]
         asking.pending = ApprovalRequest(summary: "Allow Bash?", detail: "npm test",
                                          rule: ApprovalRule(key: "Bash:npm", label: "Bash: npm …"))
-        save(HUDView().environmentObject(asking), width: 1000, height: 640, name: "hud-approval.png")
+        save(HUDView().environmentObject(asking), width: 1000, height: 660, name: "hud-approval.png")
 
-        let settings = Session()
+        let settings = Session(history: nil)
         settings.provider = .claude
         settings.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
         settings.approvalMode = .auto
         settings.showSettings = true
         settings.log = [entry("Task: add login to the API", .info)]
-        save(HUDView().environmentObject(settings), width: 1000, height: 640, name: "hud-settings.png")
+        save(HUDView().environmentObject(settings), width: 1000, height: 660, name: "hud-settings.png")
         UserDefaults.standard.removeObject(forKey: "approvalMode")
+
+        let past = Session(history: nil)
+        past.provider = .azure
+        past.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
+        past.records = [
+            MissionRecord(date: Date().addingTimeInterval(-600), task: "add login to the API", provider: "CLAUDE", mode: "ASK",
+                          status: "done", summary: "Added auth.ts and a /login route; tests pass.", folder: "/Users/you/code/my-api"),
+            MissionRecord(date: Date().addingTimeInterval(-3_600), task: "refactor the config loader", provider: "BEDROCK", mode: "AUTO",
+                          status: "done", summary: "Split loader into parse and validate steps.", folder: "/Users/you/code/my-api"),
+            MissionRecord(date: Date().addingTimeInterval(-90_000), task: "upgrade dependencies", provider: "COPILOT", mode: "ASK",
+                          status: "failed", summary: "Denied by operator", folder: "/Users/you/code/my-api"),
+            MissionRecord(date: Date().addingTimeInterval(-180_000), task: "write a README for the scripts folder", provider: "AZURE", mode: "YOLO",
+                          status: "aborted", summary: "Aborted by operator", folder: "/Users/you/code/scripts"),
+        ]
+        past.showHistory = true
+        save(HUDView().environmentObject(past), width: 1000, height: 660, name: "hud-history.png")
 
         let geometry = NotchGeometry.current()
         let state = NotchState()
-        let notchSession = Session()
+        let notchSession = Session(history: nil)
         notchSession.phase = .awaitingApproval
         notchSession.status = "AWAITING AUTHORIZATION"
         notchSession.pending = ApprovalRequest(summary: "Allow Bash?  npm test", detail: "",

@@ -18,6 +18,7 @@ struct HUDView: View {
             .padding(18)
             if let request = session.pending { ApprovalOverlay(request: request) }
             if session.showSettings { SettingsOverlay() }
+            if session.showHistory { HistoryOverlay() }
         }
         .frame(minWidth: 900, minHeight: 560)
         .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -112,6 +113,13 @@ struct HUDView: View {
                     .foregroundStyle(Theme.cyan)
                     .focused($focused)
                     .onSubmit(send)
+                Button { session.showHistory.toggle() } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Theme.amber)
+                }
+                .buttonStyle(.plain)
+                .help("Mission history")
                 Button { session.showSettings.toggle() } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18))
@@ -241,162 +249,6 @@ extension ApprovalMode {
         case .ask: return Theme.green
         case .auto: return Theme.amber
         case .yolo: return Theme.red
-        }
-    }
-}
-
-struct SettingsOverlay: View {
-    @EnvironmentObject var session: Session
-    @State private var confirmingYolo = false
-    @AppStorage("bedrock.model") private var bedrockModel = ""
-    @AppStorage("bedrock.region") private var bedrockRegion = ""
-    @AppStorage("bedrock.profile") private var bedrockProfile = ""
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.55).onTapGesture { session.showSettings = false }
-            VStack(alignment: .leading, spacing: 16) {
-                Text("CONFIGURATION")
-                    .font(.system(size: 11, design: .monospaced)).tracking(3)
-                    .foregroundStyle(Theme.amber)
-                Text("APPROVAL MODE")
-                    .font(.system(size: 10, design: .monospaced)).tracking(2)
-                    .foregroundStyle(Theme.cyan.opacity(0.7))
-                HStack(spacing: 8) {
-                    ForEach(ApprovalMode.allCases) { mode in
-                        let on = session.approvalMode == mode
-                        Button { choose(mode) } label: {
-                            Text(mode.rawValue)
-                                .font(.system(size: 12, weight: .bold, design: .monospaced)).tracking(2)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(on ? mode.tint.opacity(0.25) : .clear)
-                                .overlay(Rectangle().stroke(mode.tint.opacity(on ? 1 : 0.4), lineWidth: 1))
-                                .foregroundStyle(mode.tint.opacity(on ? 1 : 0.7))
-                                .shadow(color: on ? mode.tint.opacity(0.6) : .clear, radius: 6)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(session.busy)
-                    }
-                }
-                Text(session.approvalMode.summary)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(session.approvalMode.tint)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if confirmingYolo {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("YOLO means the agent can delete files and run any command in the working folder, with no questions asked. Only use it in a folder you can afford to lose.")
-                            .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(Theme.red)
-                            .fixedSize(horizontal: false, vertical: true)
-                        HStack(spacing: 12) {
-                            hudButton("CANCEL", tint: Theme.cyan) { confirmingYolo = false }
-                            hudButton("ENABLE YOLO", tint: Theme.red) {
-                                session.approvalMode = .yolo
-                                confirmingYolo = false
-                            }
-                        }
-                    }
-                    .padding(12)
-                    .overlay(Rectangle().stroke(Theme.red, lineWidth: 1))
-                }
-                Text("SOUND")
-                    .font(.system(size: 10, design: .monospaced)).tracking(2)
-                    .foregroundStyle(Theme.cyan.opacity(0.7))
-                HStack(spacing: 8) {
-                    toggleButton("SOUND FX", isOn: $session.soundsOn)
-                    toggleButton("VOICE FEEDBACK", isOn: $session.voiceOn)
-                }
-
-                Text("AWS BEDROCK  (uses the AWS CLI and your usual login)")
-                    .font(.system(size: 10, design: .monospaced)).tracking(2)
-                    .foregroundStyle(Theme.cyan.opacity(0.7))
-                VStack(spacing: 6) {
-                    field("Model id", text: $bedrockModel, placeholder: BedrockConfig.defaultModel)
-                    HStack(spacing: 6) {
-                        field("Region", text: $bedrockRegion, placeholder: "us-east-1")
-                        field("AWS profile (optional)", text: $bedrockProfile, placeholder: "default")
-                    }
-                }
-
-                if !session.allowRules.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("ALWAYS-ALLOWED (ASK MODE)")
-                                .font(.system(size: 10, design: .monospaced)).tracking(2)
-                                .foregroundStyle(Theme.cyan.opacity(0.7))
-                            Spacer()
-                            Button("CLEAR ALL") { session.allowRules = [] }
-                                .buttonStyle(.plain)
-                                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                                .foregroundStyle(Theme.red)
-                        }
-                        ForEach(session.allowRules) { rule in
-                            HStack {
-                                Text(rule.label)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(Theme.green)
-                                Spacer()
-                                Button { session.allowRules.removeAll { $0 == rule } } label: {
-                                    Text("✕").foregroundStyle(Theme.red)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    .padding(10)
-                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
-                }
-                if session.busy {
-                    Text("Mode is locked while a mission is running.")
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(Theme.cyan.opacity(0.5))
-                }
-                HStack {
-                    Spacer()
-                    hudButton("CLOSE", tint: Theme.cyan) { session.showSettings = false }
-                }
-            }
-            .padding(24)
-            .frame(width: 560)
-            .background(Theme.deep)
-            .overlay(Rectangle().stroke(Theme.cyan, lineWidth: 1.5))
-            .shadow(color: Theme.cyan.opacity(0.4), radius: 18)
-        }
-    }
-
-    private func toggleButton(_ title: String, isOn: Binding<Bool>) -> some View {
-        Button { isOn.wrappedValue.toggle() } label: {
-            Text("\(title)  \(isOn.wrappedValue ? "ON" : "OFF")")
-                .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(1)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .background(isOn.wrappedValue ? Theme.cyan.opacity(0.2) : .clear)
-                .overlay(Rectangle().stroke(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.4), lineWidth: 1))
-                .foregroundStyle(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.6))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func field(_ label: String, text: Binding<String>, placeholder: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.system(size: 9, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
-            TextField(placeholder, text: text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(Theme.cyan)
-                .padding(6)
-                .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
-        }
-    }
-
-    private func choose(_ mode: ApprovalMode) {
-        if mode == .yolo, session.approvalMode != .yolo {
-            confirmingYolo = true
-        } else {
-            confirmingYolo = false
-            session.approvalMode = mode
         }
     }
 }

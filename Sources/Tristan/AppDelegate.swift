@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 import Carbon.HIToolbox
 
 final class HUDWindow: NSWindow {
@@ -13,11 +14,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hud: HUDWindow!
     private var notch: NotchController!
     private var statusItem: NSStatusItem!
-    private var hotKey: GlobalHotKey!
-    private var talkKey: GlobalHotKey!
+    private var openItem: NSMenuItem!
+    private var hotKey: GlobalHotKey?
+    private var talkKey: GlobalHotKey?
+    private var bag = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        hud = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 640),
+        hud = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 660),
                         styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         hud.isOpaque = false
         hud.backgroundColor = .clear
@@ -28,21 +31,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud.center()
 
         notch = NotchController(session: session) { [weak self] in self?.showHUD() }
+        Notifier.shared.onOpen = { [weak self] in self?.showHUD() }
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = NSImage(systemSymbolName: "circle.hexagongrid.circle", accessibilityDescription: "Tristan")
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open Tristan  (⌥Space, hold ⌥⇧Space to talk)", action: #selector(toggleHUD), keyEquivalent: "").target = self
+        openItem = menu.addItem(withTitle: "", action: #selector(toggleHUD), keyEquivalent: "")
+        openItem.target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Tristan", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
 
-        hotKey = GlobalHotKey(keyCode: kVK_Space, modifiers: optionKey) { [weak self] in self?.toggleHUD() }
-        // Hold ⌥⇧Space to talk, release to send.
-        talkKey = GlobalHotKey(keyCode: kVK_Space, modifiers: optionKey | shiftKey,
+        // Re-register the global shortcuts whenever the preset changes (and once at launch).
+        session.$hotkey
+            .sink { [weak self] preset in self?.registerHotKeys(preset) }
+            .store(in: &bag)
+        showHUD()
+    }
+
+    private func registerHotKeys(_ preset: HotkeyPreset) {
+        hotKey?.unregister()
+        talkKey?.unregister()
+        hotKey = GlobalHotKey(keyCode: kVK_Space, modifiers: preset.modifiers) { [weak self] in self?.toggleHUD() }
+        // Hold the same combination plus Shift to talk, release to send.
+        talkKey = GlobalHotKey(keyCode: kVK_Space, modifiers: preset.modifiers | shiftKey,
                                onRelease: { [weak self] in self?.session.stopListening() },
                                handler: { [weak self] in self?.session.startListening() })
-        showHUD()
+        openItem?.title = "Open Tristan  (\(preset.rawValue), hold \(preset.talkLabel) to talk)"
     }
 
     @objc private func toggleHUD() {
