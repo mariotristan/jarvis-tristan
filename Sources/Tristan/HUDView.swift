@@ -53,7 +53,7 @@ struct HUDView: View {
                     .foregroundStyle(Theme.cyan.opacity(0.55))
             }
             Spacer()
-            ReactorView(active: thinking, tint: Theme.tint(for: session.overallPhase), size: thinking ? 128 : 84)
+            ReactorView(active: thinking, tint: Theme.tint(for: session.overallPhase), size: thinking ? 168 : 84)
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
                 Text(session.status)
@@ -69,7 +69,7 @@ struct HUDView: View {
             }
             .frame(minWidth: 200, alignment: .trailing)
         }
-        .frame(height: thinking ? 134 : 90)
+        .frame(height: thinking ? 176 : 90)
         .animation(.easeInOut(duration: 0.35), value: thinking)
     }
 
