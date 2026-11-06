@@ -358,7 +358,7 @@ private struct MarkdownTable: View {
                     }
                 }
             }
-            .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
         }
     }
 
@@ -400,7 +400,7 @@ struct CodeCard: View {
                     .foregroundStyle(Theme.amber).lineLimit(1).truncationMode(.middle)
                 if title != nil, !language.isEmpty {
                     Text(language).font(.system(size: 9 * scale, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.6))
-                        .padding(.horizontal, 5).padding(.vertical, 1).overlay(Rectangle().stroke(Theme.cyan.opacity(0.35), lineWidth: 1))
+                        .padding(.horizontal, 5).padding(.vertical, 1).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.35), lineWidth: 1))
                 }
                 if !closed { Text("writing…").font(.system(size: 9 * scale, design: .monospaced)).foregroundStyle(Theme.green.opacity(0.7)) }
                 Spacer(minLength: 4)
@@ -409,13 +409,13 @@ struct CodeCard: View {
                         Text(showSource ? "RENDERED" : "SOURCE").font(.system(size: 9 * scale, weight: .bold, design: .monospaced))
                             .foregroundStyle(Theme.cyan)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.hud)
                 }
                 Button { copy() } label: {
                     Text(copied ? "COPIED" : "COPY").font(.system(size: 9 * scale, weight: .bold, design: .monospaced))
                         .foregroundStyle(copied ? Theme.green : Theme.cyan)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Theme.cyan.opacity(0.10))
@@ -432,8 +432,8 @@ struct CodeCard: View {
             }
             .padding(10)
         }
-        .background(Color.black.opacity(0.28))
-        .overlay(Rectangle().stroke(Theme.green.opacity(0.35), lineWidth: 1))
+        .background(Color.black.opacity(0.28), in: RoundedRectangle(cornerRadius: Theme.corner))
+        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.green.opacity(0.35), lineWidth: 1))
     }
 
     private func copy() {

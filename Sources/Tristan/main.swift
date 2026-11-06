@@ -165,7 +165,7 @@ if args.contains("--fullscreen-selftest") {
         print("screen frame:     \(screen.frame)")
         print("windowed frame:   \(windowed)")
         print("full-screen frame: \(full)  covers screen: \(full == screen.frame)")
-        print("presentation:     autoHideDock=\(app.presentationOptions.contains(.autoHideDock)) autoHideMenuBar=\(app.presentationOptions.contains(.autoHideMenuBar))")
+        print("presentation:     hideDock=\(app.presentationOptions.contains(.hideDock)) hideMenuBar=\(app.presentationOptions.contains(.hideMenuBar))")
         print("notch inset:      \(controller.topInset)")
         controller.set(false)
         RunLoop.current.run(until: Date().addingTimeInterval(0.6))

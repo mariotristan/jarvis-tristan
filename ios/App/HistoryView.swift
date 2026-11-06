@@ -17,7 +17,7 @@ struct HistoryView: View {
                     TextField("Search missions", text: $query)
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                         .font(.system(size: 13, design: .monospaced)).foregroundStyle(Theme.cyan)
-                        .padding(10).overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                        .padding(10).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
                     Picker("", selection: $filter) {
                         ForEach(HistoryFilter.allCases) { Text($0.rawValue).tag($0) }
                     }
@@ -60,6 +60,6 @@ struct HistoryView: View {
             }
             .disabled(busy)
         }
-        .padding(8).overlay(Rectangle().stroke(Theme.cyan.opacity(0.25), lineWidth: 1))
+        .padding(8).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.25), lineWidth: 1))
     }
 }

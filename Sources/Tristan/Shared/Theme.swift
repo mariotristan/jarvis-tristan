@@ -1,6 +1,8 @@
 import SwiftUI
 
 enum Theme {
+    /// Corner radius for buttons, fields and panels.
+    static let corner: CGFloat = 10
     static let cyan = Color(red: 0.10, green: 0.83, blue: 0.94)
     static let amber = Color(red: 1.0, green: 0.70, blue: 0.28)
     static let green = Color(red: 0.62, green: 1.0, blue: 0.69)
@@ -35,8 +37,8 @@ struct GlowPanel<Content: View>: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Theme.panel)
-        .overlay(Rectangle().stroke(tint.opacity(0.65), lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.corner))
+        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(tint.opacity(0.65), lineWidth: 1))
         .shadow(color: tint.opacity(0.25), radius: 8)
     }
 }
@@ -46,9 +48,11 @@ struct ReactorView: View {
     var active: Bool
     var tint: Color = Theme.cyan
     var size: CGFloat = 90
+    /// Seconds between frames; nil redraws at the display's rate. Small spots such as the notch use a slower one.
+    var minimumInterval: Double?
 
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.animation(minimumInterval: minimumInterval)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             let speed = active ? 1.0 : 0.25
             ZStack {
@@ -103,18 +107,32 @@ struct Backdrop: View {
     }
 }
 
+/// Like `.plain`, but the whole label box is clickable, not only the pixels that are drawn (the text). Without it a
+/// button whose label is padded or transparent only reacts when the pointer is exactly on the text.
+struct HUDButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.65 : 1)
+    }
+}
+
+extension ButtonStyle where Self == HUDButtonStyle {
+    static var hud: HUDButtonStyle { HUDButtonStyle() }
+}
+
 func hudButton(_ title: String, tint: Color, action: @escaping () -> Void) -> some View {
     Button(action: action) {
         Text(title)
             .font(.system(size: 11, weight: .bold, design: .monospaced))
             .tracking(2)
             .padding(.vertical, 6).padding(.horizontal, 14)
-            .background(tint.opacity(0.2))
-            .overlay(Rectangle().stroke(tint, lineWidth: 1))
+            .background(tint.opacity(0.2), in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(tint, lineWidth: 1))
             .foregroundStyle(tint)
             .shadow(color: tint.opacity(0.6), radius: 4)
     }
-    .buttonStyle(.plain)
+    .buttonStyle(.hud)
 }
 
 extension ApprovalMode {

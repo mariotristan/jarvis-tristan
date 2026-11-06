@@ -13,6 +13,8 @@ final class MissionSession: ObservableObject, Identifiable {
     @Published var provider: ProviderKind
     @Published var workingDirectory: URL
     @Published var draft = ""
+    /// What this session has already done. It survives the end of a mission and goes in front of the next task.
+    @Published private(set) var memory = ConversationMemory()
     /// Changes at the start of every mission, so a connected phone knows when to clear its log.
     @Published private(set) var missionID = UUID().uuidString
 
@@ -20,15 +22,17 @@ final class MissionSession: ObservableObject, Identifiable {
     private var approval: CheckedContinuation<Bool, Never>?
     private var runner: Task<Void, Never>?
     private var recorded = false
+    private var remembered = false
     var announcedApproval = false
     private(set) var spokenReply = false
     private(set) var currentTask = ""
 
     var busy: Bool { phase == .working || phase == .awaitingApproval }
 
-    init(provider: ProviderKind, workingDirectory: URL) {
+    init(provider: ProviderKind, workingDirectory: URL, memory: ConversationMemory = ConversationMemory()) {
         self.provider = provider
         self.workingDirectory = workingDirectory
+        self.memory = memory
     }
 
     // MARK: running
@@ -46,6 +50,7 @@ final class MissionSession: ObservableObject, Identifiable {
         code = ""
         currentTask = prompt
         recorded = false
+        remembered = false
         // A session without its hub cannot know the approval mode or the allow rules, so it must not run anything at all.
         guard let hub else {
             phase = .failed
@@ -68,8 +73,10 @@ final class MissionSession: ObservableObject, Identifiable {
         }
         hub.missionStarted(self)
         let directory = workingDirectory
+        let briefed = memory.compose(task: prompt, folder: directory.path)
+        if briefed != prompt { add("Remembering \(memory.exchanges.filter { $0.folder == directory.path }.count) earlier mission(s) from this session", .info) }
         runner = Task { [weak self] in
-            let stream = impl.run(task: prompt, workingDirectory: directory) { [weak self] request in
+            let stream = impl.run(task: briefed, workingDirectory: directory) { [weak self] request in
                 await self?.ask(request) ?? false
             }
             for await event in stream { self?.handle(event) }
@@ -84,6 +91,7 @@ final class MissionSession: ObservableObject, Identifiable {
             phase = .failed
             status = "ABORTED"
             add("Aborted by operator", .warn)
+            remember(status: "aborted", summary: "Aborted by the operator before it finished")
             hub?.record(self, status: "aborted", summary: "Aborted by operator")
         }
     }
@@ -126,10 +134,12 @@ final class MissionSession: ObservableObject, Identifiable {
         case .code(let text): code += text
         case .done(let text):
             phase = .done; status = "MISSION COMPLETE"; add(text, .ok)
+            remember(status: "done", summary: text)
             hub?.record(self, status: "done", summary: text)
             hub?.missionEnded(self, success: true, summary: text)
         case .failed(let text):
             phase = .failed; status = "MISSION FAILED"; add(text, .warn)
+            remember(status: "failed", summary: text)
             hub?.record(self, status: "failed", summary: text)
             hub?.missionEnded(self, success: false, summary: text)
         }
@@ -139,6 +149,7 @@ final class MissionSession: ObservableObject, Identifiable {
         if busy {
             phase = .done
             status = "MISSION COMPLETE"
+            remember(status: "done", summary: "Complete")
             hub?.record(self, status: "done", summary: "Complete")
         }
     }
@@ -148,6 +159,23 @@ final class MissionSession: ObservableObject, Identifiable {
         guard !recorded, !currentTask.isEmpty else { return false }
         recorded = true
         return true
+    }
+
+    /// Keeps the finished mission in the session's context, once per mission.
+    private func remember(status: String, summary: String) {
+        guard !remembered, !currentTask.isEmpty else { return }
+        remembered = true
+        let actions = log.filter { $0.kind == .step }.map(\.text)
+        memory.record(task: currentTask, actions: actions, outcome: summary, status: status, folder: workingDirectory.path)
+        hub?.memoryChanged()
+    }
+
+    /// Forgets everything this session did, so the next mission starts from a blank slate in the same tab.
+    func forgetConversation() {
+        guard !busy else { return }
+        memory.clear()
+        add("Session memory cleared", .info)
+        hub?.memoryChanged()
     }
 
     func note(_ text: String, _ kind: LogEntry.Kind = .info) { add(text, kind) }

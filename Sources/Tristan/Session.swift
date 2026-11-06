@@ -85,7 +85,7 @@ final class Session: ObservableObject {
     private var observers: [UUID: AnyCancellable] = [:]
     private var updateScheduled = false
 
-    private struct SavedTab: Codable { var provider: String; var folder: String }
+    private struct SavedTab: Codable { var provider: String; var folder: String; var memory: ConversationMemory? }
 
     /// `history: nil` keeps everything in memory: nothing is saved or restored, including the open sessions (tests,
     /// headless runs, screenshots).
@@ -217,6 +217,9 @@ final class Session: ObservableObject {
         }
     }
 
+    /// A session finished a mission or forgot its past: save the open sessions so the memory survives a restart.
+    func memoryChanged() { saveSessions() }
+
     private func sessionsChanged() {
         let phases = sessions.map(\.phase)
         let overall: Phase = phases.contains(.awaitingApproval) ? .awaitingApproval : phases.contains(.working) ? .working : active.phase
@@ -232,7 +235,8 @@ final class Session: ObservableObject {
             restored = tabs.prefix(Self.maxSessions).map { tab in
                 let exists = FileManager.default.fileExists(atPath: tab.folder)
                 return MissionSession(provider: ProviderKind(rawValue: tab.provider) ?? .demo,
-                                      workingDirectory: exists ? URL(fileURLWithPath: tab.folder) : FileManager.default.homeDirectoryForCurrentUser)
+                                      workingDirectory: exists ? URL(fileURLWithPath: tab.folder) : FileManager.default.homeDirectoryForCurrentUser,
+                                      memory: tab.memory ?? ConversationMemory())
             }
             activeIndex = min(defaults.integer(forKey: "activeTab"), max(restored.count - 1, 0))
         }
@@ -250,7 +254,7 @@ final class Session: ObservableObject {
     /// The open sessions come back (idle) after a restart. Only the real app saves them.
     private func saveSessions() {
         guard history != nil else { return }
-        let tabs = sessions.map { SavedTab(provider: $0.provider.rawValue, folder: $0.workingDirectory.path) }
+        let tabs = sessions.map { SavedTab(provider: $0.provider.rawValue, folder: $0.workingDirectory.path, memory: $0.memory) }
         defaults.set(try? JSONEncoder().encode(tabs), forKey: "sessionTabs")
         defaults.set(sessions.firstIndex { $0.id == activeID } ?? 0, forKey: "activeTab")
     }

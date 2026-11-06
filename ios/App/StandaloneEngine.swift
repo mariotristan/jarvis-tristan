@@ -30,7 +30,7 @@ final class StandaloneEngine: ObservableObject {
 
     private enum Keys {
         static let provider = "standalone.provider", mode = "standalone.mode", folder = "standalone.folder"
-        static let bookmarks = "standalone.bookmarks", rules = "standalone.rules"
+        static let bookmarks = "standalone.bookmarks", rules = "standalone.rules", memory = "standalone.memory"
     }
 
     private let defaults: UserDefaults
@@ -44,6 +44,8 @@ final class StandaloneEngine: ObservableObject {
     private var runner: Task<Void, Never>?
     private var currentTask = ""
     private var recorded = false
+    private var remembered = false
+    @Published private(set) var memory = ConversationMemory()
 
     var busy: Bool { phase == .working || phase == .awaitingApproval }
 
@@ -65,6 +67,9 @@ final class StandaloneEngine: ObservableObject {
         }
         if let data = defaults.data(forKey: Keys.rules), let saved = try? JSONDecoder().decode([ApprovalRule].self, from: data) {
             allowRules = saved
+        }
+        if let data = defaults.data(forKey: Keys.memory), let saved = try? JSONDecoder().decode(ConversationMemory.self, from: data) {
+            memory = saved
         }
         history = historyStore?.load() ?? []
         refreshFolders()
@@ -142,15 +147,18 @@ final class StandaloneEngine: ObservableObject {
         notice = nil
         currentTask = text
         recorded = false
+        remembered = false
         phase = .working
         status = "INITIALIZING"
         add("Task: \(text)", "info")
 
         let directory = URL(fileURLWithPath: folderPath)
+        let briefed = memory.compose(task: text, folder: folderPath)
+        if briefed != text { add("Remembering earlier missions from this conversation", "info") }
         let scopedURL = extraURLs[folderPath]
         let scoped = scopedURL?.startAccessingSecurityScopedResource() ?? false
         runner = Task { [weak self] in
-            let stream = impl.run(task: text, workingDirectory: directory) { [weak self] request in
+            let stream = impl.run(task: briefed, workingDirectory: directory) { [weak self] request in
                 await self?.ask(request) ?? false
             }
             for await event in stream { self?.handle(event) }
@@ -166,12 +174,32 @@ final class StandaloneEngine: ObservableObject {
             phase = .failed
             status = "ABORTED"
             add("Aborted", "warn")
+            remember(status: "aborted", summary: "Aborted before it finished")
             record(status: "aborted", summary: "Aborted")
         }
     }
 
     func respond(_ decision: ApprovalDecision) {
         resolve(allowed: decision != .deny, always: decision == .always)
+    }
+
+    /// Starts a fresh conversation: the next mission no longer knows about the earlier ones.
+    func forgetConversation() {
+        guard !busy else { notice = "Wait for the current mission to finish."; return }
+        memory.clear()
+        saveMemory()
+    }
+
+    private func remember(status: String, summary: String) {
+        guard !remembered, !currentTask.isEmpty else { return }
+        remembered = true
+        memory.record(task: currentTask, actions: log.filter { $0.kind == "step" }.map(\.text), outcome: summary,
+                      status: status, folder: folderPath)
+        saveMemory()
+    }
+
+    private func saveMemory() {
+        defaults.set(try? JSONEncoder().encode(memory), forKey: Keys.memory)
     }
 
     func clearNotice() { notice = nil }
@@ -221,9 +249,11 @@ final class StandaloneEngine: ObservableObject {
         case .code(let text): code += text
         case .done(let text):
             phase = .done; status = "MISSION COMPLETE"; add(text, "ok")
+            remember(status: "done", summary: text)
             record(status: "done", summary: text)
         case .failed(let text):
             phase = .failed; status = "MISSION FAILED"; add(text, "warn")
+            remember(status: "failed", summary: text)
             record(status: "failed", summary: text)
         }
     }
@@ -232,6 +262,7 @@ final class StandaloneEngine: ObservableObject {
         if busy {
             phase = .done
             status = "MISSION COMPLETE"
+            remember(status: "done", summary: "Complete")
             record(status: "done", summary: "Complete")
         }
     }

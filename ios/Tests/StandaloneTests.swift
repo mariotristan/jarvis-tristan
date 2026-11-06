@@ -167,6 +167,23 @@ final class StandaloneTests: XCTestCase {
         try await eventually { engine.phase == .done }
     }
 
+    func testTheNextMissionKnowsWhatTheLastOneDidUntilTheConversationIsReset() async throws {
+        let model = ScriptedModel([ScriptedModel.say("Created the notes."), ScriptedModel.say("Added a title."), ScriptedModel.say("Fresh start.")])
+        let engine = engine(model)
+        engine.submit("create notes.md")
+        try await eventually { engine.phase == .done }
+        engine.submit("add a title")
+        try await eventually { model.bodies.count == 2 && engine.phase == .done }
+        let second = String(describing: model.bodies[1]["messages"] ?? "")
+        XCTAssertTrue(second.contains("create notes.md") && second.contains("Created the notes."), "the second mission is briefed")
+        XCTAssertEqual(StandaloneEngine(defaults: defaults, historyStore: nil, workspace: workspace).memory.exchanges.count, 2, "memory survives a restart")
+
+        engine.forgetConversation()
+        engine.submit("anything")
+        try await eventually { model.bodies.count == 3 && engine.phase == .done }
+        XCTAssertFalse(String(describing: model.bodies[2]["messages"] ?? "").contains("create notes.md"))
+    }
+
     // MARK: folders and settings
 
     func testFolderChoiceIsLimitedToKnownFoldersAndPersists() throws {

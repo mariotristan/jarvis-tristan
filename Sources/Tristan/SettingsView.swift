@@ -52,8 +52,8 @@ struct SettingsOverlay: View {
             }
             .frame(width: 600)
             .frame(maxHeight: 620)
-            .background(Theme.deep)
-            .overlay(Rectangle().stroke(Theme.cyan, lineWidth: 1.5))
+            .background(Theme.deep, in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan, lineWidth: 1.5))
             .shadow(color: Theme.cyan.opacity(0.4), radius: 18)
         }
         .onDisappear { stopRecording() }
@@ -76,12 +76,12 @@ struct SettingsOverlay: View {
                             .font(.system(size: 12, weight: .bold, design: .monospaced)).tracking(2)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
-                            .background(on ? mode.tint.opacity(0.25) : .clear)
-                            .overlay(Rectangle().stroke(mode.tint.opacity(on ? 1 : 0.4), lineWidth: 1))
+                            .background(on ? mode.tint.opacity(0.25) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(mode.tint.opacity(on ? 1 : 0.4), lineWidth: 1))
                             .foregroundStyle(mode.tint.opacity(on ? 1 : 0.7))
                             .shadow(color: on ? mode.tint.opacity(0.6) : .clear, radius: 6)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.hud)
                     .disabled(session.busy)
                 }
             }
@@ -104,7 +104,7 @@ struct SettingsOverlay: View {
                     }
                 }
                 .padding(12)
-                .overlay(Rectangle().stroke(Theme.red, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.red, lineWidth: 1))
             }
         }
     }
@@ -133,21 +133,21 @@ struct SettingsOverlay: View {
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 6)
-                            .background(on ? Theme.cyan.opacity(0.2) : .clear)
-                            .overlay(Rectangle().stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
+                            .background(on ? Theme.cyan.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
                             .foregroundStyle(Theme.cyan.opacity(on ? 1 : 0.6))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.hud)
                 }
                 Button { session.recordingShortcut ? stopRecording() : startRecording() } label: {
                     Text(session.recordingShortcut ? "PRESS KEYS…" : "RECORD")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .padding(.vertical, 6).padding(.horizontal, 10)
-                        .background(session.recordingShortcut ? Theme.amber.opacity(0.25) : .clear)
-                        .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1))
+                        .background(session.recordingShortcut ? Theme.amber.opacity(0.25) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber, lineWidth: 1))
                         .foregroundStyle(Theme.amber)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
             }
             Text("Shows the HUD: \(session.hotkey.display). Hold \(session.hotkey.talk.display) to talk. Esc cancels recording.")
                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
@@ -219,7 +219,7 @@ struct SettingsOverlay: View {
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(Theme.cyan)
                         .padding(6)
-                        .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
                     hudButton("SAVE", tint: Theme.green) {
                         if !azureKey.isEmpty { KeychainStore.set(azureKey, account: AzureConfig.keychainAccount) }
                         azureKey = ""
@@ -247,7 +247,7 @@ struct SettingsOverlay: View {
                     caption("ALWAYS-ALLOWED (ASK MODE)")
                     Spacer()
                     Button("CLEAR ALL") { session.allowRules = [] }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hud)
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(Theme.red)
                 }
@@ -257,12 +257,12 @@ struct SettingsOverlay: View {
                             .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.green)
                         Spacer()
                         Button { session.allowRules.removeAll { $0 == rule } } label: { Text("✕").foregroundStyle(Theme.red) }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hud)
                     }
                 }
             }
             .padding(10)
-            .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
         }
     }
 
@@ -278,11 +278,11 @@ struct SettingsOverlay: View {
                 .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(1)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 7)
-                .background(isOn.wrappedValue ? Theme.cyan.opacity(0.2) : .clear)
-                .overlay(Rectangle().stroke(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.4), lineWidth: 1))
+                .background(isOn.wrappedValue ? Theme.cyan.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.4), lineWidth: 1))
                 .foregroundStyle(Theme.cyan.opacity(isOn.wrappedValue ? 1 : 0.6))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hud)
     }
 
     private func field(_ label: String, text: Binding<String>, placeholder: String) -> some View {
@@ -293,7 +293,7 @@ struct SettingsOverlay: View {
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(Theme.cyan)
                 .padding(6)
-                .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
         }
     }
 
@@ -359,7 +359,7 @@ struct HistoryOverlay: View {
                     Spacer()
                     if !session.records.isEmpty {
                         Button("CLEAR") { session.clearHistory() }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hud)
                             .font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Theme.red)
                     }
                 }
@@ -369,18 +369,18 @@ struct HistoryOverlay: View {
                             .textFieldStyle(.plain)
                             .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.cyan)
                             .padding(6)
-                            .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
                         ForEach(HistoryFilter.allCases) { option in
                             let on = filter == option
                             Button { filter = option } label: {
                                 Text(option.rawValue)
                                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                                     .padding(.vertical, 7).padding(.horizontal, 8)
-                                    .background(on ? Theme.cyan.opacity(0.2) : .clear)
-                                    .overlay(Rectangle().stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
+                                    .background(on ? Theme.cyan.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
                                     .foregroundStyle(Theme.cyan.opacity(on ? 1 : 0.6))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hud)
                         }
                     }
                 }
@@ -406,8 +406,8 @@ struct HistoryOverlay: View {
             }
             .padding(24)
             .frame(width: 640, height: 460)
-            .background(Theme.deep)
-            .overlay(Rectangle().stroke(Theme.cyan, lineWidth: 1.5))
+            .background(Theme.deep, in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan, lineWidth: 1.5))
             .shadow(color: Theme.cyan.opacity(0.4), radius: 18)
         }
     }
@@ -431,7 +431,7 @@ struct HistoryOverlay: View {
                 .disabled(session.busy)
         }
         .padding(8)
-        .overlay(Rectangle().stroke(Theme.cyan.opacity(0.25), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.25), lineWidth: 1))
     }
 }
 
@@ -450,11 +450,11 @@ struct RemoteSettings: View {
                 Text("REMOTE CONTROL  \(session.remoteOn ? "ON" : "OFF")")
                     .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(1)
                     .frame(maxWidth: .infinity).padding(.vertical, 7)
-                    .background(session.remoteOn ? Theme.cyan.opacity(0.2) : .clear)
-                    .overlay(Rectangle().stroke(Theme.cyan.opacity(session.remoteOn ? 1 : 0.4), lineWidth: 1))
+                    .background(session.remoteOn ? Theme.cyan.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(session.remoteOn ? 1 : 0.4), lineWidth: 1))
                     .foregroundStyle(Theme.cyan.opacity(session.remoteOn ? 1 : 0.6))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hud)
 
             Text("Off by default. When on, a paired iPhone or iPad on your network can start missions, approve actions and control Spotify. It cannot enable YOLO, and tasks are refused while the Mac is in YOLO mode. Connections are encrypted and need the pairing secret below.")
                 .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))

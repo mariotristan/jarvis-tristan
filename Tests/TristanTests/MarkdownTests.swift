@@ -183,13 +183,16 @@ final class FullScreenControllerTests: XCTestCase {
         controller.set(true)
         XCTAssertTrue(controller.isFullScreen)
         XCTAssertEqual(window.frame, screenFrame, "covers the whole screen")
-        XCTAssertEqual(applied.last, [.autoHideDock, .autoHideMenuBar])
+        XCTAssertEqual(applied.last, [.hideDock, .hideMenuBar], "hidden outright, not just auto-hidden")
+        XCTAssertGreaterThan(window.level, .mainMenu, "above the menu bar")
+        XCTAssertFalse(window.hasShadow)
 
         controller.set(true)            // doing it twice must not overwrite the saved window frame
         controller.set(false)
         XCTAssertFalse(controller.isFullScreen)
         XCTAssertEqual(window.frame, windowed, "back to where it was")
         XCTAssertEqual(applied.last, [], "Dock and menu bar are given back")
+        XCTAssertEqual(window.level, .normal)
         controller.set(false)
         XCTAssertEqual(applied.count, 2, "leaving twice does nothing")
     }

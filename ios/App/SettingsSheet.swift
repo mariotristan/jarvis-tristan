@@ -89,6 +89,7 @@ struct SettingsSheet: View {
 
 /// Provider details for missions that run on this device. Secrets go to the Keychain, never to preferences.
 struct StandaloneSettings: View {
+    @EnvironmentObject var mission: MissionModel
     @AppStorage("azure.endpoint") private var azureEndpoint = ""
     @AppStorage("azure.deployment") private var azureDeployment = ""
     @AppStorage("azure.apiVersion") private var azureAPIVersion = ""
@@ -150,6 +151,17 @@ struct StandaloneSettings: View {
             }
             .frame(minHeight: 450)
 
+            GlowPanel(title: "CONVERSATION") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(mission.local.memory.isEmpty
+                         ? "Tristan has nothing to remember yet. Missions you run in the same folder build on each other."
+                         : "Tristan remembers \(mission.local.memory.exchanges.count) earlier mission(s) and uses them as context for the next one.")
+                        .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.7))
+                    hudButton("NEW CONVERSATION", tint: Theme.amber) { mission.local.forgetConversation() }
+                }
+            }
+            .frame(minHeight: 130)
+
             GlowPanel(title: "GOOD TO KNOW") {
                 Text("Keys stay in this device's Keychain and are only sent to Azure or AWS. Use an AWS key that can only call Bedrock, and prefer temporary keys with a session token over long-lived ones. Files live in Workspace (visible in the Files app under Tristan) or in a folder you pick. There is no shell here, so Tristan cannot run commands or tests.")
                     .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.7))
@@ -170,7 +182,7 @@ struct StandaloneSettings: View {
             TextField(placeholder, text: text)
                 .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(keyboard)
                 .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan)
-                .padding(8).overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                .padding(8).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
         }
     }
 
@@ -180,7 +192,7 @@ struct StandaloneSettings: View {
             SecureField("Paste it here", text: text)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan)
-                .padding(8).overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                .padding(8).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
         }
     }
 }

@@ -6,6 +6,9 @@ import AppKit
 final class FullScreenController {
     private weak var window: NSWindow?
     private var savedFrame: NSRect?
+    private var savedLevel = NSWindow.Level.normal
+    private var savedShadow = true
+    private var observer: NSObjectProtocol?
     private let setPresentation: (NSApplication.PresentationOptions) -> Void
     private(set) var isFullScreen = false
 
@@ -14,7 +17,8 @@ final class FullScreenController {
         self.setPresentation = setPresentation
     }
 
-    private var screen: NSScreen? { window?.screen ?? NSScreen.main }
+    /// The screen the window is on (it opens on the primary display).
+    private var screen: NSScreen? { window?.screen ?? NSScreen.screens.first }
 
     /// Height of the camera notch on this screen, so content can start below it. Zero on Macs without one.
     var topInset: CGFloat { screen?.safeAreaInsets.top ?? 0 }
@@ -24,14 +28,33 @@ final class FullScreenController {
         if on {
             guard let target = screen?.frame else { return }
             savedFrame = window.frame
-            setPresentation([.autoHideDock, .autoHideMenuBar])
+            savedLevel = window.level
+            savedShadow = window.hasShadow
+            // Hidden outright, not just auto-hidden, so the Dock and menu bar never slide in over the edges.
+            setPresentation([.hideDock, .hideMenuBar])
+            window.level = .mainMenu + 1
+            window.hasShadow = false
             window.setFrame(target, display: true, animate: true)
             isFullScreen = true
+            // A display was added, removed or rearranged while full screen: fill the screen we are on now.
+            observer = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                                              object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refit() }
+            }
         } else {
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+            observer = nil
             setPresentation([])
+            window.level = savedLevel
+            window.hasShadow = savedShadow
             if let saved = savedFrame { window.setFrame(saved, display: true, animate: true) }
             savedFrame = nil
             isFullScreen = false
         }
+    }
+
+    private func refit() {
+        guard isFullScreen, let window, let target = screen?.frame, window.frame != target else { return }
+        window.setFrame(target, display: true)
     }
 }

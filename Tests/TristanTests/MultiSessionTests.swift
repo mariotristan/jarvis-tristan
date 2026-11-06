@@ -371,3 +371,91 @@ final class MultiSessionTests: XCTestCase {
         hub.musicOn = false
     }
 }
+
+// MARK: session memory
+
+final class ConversationMemoryTests: XCTestCase {
+    func testNothingRememberedLeavesTheTaskAlone() {
+        XCTAssertEqual(ConversationMemory().compose(task: "add login", folder: "/a"), "add login")
+    }
+
+    func testBriefingCarriesEarlierMissionsOldestFirstAndTheNewTaskLast() {
+        var memory = ConversationMemory()
+        memory.record(task: "create auth.ts", actions: ["write_file auth.ts"], outcome: "Created auth.ts", status: "done", folder: "/a")
+        memory.record(task: "add tests", actions: [], outcome: "Tests green", status: "done", folder: "/a")
+        let text = memory.compose(task: "now rename login", folder: "/a")
+        XCTAssertTrue(text.contains("create auth.ts"))
+        XCTAssertTrue(text.contains("write_file auth.ts"))
+        XCTAssertLessThan(text.range(of: "create auth.ts")!.lowerBound, text.range(of: "add tests")!.lowerBound)
+        XCTAssertTrue(text.hasSuffix("now rename login"))
+    }
+
+    func testOtherFoldersAreNotMixedIn() {
+        var memory = ConversationMemory()
+        memory.record(task: "secret project work", actions: [], outcome: "ok", status: "done", folder: "/b")
+        XCTAssertEqual(memory.compose(task: "hi", folder: "/a"), "hi")
+    }
+
+    func testOnlyTheLastMissionsArekeptAndOldOnesShrink() {
+        var memory = ConversationMemory()
+        for i in 1...20 { memory.record(task: "task \(i)", actions: ["a\(i)"], outcome: String(repeating: "x", count: 500), status: "done", folder: "/a") }
+        XCTAssertEqual(memory.exchanges.count, ConversationMemory.maxExchanges)
+        let text = memory.compose(task: "next", folder: "/a")
+        XCTAssertFalse(text.contains("task 1 "))
+        XCTAssertTrue(text.contains("Actions: a20"))
+        XCTAssertFalse(text.contains("Actions: a10"), "older missions are reduced to one line")
+        XCTAssertLessThan(text.count, ConversationMemory.maxBriefing + 400)
+    }
+
+    func testCodableRoundTrip() throws {
+        var memory = ConversationMemory()
+        memory.record(task: "t", actions: ["x"], outcome: "o", status: "done", folder: "/a")
+        let again = try JSONDecoder().decode(ConversationMemory.self, from: JSONEncoder().encode(memory))
+        XCTAssertEqual(again, memory)
+    }
+
+    @MainActor func testASessionBriefsTheNextMissionAndNewSessionStartsBlank() async throws {
+        let hub = Session(history: nil)
+        let box = TaskBox()
+        hub.providerFactory = { _, _ in RecordingProvider { box.add($0) } }
+        let first = hub.active
+        first.submit("create auth.ts")
+        try await waitUntil { !first.busy }
+        first.submit("now add tests")
+        try await waitUntil { !first.busy }
+        let seen = { box.all }
+        XCTAssertEqual(seen().first, "create auth.ts")
+        XCTAssertTrue(seen().last?.contains("create auth.ts") == true)
+        XCTAssertTrue(seen().last?.hasSuffix("now add tests") == true)
+        XCTAssertEqual(first.memory.exchanges.count, 2)
+
+        let fresh = try XCTUnwrap(hub.newSession(folder: first.workingDirectory))
+        fresh.submit("unrelated")
+        try await waitUntil { !fresh.busy }
+        XCTAssertEqual(seen().last, "unrelated")
+
+        first.forgetConversation()
+        XCTAssertTrue(first.memory.isEmpty)
+    }
+
+    @MainActor private func waitUntil(_ condition: @MainActor () -> Bool) async throws {
+        for _ in 0..<200 { if condition() { return }; try await Task.sleep(for: .milliseconds(10)) }
+        XCTFail("timed out")
+    }
+}
+
+private final class TaskBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var tasks: [String] = []
+    func add(_ task: String) { lock.lock(); tasks.append(task); lock.unlock() }
+    var all: [String] { lock.lock(); defer { lock.unlock() }; return tasks }
+}
+
+private struct RecordingProvider: AgentProvider {
+    let onTask: @Sendable (String) -> Void
+    init(_ onTask: @escaping @Sendable (String) -> Void) { self.onTask = onTask }
+    func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
+        onTask(task)
+        return AsyncStream { c in c.yield(.log("did it")); c.yield(.done("Finished \(task.count)")); c.finish() }
+    }
+}

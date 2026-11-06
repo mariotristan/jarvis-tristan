@@ -26,6 +26,7 @@
 		8F927C3D9AEA61BFAC5055E4 /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46CABAA59D874D19970805E3 /* SettingsSheet.swift */; };
 		92B203E77F84EA1A15AB19E7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABB6E1B822751C53A844985 /* AppModel.swift */; };
 		99B409B3D874D686A6F1E596 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BE028D92A8EF6B55AEF51C /* HistoryStore.swift */; };
+		9A75DD998260032B34E0EF31 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869F206B80637E1B9D839BAE /* ConversationMemory.swift */; };
 		A19B700ADEA3CB9591BA687B /* StandaloneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47C7983C898B6C47CE876A6 /* StandaloneTests.swift */; };
 		A6373EB2E6438F5D350EAAB2 /* AzureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC4E3081D8BD44DAB27FA4DF /* AzureProvider.swift */; };
 		BF162DC78072904A96537AD2 /* StandaloneEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42438C4AD49093F053BD01E9 /* StandaloneEngine.swift */; };
@@ -63,6 +64,7 @@
 		7B8D1EC3E49414F1A2B2B49C /* AgentLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentLoop.swift; sourceTree = "<group>"; };
 		7F61E43490C414AC948D2435 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8572765E7D2BF0DAA33080D6 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
+		869F206B80637E1B9D839BAE /* ConversationMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMemory.swift; sourceTree = "<group>"; };
 		8FDD872A8A0DBD454591605F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		943A82DE37C611050052F675 /* MissionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionModel.swift; sourceTree = "<group>"; };
 		9864EF85521C526BB491A459 /* RemoteClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteClient.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 				EC4E3081D8BD44DAB27FA4DF /* AzureProvider.swift */,
 				BB77947CDC63F31D534A05B1 /* BedrockBackend.swift */,
 				2736BCEDC306BB9EEB70AB48 /* BedrockStreaming.swift */,
+				869F206B80637E1B9D839BAE /* ConversationMemory.swift */,
 				F0BE028D92A8EF6B55AEF51C /* HistoryStore.swift */,
 				C175C84AD85850AD34F102A8 /* Keychain.swift */,
 				8572765E7D2BF0DAA33080D6 /* Markdown.swift */,
@@ -277,6 +280,7 @@
 				CDF21C420DA7E3AEC2CE5C60 /* BedrockBackend.swift in Sources */,
 				169CB8E668CE594205A35500 /* BedrockStreaming.swift in Sources */,
 				47E8CAEF14D987AB54C4E6A6 /* Components.swift in Sources */,
+				9A75DD998260032B34E0EF31 /* ConversationMemory.swift in Sources */,
 				65201C183783F268B6553BF4 /* Dictation.swift in Sources */,
 				99B409B3D874D686A6F1E596 /* HistoryStore.swift in Sources */,
 				20DED3BBD3990DAC2FE167C5 /* HistoryView.swift in Sources */,
@@ -372,7 +376,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -468,7 +472,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -58,10 +58,10 @@ struct CodePanel: View {
                 Text(rendered ? "RENDERED" : "RAW")
                     .font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1)
                     .padding(.vertical, 3).padding(.horizontal, 7)
-                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
                     .foregroundStyle(Theme.cyan)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hud)
             .padding(10)
         }
     }
@@ -90,8 +90,8 @@ struct ApprovalCard: View {
             if request.canAlwaysAllow { big("ALWAYS ALLOW THIS", Theme.cyan, .always) }
         }
         .padding(18)
-        .background(Theme.deep)
-        .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1.5))
+        .background(Theme.deep, in: RoundedRectangle(cornerRadius: Theme.corner))
+        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber, lineWidth: 1.5))
         .shadow(color: Theme.amber.opacity(0.5), radius: 18)
     }
 
@@ -103,10 +103,10 @@ struct ApprovalCard: View {
             Text(title)
                 .font(.system(size: 14, weight: .bold, design: .monospaced)).tracking(2)
                 .frame(maxWidth: .infinity, minHeight: 48)
-                .background(tint.opacity(0.2)).overlay(Rectangle().stroke(tint, lineWidth: 1))
+                .background(tint.opacity(0.2), in: RoundedRectangle(cornerRadius: Theme.corner)).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(tint, lineWidth: 1))
                 .foregroundStyle(tint).shadow(color: tint.opacity(0.5), radius: 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hud)
     }
 }
 
@@ -127,13 +127,13 @@ struct MusicBar: View {
             button("speaker.plus.fill", "volumeUp")
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Theme.panel).overlay(Rectangle().stroke(Theme.amber.opacity(0.4), lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.corner)).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.4), lineWidth: 1))
     }
 
     private func button(_ symbol: String, _ command: String) -> some View {
         Button { UIImpactFeedbackGenerator(style: .light).impactOccurred(); send(command) } label: {
             Image(systemName: symbol).font(.system(size: 14)).foregroundStyle(Theme.cyan).frame(width: 30, height: 30)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hud)
     }
 }

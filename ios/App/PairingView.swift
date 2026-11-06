@@ -46,7 +46,7 @@ struct PairingView: View {
                         hudButton("PAIR", tint: Theme.green) { pairManually() }
                     }
                     .padding(14)
-                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
                 }
 
                 if let error = model.pairingError {
@@ -80,7 +80,7 @@ struct PairingView: View {
         TextField(placeholder, text: text)
             .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(keyboard)
             .font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan)
-            .padding(10).overlay(Rectangle().stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
+            .padding(10).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.4), lineWidth: 1))
     }
 
     private func pasteLink() {

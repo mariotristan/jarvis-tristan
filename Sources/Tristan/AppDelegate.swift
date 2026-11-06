@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud.isMovableByWindowBackground = true
         hud.isReleasedWhenClosed = false
         hud.contentView = NSHostingView(rootView: HUDView().environmentObject(session))
-        hud.center()
+        // Open on the primary display (the one with the menu bar), centered there.
+        let primary = NotchGeometry.primaryScreen().visibleFrame
+        hud.setFrameOrigin(NSPoint(x: primary.midX - hud.frame.width / 2, y: primary.midY - hud.frame.height / 2))
         fullScreen = FullScreenController(window: hud)
 
         notch = NotchController(session: session) { [weak self] in self?.showHUD() }

@@ -53,7 +53,7 @@ struct HUDView: View {
                     .foregroundStyle(Theme.cyan.opacity(0.55))
             }
             Spacer()
-            ReactorView(active: session.overallPhase == .working || session.listening, tint: Theme.tint(for: session.overallPhase), size: 84)
+            ReactorView(active: thinking, tint: Theme.tint(for: session.overallPhase), size: thinking ? 128 : 84)
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
                 Text(session.status)
@@ -64,13 +64,17 @@ struct HUDView: View {
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .tracking(2)
                     .padding(.vertical, 2).padding(.horizontal, 6)
-                    .overlay(Rectangle().stroke(session.approvalMode.tint, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(session.approvalMode.tint, lineWidth: 1))
                     .foregroundStyle(session.approvalMode.tint)
             }
             .frame(minWidth: 200, alignment: .trailing)
         }
-        .frame(height: 90)
+        .frame(height: thinking ? 134 : 90)
+        .animation(.easeInOut(duration: 0.35), value: thinking)
     }
+
+    /// Waiting for the model (or listening to you): the orb grows so it is easy to see from across the desk.
+    private var thinking: Bool { session.overallPhase == .working || session.listening }
 
     private func backgroundBanner(_ waiting: MissionSession) -> some View {
         Button { session.select(waiting.id) } label: {
@@ -83,11 +87,11 @@ struct HUDView: View {
             }
             .font(.system(size: 11, design: .monospaced))
             .padding(.horizontal, 12).padding(.vertical, 7)
-            .background(Theme.amber.opacity(0.15))
-            .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1))
+            .background(Theme.amber.opacity(0.15), in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber, lineWidth: 1))
             .foregroundStyle(Theme.amber)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hud)
     }
 
     private var missionLog: some View {
@@ -131,10 +135,10 @@ struct HUDView: View {
                 Text(session.renderMarkdown ? "RENDERED" : "RAW")
                     .font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1)
                     .padding(.vertical, 3).padding(.horizontal, 7)
-                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
                     .foregroundStyle(Theme.cyan)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hud)
             .help("Show the stream as rendered markdown or as raw text")
             .padding(10)
         }
@@ -155,21 +159,21 @@ struct HUDView: View {
                         .font(.system(size: 17))
                         .foregroundStyle(Theme.amber)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
                 .help("Full screen (⌃⌘F). Esc leaves it.")
                 Button { session.showHistory.toggle() } label: {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 18))
                         .foregroundStyle(Theme.amber)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
                 .help("Mission history")
                 Button { session.showSettings.toggle() } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18))
                         .foregroundStyle(Theme.amber)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
                 .help("Configuration")
                 Button { session.listening ? session.stopListening() : session.startListening() } label: {
                     Image(systemName: session.listening ? "waveform.circle.fill" : "mic.circle")
@@ -177,7 +181,7 @@ struct HUDView: View {
                         .foregroundStyle(session.listening ? Theme.red : Theme.cyan)
                         .shadow(color: session.listening ? Theme.red : .clear, radius: 6)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
                 .help("Click to talk, or hold ⌥⇧Space")
                 if session.busy {
                     hudButton("ABORT", tint: Theme.red) { session.cancel() }
@@ -186,8 +190,8 @@ struct HUDView: View {
                 }
             }
             .padding(10)
-            .background(Theme.panel)
-            .overlay(Rectangle().stroke(Theme.cyan.opacity(0.7), lineWidth: 1))
+            .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.7), lineWidth: 1))
 
             HStack(spacing: 8) {
                 ForEach(ProviderKind.allCases) { kind in
@@ -198,20 +202,20 @@ struct HUDView: View {
                             .tracking(1)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 5)
-                            .background(on ? Theme.cyan.opacity(0.25) : .clear)
-                            .overlay(Rectangle().stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
+                            .background(on ? Theme.cyan.opacity(0.25) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
                             .foregroundStyle(Theme.cyan.opacity(on ? 1 : 0.7))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.hud)
                 }
                 Button { session.chooseFolder() } label: {
                     Text("📁 \(session.workingDirectory.lastPathComponent)")
                         .font(.system(size: 10, design: .monospaced))
                         .padding(.vertical, 5).padding(.horizontal, 10)
-                        .overlay(Rectangle().stroke(Theme.amber.opacity(0.7), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.7), lineWidth: 1))
                         .foregroundStyle(Theme.amber)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
             }
         }
     }
@@ -266,8 +270,8 @@ struct ApprovalOverlay: View {
             }
             .padding(24)
             .frame(width: 520)
-            .background(Theme.deep)
-            .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1.5))
+            .background(Theme.deep, in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber, lineWidth: 1.5))
             .shadow(color: Theme.amber.opacity(0.5), radius: 18)
         }
     }
@@ -309,8 +313,8 @@ struct MusicStrip: View {
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 6)
-        .background(Theme.panel)
-        .overlay(Rectangle().stroke(Theme.amber.opacity(0.4), lineWidth: 1))
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.corner))
+        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.4), lineWidth: 1))
     }
 
     private var message: String {
@@ -322,7 +326,7 @@ struct MusicStrip: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(Theme.cyan).frame(width: 24, height: 20)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hud)
     }
 }
 
@@ -347,12 +351,27 @@ struct SessionTabs: View {
                 }
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .padding(.vertical, 6).padding(.horizontal, 10)
-                .overlay(Rectangle().stroke(Theme.amber.opacity(0.8), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.8), lineWidth: 1))
                 .foregroundStyle(Theme.amber)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hud)
             .disabled(session.sessions.count >= Session.maxSessions)
             .help("Open another session that runs alongside this one (⌘T)")
+            if !session.active.memory.isEmpty {
+                Button { session.active.forgetConversation() } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "brain")
+                        Text("REMEMBERS \(session.active.memory.exchanges.count)").tracking(1)
+                    }
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .padding(.vertical, 6).padding(.horizontal, 10)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
+                    .foregroundStyle(Theme.cyan)
+                }
+                .buttonStyle(.hud)
+                .disabled(session.active.busy)
+                .help("This session remembers its earlier missions. Click to forget them and start fresh in this tab.")
+            }
         }
     }
 }
@@ -393,12 +412,12 @@ private struct SessionTab: View {
                     .font(.system(size: confirmingClose ? 8 : 10, weight: .bold, design: .monospaced))
                     .foregroundStyle(confirmingClose ? Theme.red : Theme.cyan.opacity(0.5))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hud)
             .help(tab.busy ? "Abort and close this session" : "Close this session (⌘W)")
         }
         .padding(.vertical, 6).padding(.horizontal, 10)
-        .background(isActive ? Theme.cyan.opacity(0.18) : Color.clear)
-        .overlay(Rectangle().stroke(tint.opacity(isActive || tab.phase == .awaitingApproval ? 1 : 0.4), lineWidth: 1))
+        .background(isActive ? Theme.cyan.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+        .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(tint.opacity(isActive || tab.phase == .awaitingApproval ? 1 : 0.4), lineWidth: 1))
         .contentShape(Rectangle())
         .onTapGesture { session.select(tab.id) }
         .onChange(of: tab.busy) { _, _ in confirmingClose = false }

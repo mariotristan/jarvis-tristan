@@ -125,10 +125,12 @@ enum Snapshot {
         notchSession.status = "AWAITING AUTHORIZATION"
         notchSession.pending = ApprovalRequest(summary: "Allow Bash?  npm test", detail: "",
                                                rule: ApprovalRule(key: "Bash:npm", label: "Bash: npm …"))
+        state.expanded = true
+        state.refresh(from: notchSession)
         let notchView = ZStack(alignment: .top) {
             LinearGradient(colors: [Color(red: 0.16, green: 0.20, blue: 0.32), Color(red: 0.05, green: 0.07, blue: 0.14)],
                            startPoint: .top, endPoint: .bottom)
-            NotchView(state: state, geometry: geometry, expanded: true, openHUD: {})
+            NotchView(state: state, geometry: geometry, openHUD: {})
                 .environmentObject(notchSession)
                 .frame(width: max(geometry.width + 300, 420), height: geometry.height + 110)
         }

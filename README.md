@@ -20,7 +20,7 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 160 automated tests pass (144 for the Mac app and 16 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 173 automated tests pass (156 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Screenshots
 
@@ -75,7 +75,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
   - **Code stream** on the right, showing code as the agent writes it.
   - **Arc reactor** at the top, which spins and pulses faster while the agent works and turns amber, green or red for waiting, done or failed.
   - Animated grid and scanline backdrop.
-- **Notch overlay.** A black pill around the camera notch with a mini reactor and a status dot. Hover to expand it. It also opens by itself when approval is needed and for a few seconds when a mission ends. On Macs without a notch it becomes a floating pill at the top centre of the screen.
+- **Notch overlay.** A black pill around the camera notch with a mini reactor and a status dot. It lives on your primary display (the one with the menu bar), and so does the HUD when it opens. Hover to expand it; it opens at once, stays open while the pointer is near, and the reactor animates at a lower frame rate so it stays light on the CPU. It also opens by itself when approval is needed and for a few seconds when a mission ends. On Macs without a notch it becomes a floating pill at the top centre of the screen.
 - **Ask-first approvals.** Every action Claude Code wants permission for shows up as an approve or deny prompt, in the HUD or in the notch.
 - **Always allow.** The approval prompt has an `ALWAYS ALLOW` button that remembers a narrow rule so you are not asked again (see [how approvals work](#how-approvals-work)). Rules are saved between launches and listed in the configuration panel, where you can remove them one by one or clear them all.
 - **Approval modes** (gear button, saved between launches):
@@ -92,7 +92,9 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **Launch at login** switch for the installed app.
 - **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
 - **Several sessions at the same time.** Run a Claude session and a Copilot session (or two Claude sessions in different folders) side by side. Each session is a tab with its own provider, folder, mission log, code stream and approvals, and a status light (pulsing cyan while working, amber while it needs you, green when done, red on failure). **+ NEW SESSION** (`⌘T`) opens another, `⌘1`…`⌘9` switch, `⌘W` closes (a running session asks first). A session that needs approval in the background raises an amber banner, a sound, a spoken "Session 2, authorization required" and a notification, and the notch shows and answers it. Up to 8 sessions; the open sessions (provider and folder) come back after a restart. Starting a session in a folder another session is already working in warns you that edits may collide. The approval mode and always-allow rules are shared by all sessions.
-- **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the screen, hides the Dock and menu bar, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
+- **Rounded buttons you can hit anywhere, and a bigger orb.** Every button is clickable over its whole area, not just on its text, and the orb in the header grows while Tristan is waiting for the model (or listening to you), then settles back.
+- **Session memory.** A finished mission stays in its session's context. Each session keeps the task, the actions taken and the result of its recent missions (the last 12; the newest three in detail, older ones as one line) and puts that briefing in front of the next task, so "now add tests for what you just wrote" works whichever provider runs it. Only missions from the same folder are included. The tab shows **REMEMBERS n**; click it (or open **+ NEW SESSION**, which starts empty) to forget. The memory survives a restart. On the iPhone and iPad standalone mode the same memory is kept, and **NEW CONVERSATION** in Settings clears it. The briefing is plain text in the prompt, so it costs a few thousand characters per mission at most; it is not the model's own hidden state, so details that never reached the log or the final reply are not remembered.
+- **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the whole screen, hides the Dock and menu bar completely (they do not slide in at the edges) and puts the window above everything else, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
 - **Rendered markdown in the code stream.** What an agent writes is shown as it would read: headings, bold and italic, inline code, bullet, numbered and task lists, tables with alignment, quotes, rules, and code blocks as cards with the file name, language and a COPY button. A file the agent writes is a card too, and a written `.md` file is rendered with a SOURCE switch. **RAW** shows the plain text. Links only open if they are web or mail links, so model output can never plant a `tristan://` pairing link or a `file://` link. The iPhone and iPad apps use the same renderer.
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
 - **Menu bar item** next to the clock to open Tristan or quit.
@@ -185,7 +187,7 @@ On the pairing screen choose **USE WITHOUT A MAC**, or switch in Settings (**ON 
 - **History, voice dictation, haptics** work as in the remote mode. Spotify control is Mac-only.
 - **Key hygiene:** use an AWS key that can only call Bedrock, and prefer temporary keys with a session token over long-lived ones. Anyone who unlocks the phone can use the saved keys.
 
-**Verified:** the shared agent loop, tools, approvals and folder handling are covered by 13 iOS tests with a scripted model, and a debug-only scripted model drove a full mission in the simulator (approval card, a real file written into Workspace). **Not verified:** a live call to Azure OpenAI or Bedrock from the phone, a physical device, and the Files folder picker.
+**Verified:** the shared agent loop, tools, approvals and folder handling are covered by 14 iOS tests with a scripted model, and a debug-only scripted model drove a full mission in the simulator (approval card, a real file written into Workspace). **Not verified:** a live call to Azure OpenAI or Bedrock from the phone, a physical device, and the Files folder picker.
 
 **Build and run it.**
 
@@ -205,11 +207,11 @@ Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mar
 
 ```bash
 # 1. Optional: check the download against the .sha256 file from the release
-cd ~/Downloads && shasum -a 256 -c Tristan-0.1.0.dmg.sha256
+cd ~/Downloads && shasum -a 256 -c Tristan-0.2.0.dmg.sha256
 
 # 2. Mount the disk image and copy the app to Applications
-hdiutil attach ~/Downloads/Tristan-0.1.0.dmg
-cp -R "/Volumes/Tristan 0.1.0/Tristan.app" /Applications/
+hdiutil attach ~/Downloads/Tristan-0.2.0.dmg
+cp -R "/Volumes/Tristan 0.2.0/Tristan.app" /Applications/
 
 # 3. Remove the quarantine flag. macOS stamps every download with it, and Gatekeeper refuses apps that
 #    are not notarized. Tristan is only ad-hoc signed, because notarization needs a paid Apple Developer account.
@@ -280,6 +282,7 @@ Sources/Tristan/
 ├── AppDelegate.swift  HUD window, menu bar item, global hotkey, notch setup
 ├── Session.swift      The hub: shared settings and services, the open sessions, sound/notification/history callbacks
 ├── MissionSession.swift  One session: provider, folder, log, code, approvals and the task that runs it
+├── Shared/ConversationMemory.swift  A session's memory of finished missions, rendered as a briefing before the next task
 ├── FullScreen.swift   Full-screen mode for the borderless window
 ├── Providers.swift    AgentProvider protocol, approval modes, Demo and Claude Code providers, stream parser
 ├── PermissionBridge.swift  Unix-socket server in the app plus the MCP stdio shim Claude Code calls
@@ -306,8 +309,8 @@ Sources/Tristan/
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
 ├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    144 tests: multiple sessions, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio
-ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 16 tests)
+Tests/TristanTests/    156 tests: multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio
+ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
 scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
 docs/ci-and-release.md How CI and releases work
@@ -387,6 +390,7 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **iOS standalone mode has never called a real Azure OpenAI or Bedrock endpoint**: the model is scripted in the tests and in the simulator demo. The Files folder picker and Keychain-stored AWS keys are only tested through unit tests.
 - **The iOS app has only run in the simulator** (see [iPhone and iPad](#iphone-and-ipad)): no physical device, no real Wi-Fi, no camera, microphone or haptics. The secure link and the remote commands are tested end to end on loopback, and the remote design rules (no remote YOLO, folder allow-list, replay for late joiners, wrong secret refused) have automated tests.
 - **The app is not notarized** (see [Install](#install)); there is no auto-update.
+- **Session memory** is covered by unit tests (the briefing, the folder filter, the limits, a restart, and a session briefing its next mission), but I have not tried it live with a real model across several missions. The notch changes (no blinking, faster, primary display) build and pass tests, but I have not watched them on a real screen.
 - The notch overlay has only been tested on a notched MacBook, and the visuals have not had a design pass on other displays.
 - Sound and voice quality depend on the voices installed on your Mac (a British English voice is preferred).
 
@@ -407,6 +411,7 @@ Done:
 - [x] Installable DMG with icon and versioning, release and CI workflows, install script, launch at login
 - [x] iPhone and iPad remote: encrypted pairing, mission screen, approvals, history, music, dictation, side-by-side iPad layout
 - [x] iOS standalone mode: Azure OpenAI and Bedrock straight from the device, file tools in a Files folder, no shell
+- [x] Sessions remember their finished missions, the notch no longer blinks and uses less CPU, and the app opens on the primary display
 - [x] Full-screen mode, rendered markdown in the code stream, several concurrent sessions (verified live with two Claude Code sessions and with two Copilot sessions)
 - [x] Automated tests (160)
 

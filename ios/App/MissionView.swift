@@ -105,7 +105,7 @@ struct MissionView: View {
                         Text("MODE \(mode)")
                             .font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1.5)
                             .padding(.horizontal, 5).padding(.vertical, 2)
-                            .overlay(Rectangle().stroke(modeTint(mode), lineWidth: 1)).foregroundStyle(modeTint(mode))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(modeTint(mode), lineWidth: 1)).foregroundStyle(modeTint(mode))
                     }
                 }
             }
@@ -123,9 +123,9 @@ struct MissionView: View {
                     Text(hint + " Tap to open Settings.")
                         .font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.amber)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8).overlay(Rectangle().stroke(Theme.amber.opacity(0.5), lineWidth: 1))
+                        .padding(8).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.5), lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
             }
         case .connecting:
             notice(mission.notice ?? "Connecting to your Mac…", Theme.amber)
@@ -145,7 +145,7 @@ struct MissionView: View {
     private func notice(_ text: String, _ tint: Color) -> some View {
         Text(text).font(.system(size: 11, design: .monospaced)).foregroundStyle(tint)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(8).overlay(Rectangle().stroke(tint.opacity(0.5), lineWidth: 1))
+            .padding(8).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(tint.opacity(0.5), lineWidth: 1))
             .onTapGesture { mission.clearNotice() }
     }
 
@@ -176,11 +176,11 @@ struct MissionView: View {
                         Button { mission.setProvider(name) } label: {
                             Text(name).font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .padding(.vertical, 7).padding(.horizontal, 10)
-                                .background(on ? Theme.cyan.opacity(0.25) : .clear)
-                                .overlay(Rectangle().stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
+                                .background(on ? Theme.cyan.opacity(0.25) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                                .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
                                 .foregroundStyle(Theme.cyan.opacity(on ? 1 : 0.7))
                         }
-                        .buttonStyle(.plain).disabled(busy || !connected)
+                        .buttonStyle(.hud).disabled(busy || !connected)
                     }
                 }
             }
@@ -198,7 +198,7 @@ struct MissionView: View {
                 Text("📁 \(((mission.snapshot?.folder ?? "") as NSString).lastPathComponent)")
                     .font(.system(size: 10, design: .monospaced)).lineLimit(1)
                     .padding(.vertical, 7).padding(.horizontal, 10)
-                    .overlay(Rectangle().stroke(Theme.amber.opacity(0.7), lineWidth: 1)).foregroundStyle(Theme.amber)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.7), lineWidth: 1)).foregroundStyle(Theme.amber)
             }
             .disabled(busy || !connected)
         }
@@ -220,14 +220,14 @@ struct MissionView: View {
                     Image(systemName: dictation.listening ? "waveform.circle.fill" : "mic.circle")
                         .font(.system(size: 26)).foregroundStyle(dictation.listening ? Theme.red : Theme.cyan)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hud)
                 if busy {
                     hudButton("ABORT", tint: Theme.red) { mission.cancel() }
                 } else {
                     hudButton("GO", tint: Theme.cyan, action: send).disabled(!connected || draft.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            .padding(10).background(Theme.panel).overlay(Rectangle().stroke(Theme.cyan.opacity(0.7), lineWidth: 1))
+            .padding(10).background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.corner)).overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(0.7), lineWidth: 1))
         }
     }
 
@@ -247,7 +247,7 @@ struct MissionView: View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 17)).foregroundStyle(Theme.amber).frame(width: 34, height: 30)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hud)
     }
 
     private func modeTint(_ mode: String) -> Color { ApprovalMode(rawValue: mode)?.tint ?? Theme.cyan }
