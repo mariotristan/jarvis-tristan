@@ -71,4 +71,13 @@ final class KidsModeTests: XCTestCase {
         for _ in 0..<100 where hub.micBusy { try await Task.sleep(for: .milliseconds(100)) }
         XCTAssertFalse(hub.micBusy, "the mic opens again once the mission is over")
     }
+
+    func testDemoAnswersIgnoreTheMemoryBriefing() {
+        let briefing = "Context: you have already worked in this folder.\n1. [done] Task: What is 7 times 8?\n\nTreat that as what you did. Current task:\nWhy is the sky blue?"
+        let question = DemoAnswers.question(in: briefing)
+        XCTAssertEqual(question, "Why is the sky blue?")
+        XCTAssertTrue(DemoAnswers.answer(for: question)?.contains("Why is the sky blue?") == true)
+        XCTAssertTrue(DemoAnswers.answer(for: "What is the biggest planet?")?.contains("Jupiter") == true)
+        XCTAssertNil(DemoAnswers.answer(for: "write a README"))
+    }
 }

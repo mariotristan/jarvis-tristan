@@ -23,6 +23,12 @@ enum ProviderKind: String, CaseIterable, Identifiable {
 /// Scripted provider so the HUD can be played with without spending tokens.
 /// Scripted answers for the recorded demo (`Tristan --demo --kids`), matched by a few words in the question.
 enum DemoAnswers {
+    /// The prompt may carry the session's memory briefing in front; the question itself follows "Current task:".
+    static func question(in prompt: String) -> String {
+        guard let marker = prompt.range(of: "Current task:", options: .backwards) else { return prompt }
+        return prompt[marker.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     static func answer(for task: String) -> String? {
         let q = task.lowercased()
         if q.contains("times") || q.contains("7 x 8") {
@@ -47,9 +53,10 @@ struct DemoProvider: AgentProvider {
             let worker = Task {
                 func pause(_ ms: Int) async { try? await Task.sleep(for: .milliseconds(ms)) }
                 // School-style questions get a scripted, friendly answer and need no approval.
-                if let answer = DemoAnswers.answer(for: task) {
+                let question = DemoAnswers.question(in: task)
+                if let answer = DemoAnswers.answer(for: question) {
                     c.yield(.status("THINKING"))
-                    c.yield(.log("Question received: \(task)"))
+                    c.yield(.log("Question received: \(question)"))
                     await pause(2200)
                     c.yield(.status("ANSWERING"))
                     for ch in answer {
@@ -65,8 +72,10 @@ struct DemoProvider: AgentProvider {
                 c.yield(.status("PLANNING"))
                 c.yield(.log("Task received: \(task)"))
                 await pause(900)
+                guard !Task.isCancelled else { c.finish(); return }
                 c.yield(.log("Scanning \(workingDirectory.lastPathComponent)"))
                 await pause(900)
+                guard !Task.isCancelled else { c.finish(); return }
                 c.yield(.status("AWAITING AUTHORIZATION"))
                 let ok = await approve(ApprovalRequest(summary: "Write Sources/auth.ts", detail: "Create a new file in \(workingDirectory.path)"))
                 guard ok else { c.yield(.failed("Denied by operator")); c.finish(); return }

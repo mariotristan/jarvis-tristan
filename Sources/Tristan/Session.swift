@@ -450,6 +450,7 @@ final class Session: ObservableObject {
         fx.play(.listenStop)
         // The microphone stays shut from here until Tristan has answered.
         micGrace?.cancel()
+        micGrace = nil
         micBusy = true
         Task { [weak self] in
             // Give the recognizer a moment to deliver the final words.
@@ -499,6 +500,7 @@ final class Session: ObservableObject {
 
     private func wakeSubmit(_ text: String) {
         micGrace?.cancel()
+        micGrace = nil
         micBusy = true
         music.setDuck("mic", active: false)
         fx.play(.listenStop)
