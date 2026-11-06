@@ -20,7 +20,21 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 173 automated tests pass (156 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 190 automated tests pass (173 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+
+## Demo videos
+
+Recordings of the real app on the built-in demo provider (no account or tokens needed). Click a picture to play the video.
+
+**A task from start to finish** (37 s): the orb grows and sends out rings while Tristan works, the microphone stays off until it has answered, and the orb can fill the whole window.
+
+[![Demo video: a task from start to finish](docs/demo/tristan-demo-poster.jpg)](docs/demo/tristan-demo.mp4)
+
+**Kids safe mode** (64 s): the Paw Patrol-style theme, school questions answered, and a parent PIN needed to open Settings.
+
+[![Demo video: kids safe mode](docs/demo/tristan-demo-kids-poster.jpg)](docs/demo/tristan-demo-kids.mp4)
+
+Record them again with `scripts/record-demo.sh` and `scripts/record-demo.sh kids`. The app plays the scenario by itself (`Tristan --demo`), and the script films the screen, crops to the window and trims the end. It needs Screen Recording permission for your terminal, Xcode and ffmpeg. The demo never touches your Keychain and restores your own settings when it ends.
 
 ## Screenshots
 

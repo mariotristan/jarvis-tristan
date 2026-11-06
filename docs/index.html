@@ -107,6 +107,7 @@ section.soft { background: var(--soft); }
 .facts b { display: block; font-size: 2rem; line-height: 1; font-weight: 800; color: var(--link); }
 .facts span { color: var(--muted); font-size: .9375rem; }
 
+video.shot { display: block; width: 100%; height: auto; }
 .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; }
 .gallery figure, .phones figure { margin: 0; }
 .gallery .shot, .phones .shot, .ipad .shot { background: #0A0405; border-color: var(--line); box-shadow: none; }
@@ -170,6 +171,7 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
       <a class="brand" href="#top" id="top"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
       <nav aria-label="Main">
         <a href="#features">What you get</a>
+        <a href="#demo">Demo</a>
         <a href="#screens">Screens</a>
         <a href="#control">Stay in charge</a>
         <a href="#install">Install</a>
@@ -222,7 +224,7 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
       </article>
       <article class="card">
         <h3>Read it, don’t squint</h3>
-        <p>Output appears the way it would read on a page: headings, lists, tables, and code cards with a copy button. Go full screen when you want to focus, and pick a theme (30 to choose from, light and dark, some borrowed from movies and comics) if cyan is not your color.</p>
+        <p>Output appears the way it would read on a page: headings, lists, tables, and code cards with a copy button. Go full screen when you want to focus, and pick a theme (31 to choose from, light and dark, some borrowed from movies and comics) if cyan is not your color.</p>
       </article>
       <article class="card">
         <h3>Take it with you</h3>
@@ -233,16 +235,49 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
         <p>Hold a key and talk. Turn on the wake word and say “Hey Tristan.” Hear sound and voice cues, and play Spotify while you work—the music dips when Tristan speaks.</p>
       </article>
       <article class="card">
+        <h3>Safe for kids</h3>
+        <p>Turn on kids safe mode and Settings, YOLO and Auto need a parent. A parent unlocks with a PIN or with Touch ID or the Mac password, and it locks again by itself. A paired phone cannot change the mode.</p>
+      </article>
+      <article class="card">
+        <h3>An orb you can see across the room</h3>
+        <p>While Tristan waits for the model the orb grows, sends out rings and sparks, or fills the whole window. Pick its size and effects, or turn them off. The microphone stays shut until Tristan has finished answering, so it never hears itself.</p>
+      </article>
+      <article class="card">
         <h3>Built to be checked</h3>
-        <p>The code is open under the MIT license, and 173 automated tests guard it. This page is honest about what has and hasn’t run for real—see <a href="#status">what’s tested</a>.</p>
+        <p>The code is open under the MIT license, and 190 automated tests guard it. This page is honest about what has and hasn’t run for real—see <a href="#status">what’s tested</a>.</p>
       </article>
     </div>
 
     <div class="facts" role="list">
       <div role="listitem"><b>4</b><span>AI providers in one window</span></div>
-      <div role="listitem"><b>173</b><span>automated tests</span></div>
+      <div role="listitem"><b>190</b><span>automated tests</span></div>
       <div role="listitem"><b>0</b><span>accounts needed to try the demo</span></div>
       <div role="listitem"><b>MIT</b><span>license, free to use and change</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <span class="eyebrow">Demo</span>
+    <h2>See it work.</h2>
+    <p class="intro">Two short recordings of the real app, running on the built-in demo provider. No account, no tokens, and nothing is changed on the Mac.</p>
+
+    <div class="gallery">
+      <figure>
+        <video class="shot" controls preload="metadata" playsinline poster="demo/tristan-demo-poster.jpg" width="2016" height="1336">
+          <source src="demo/tristan-demo.mp4" type="video/mp4">
+          Your browser can’t play this video. <a href="demo/tristan-demo.mp4">Download it</a>.
+        </video>
+        <figcaption>A task from start to finish (37 seconds). The orb grows while Tristan works, the microphone stays off until it has answered, and in a second task the orb fills the whole window.</figcaption>
+      </figure>
+      <figure>
+        <video class="shot" controls preload="metadata" playsinline poster="demo/tristan-demo-kids-poster.jpg" width="2016" height="1336">
+          <source src="demo/tristan-demo-kids.mp4" type="video/mp4">
+          Your browser can’t play this video. <a href="demo/tristan-demo-kids.mp4">Download it</a>.
+        </video>
+        <figcaption>Kids safe mode with the Paw Patrol-style theme (64 seconds). School questions get friendly answers, and trying to open Settings asks for a parent.</figcaption>
+      </figure>
     </div>
   </div>
 </section>
@@ -383,6 +418,7 @@ scripts/install.sh</pre>
         <tr><th scope="row">Azure OpenAI on the Mac</th><td><span class="pill ok">Tested for real</span></td><td>Streaming and tool calls worked against a real deployment, signed in with an API key.</td></tr>
         <tr><th scope="row">Azure OpenAI with Azure CLI sign-in, and on iPhone</th><td><span class="pill">Stand-in only</span></td><td>Entra ID sign-in and the phone’s standalone mode are not yet tried live. <a href="https://github.com/mariotristan/jarvis-tristan/issues/2">Issue 2</a></td></tr>
         <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
+        <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
         <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>
         <tr><th scope="row">Voice, wake word, notifications, Spotify</th><td><span class="pill">Stand-in only</span></td><td>The logic is tested; nobody has used them end to end yet. <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">Issue 4</a></td></tr>
       </tbody>
