@@ -2,7 +2,6 @@ import SwiftUI
 import AppKit
 import AVFoundation
 
-enum Phase { case idle, working, awaitingApproval, done, failed }
 
 struct LogEntry: Identifiable {
     enum Kind { case info, step, warn, ok }
@@ -51,6 +50,14 @@ final class Session: ObservableObject {
     @Published var duckMusic = true {
         didSet { music.duckingEnabled = duckMusic; UserDefaults.standard.set(duckMusic, forKey: "duckMusic") }
     }
+    @Published var remoteOn = false {
+        didSet {
+            UserDefaults.standard.set(remoteOn, forKey: "remoteOn")
+            if remoteOn { remote.start() } else { remote.stop() }
+        }
+    }
+    /// Changes at the start of every mission, so a connected phone knows when to clear its log.
+    @Published private(set) var missionID = UUID().uuidString
     @Published var showSettings = false
     @Published var showHistory = false
     @Published var draft = ""
@@ -71,6 +78,7 @@ final class Session: ObservableObject {
     private let wake = WakeListener()
     private let fx = SoundFX()
     let music: SpotifyController
+    let remote = RemoteServer()
     private let history: HistoryStore?
     private var announcedApproval = false
     private var spokenReply = false
@@ -116,6 +124,8 @@ final class Session: ObservableObject {
         }
         if defaults.bool(forKey: "wakeOn") { wakeOn = true }
         if defaults.bool(forKey: "musicOn") { musicOn = true }
+        remote.attach(to: self)
+        if defaults.bool(forKey: "remoteOn") { remoteOn = true }
     }
 
     var busy: Bool { phase == .working || phase == .awaitingApproval }
@@ -133,6 +143,7 @@ final class Session: ObservableObject {
             return
         }
         spokenReply = viaVoice
+        missionID = UUID().uuidString
         log = []
         code = ""
         currentTask = prompt
@@ -337,6 +348,11 @@ final class Session: ObservableObject {
             phase = .done; status = "MISSION COMPLETE"
             record(status: "done", summary: "Complete")
         }
+    }
+
+    /// Mission-log line for something a remote device did ("iPhone connected").
+    func noteRemote(_ text: String) {
+        add("📱 \(text)", .info)
     }
 
     private func add(_ text: String, _ kind: LogEntry.Kind) {

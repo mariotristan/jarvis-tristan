@@ -3,3 +3,5 @@
 Tristan.app/
 dist/
 .DS_Store
+ios/build/
+xcuserdata/

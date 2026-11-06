@@ -95,9 +95,9 @@ enum Snapshot {
     private static func entry(_ text: String, _ kind: LogEntry.Kind) -> LogEntry { LogEntry(text: text, kind: kind) }
 
     /// Renders the app icon (a dark squircle with the arc reactor) at 1024 points, for `scripts/bundle.sh` to turn into an .icns.
-    static func renderIcon(to file: URL) {
+    static func renderIcon(to file: URL, fullBleed: Bool = false) {
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-        write(AppIconView(), width: 1024, height: 1024, to: file)
+        write(AppIconView(fullBleed: fullBleed), width: 1024, height: 1024, to: file)
     }
 
     private static func save<V: View>(_ view: V, width: CGFloat, height: CGFloat, name: String) {
@@ -130,16 +130,26 @@ enum Snapshot {
 }
 
 struct AppIconView: View {
+    /// iOS wants a square that fills the whole canvas (the system rounds it); the Mac icon is a drawn squircle.
+    var fullBleed = false
+
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 190, style: .continuous)
-                .fill(RadialGradient(colors: [Color(red: 0.03, green: 0.20, blue: 0.27), Theme.deep],
-                                     center: .center, startRadius: 0, endRadius: 560))
-                .frame(width: 824, height: 824)
-            RoundedRectangle(cornerRadius: 190, style: .continuous)
-                .stroke(Theme.cyan.opacity(0.55), lineWidth: 8)
-                .frame(width: 824, height: 824)
-            ReactorView(active: true, tint: Theme.cyan, size: 560)
+            if fullBleed {
+                Rectangle()
+                    .fill(RadialGradient(colors: [Color(red: 0.03, green: 0.20, blue: 0.27), Theme.deep],
+                                         center: .center, startRadius: 0, endRadius: 760))
+                    .frame(width: 1024, height: 1024)
+            } else {
+                RoundedRectangle(cornerRadius: 190, style: .continuous)
+                    .fill(RadialGradient(colors: [Color(red: 0.03, green: 0.20, blue: 0.27), Theme.deep],
+                                         center: .center, startRadius: 0, endRadius: 560))
+                    .frame(width: 824, height: 824)
+                RoundedRectangle(cornerRadius: 190, style: .continuous)
+                    .stroke(Theme.cyan.opacity(0.55), lineWidth: 8)
+                    .frame(width: 824, height: 824)
+            }
+            ReactorView(active: true, tint: Theme.cyan, size: fullBleed ? 640 : 560)
         }
         .frame(width: 1024, height: 1024)
     }

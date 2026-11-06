@@ -11,13 +11,14 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 ![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)
 ![Claude Code](https://img.shields.io/badge/Claude_Code-supported-D97757?logo=anthropic&logoColor=white)
 ![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-supported-FF9900?logo=amazonwebservices&logoColor=white)
+![iOS](https://img.shields.io/badge/iPhone_%26_iPad-remote-000000?logo=ios&logoColor=white)
 ![Spotify](https://img.shields.io/badge/Spotify-controls_the_desktop_app-1DB954?logo=spotify&logoColor=white)
 ![Azure OpenAI](https://img.shields.io/badge/Azure_OpenAI-supported-0078D4?logo=microsoftazure&logoColor=white)
 ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-6e40c9?logo=githubcopilot&logoColor=white)
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 89 automated tests pass, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 109 automated tests pass (106 for the Mac app and 3 for the iOS app), and there is now an **iPhone and iPad remote** that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Screenshots
 
@@ -38,6 +39,15 @@ Rendered from the real views with sample data (`Tristan --snapshot docs/screensh
 **Mission history.** Past missions with one-click re-run.
 
 ![Mission history](docs/screenshots/hud-history.png)
+
+**Tristan on iPhone and iPad.** Approve from your phone while the Mac does the work (see [iPhone and iPad](#iphone-and-ipad)).
+
+<p>
+  <img src="docs/screenshots/ios-iphone-approval.png" alt="iPhone approval" width="260">
+  <img src="docs/screenshots/ios-iphone-code.png" alt="iPhone code stream" width="260">
+</p>
+
+![iPad](docs/screenshots/ios-ipad.png)
 
 **The notch overlay**, expanded. It opens by itself when approval is needed, so you can answer without switching windows.
 
@@ -69,6 +79,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **Mac notifications** when approval is needed or a mission ends while Tristan is in the background. Clicking one brings the HUD forward.
 - **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` hides it. Pick a preset or record your own combination in Configuration; Tristan tells you if another app already owns it.
 - **Launch at login** switch for the installed app.
+- **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
 - **Menu bar item** next to the clock to open Tristan or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -130,6 +141,34 @@ The `BEDROCK` provider calls `aws bedrock-runtime converse` through the **AWS CL
 - **Streaming:** Tristan streams over HTTPS (`ConverseStream`), signing each request with SigV4 and borrowing credentials from `aws configure export-credentials` (so SSO, profiles and SAML helpers work). If streaming cannot start for any reason it falls back to the non-streaming AWS CLI call, which also produces the clearest error messages. The signer is verified against AWS's published test vectors and the binary stream decoder against the wire format, but a real streamed call has not been made yet.
 
 `run_command` is not sandboxed beyond the working folder as its starting directory: a command can do anything your shell can. The approval prompt is the safety net, so be careful with `YOLO`.
+
+## iPhone and iPad
+
+An iPhone can't run the Claude Code, Copilot or AWS command-line tools, so the iOS app is a **remote for the Mac**: the Mac does the real work with every provider, and the phone shows the HUD (reactor, mission log, code stream), answers approval prompts with large buttons and haptics, starts missions (typed or dictated), switches provider, mode and folder, controls Spotify and browses mission history. On iPad the log and code sit side by side. A standalone mode that talks to Azure OpenAI and Bedrock directly is planned (see the [design](docs/superpowers/specs/2026-11-06-ios-remote-design.md)).
+
+**Pairing.** On the Mac open Configuration, switch **REMOTE CONTROL** on and scan the QR code with the app, or copy the link and open or paste it on the phone. You can also type the address and secret by hand.
+
+**How it is secured.**
+- Off by default. The Mac shows and logs every connection ("iPhone connected") and lists connected devices.
+- The link is TLS 1.2 with a pre-shared-key cipher suite from Apple's Network framework. The key is a random 256-bit secret from the QR code, held in the Keychain on both sides. A device with the wrong key is refused during the handshake, so nothing unauthenticated is ever read. **NEW SECRET** on the Mac locks out every paired device.
+- A phone cannot switch on `YOLO`, and remote tasks are refused while the Mac is in `YOLO` mode.
+- A phone can only choose a working folder from the Mac's own list (its current folder and recent mission folders), never an arbitrary path.
+- Messages are limited to 1 MB, tasks to 4,000 characters, and a handful of simultaneous connections.
+
+**Limits you should know.**
+- Approvals only reach the phone while the app is open in front. iOS pauses background apps and real push notifications need a server, which this project does not have. Keep Tristan open during a mission.
+- The Mac must be awake and reachable: same Wi-Fi, or a VPN such as Tailscale (enter its address by hand).
+- It has been run in the **iOS simulator only**, not on a physical iPhone or iPad, and not over real Wi-Fi. Camera scanning, dictation and haptics are untested because the simulator has none of them.
+- All paired devices share one secret.
+
+**Build and run it.**
+
+```bash
+scripts/ios-demo.sh                          # iPhone simulator against a demo Mac, no accounts needed
+SIM="iPad Pro 11-inch (M4)" scripts/ios-demo.sh   # the iPad layout
+```
+
+The project lives in `ios/` and is generated from `ios/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`, then `cd ios && xcodegen generate`; the generated project is committed too). The protocol, client, theme and models in `Sources/Tristan/Shared/` are compiled by both apps. To run on a real device, open `ios/TristanIOS.xcodeproj` in Xcode, choose your team under Signing and run. Developer launch arguments (debug builds only): `-tristanPairURL <link>`, `-tristanAutoSubmit <task>`, `-tristanAutoApprove YES`, `-tristanTab code`.
 
 ## Install
 
@@ -221,6 +260,9 @@ Sources/Tristan/
 ├── BedrockStreaming.swift  SigV4 signer, event-stream decoder, ConverseStream client with CLI fallback
 ├── Spotify.swift      Spotify control via AppleScript, music commands, ducking
 ├── Shortcut.swift     Shortcut model and presets for the global hotkey
+├── RemoteServer.swift Mac side of the iPhone/iPad remote (listener, commands, live updates)
+├── QRCode.swift       The pairing QR code
+├── Shared/            Compiled by both the Mac and iOS apps: protocol, framing, TLS-PSK transport, client, theme, models
 ├── Notifier.swift     Mac notifications
 ├── WakeWord.swift     "Hey Tristan" matcher, silence-timing state machine and on-device listener
 ├── SettingsView.swift Configuration and history overlays
@@ -232,8 +274,9 @@ Sources/Tristan/
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
 ├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    89 tests: agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, Copilot flags, wake word, history, Spotify, shortcuts, audio
-scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install)
+Tests/TristanTests/    106 tests: agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio
+ios/                   The iPhone and iPad app (XcodeGen project, sources, 3 tests)
+scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
 docs/ci-and-release.md How CI and releases work
 .github/workflows/     CI: build, test and bundle on macOS
@@ -306,6 +349,7 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **Copilot cannot be approved per action** (see [GitHub Copilot](#github-copilot)).
 - **Spotify control** is tested against a pretend Spotify (commands, parsing, ducking, error handling) but has not been run against the real app. macOS asks for permission on first use.
 - **Launch at login** uses the system login-item service, which may ask you to approve an ad-hoc signed app in System Settings.
+- **The iOS app has only run in the simulator** (see [iPhone and iPad](#iphone-and-ipad)): no physical device, no real Wi-Fi, no camera, microphone or haptics. The secure link and the remote commands are tested end to end on loopback, and the remote design rules (no remote YOLO, folder allow-list, replay for late joiners, wrong secret refused) have automated tests.
 - **The release workflow has not run yet** (it needs a first tag), and the CI workflow's Xcode 16.2 pin follows `catch-a-break` but is untested for this project.
 - **The app is not notarized** (see [Install](#install)); there is no auto-update.
 - The notch overlay has only been tested on a notched MacBook, and the visuals have not had a design pass on other displays.
@@ -326,11 +370,14 @@ Done:
 - [x] Shortcut recorder, history search and filters
 - [x] Spotify player, voice and typed music commands, ducking, focus playlist
 - [x] Installable DMG with icon and versioning, release and CI workflows, install script, launch at login
-- [x] Automated tests (89)
+- [x] iPhone and iPad remote: encrypted pairing, mission screen, approvals, history, music, dictation, side-by-side iPad layout
+- [x] Automated tests (109)
 
 Next:
 
-- [ ] Live validation of Bedrock, Azure OpenAI, Copilot, wake word and notifications (needs real credentials and a human in front of the Mac)
+- [ ] Live validation of Bedrock, Azure OpenAI, Copilot, wake word, notifications and the iOS app on a real device (needs real credentials and a human in front of the hardware)
+- [ ] iOS standalone mode: Azure OpenAI and Bedrock directly from the phone, with file tools limited to a Files-app folder
+- [ ] iOS: Bonjour discovery of the Mac, per-device pairing keys, Live Activities for approvals
 - [ ] Per-action approvals for Copilot, if the CLI gains a permission prompt hook
 - [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
 - [ ] Track title in the notch, and Apple Music support

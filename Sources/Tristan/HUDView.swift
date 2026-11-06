@@ -190,20 +190,6 @@ struct HUDView: View {
     }
 }
 
-func hudButton(_ title: String, tint: Color, action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-        Text(title)
-            .font(.system(size: 11, weight: .bold, design: .monospaced))
-            .tracking(2)
-            .padding(.vertical, 6).padding(.horizontal, 14)
-            .background(tint.opacity(0.2))
-            .overlay(Rectangle().stroke(tint, lineWidth: 1))
-            .foregroundStyle(tint)
-            .shadow(color: tint.opacity(0.6), radius: 4)
-    }
-    .buttonStyle(.plain)
-}
-
 struct ApprovalOverlay: View {
     @EnvironmentObject var session: Session
     let request: ApprovalRequest
@@ -240,16 +226,6 @@ struct ApprovalOverlay: View {
             .background(Theme.deep)
             .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1.5))
             .shadow(color: Theme.amber.opacity(0.5), radius: 18)
-        }
-    }
-}
-
-extension ApprovalMode {
-    var tint: Color {
-        switch self {
-        case .ask: return Theme.green
-        case .auto: return Theme.amber
-        case .yolo: return Theme.red
         }
     }
 }

@@ -51,3 +51,6 @@ A new mission gets a new `missionID`; on connect the server replays the current 
 - Unit tests for framing, protocol round trips and the security rules.
 - End-to-end tests on loopback: a real `RemoteClient` against a real `RemoteServer` driving a demo mission, including approvals, a wrong key, the YOLO guard and the folder allow-list.
 - iOS: build and run in the simulator, with screenshots. Not tested on a physical device or against a real Mac over Wi-Fi.
+
+## Status
+Phases 1 and 2 are built and run in the simulator (iPhone and iPad), with 17 remote tests on the Mac side and 3 on iOS. Phase 3 (standalone) is not started. Not yet done: running on a physical device, camera QR scanning, dictation and haptics (the simulator has none of them), Bonjour discovery (the Mac advertises `_tristan._tcp` already, the app does not browse for it yet), and per-device keys.

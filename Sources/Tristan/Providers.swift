@@ -55,32 +55,6 @@ protocol AgentProvider: Sendable {
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent>
 }
 
-/// How much supervision an agent run gets.
-enum ApprovalMode: String, CaseIterable, Identifiable {
-    case ask = "ASK"
-    case auto = "AUTO"
-    case yolo = "YOLO"
-
-    var id: String { rawValue }
-
-    var summary: String {
-        switch self {
-        case .ask: return "Tristan asks you before every action that needs permission. Safest."
-        case .auto: return "Routine actions run without asking; risky ones are blocked or still ask. Claude: its own safety classifier. Bedrock: in-folder writes and plain commands."
-        case .yolo: return "All permission checks are skipped. The agent can edit files and run any command without asking."
-        }
-    }
-
-    /// Value for `claude --permission-mode`. ASK uses the prompt tool instead of a hands-off mode.
-    var claudeFlag: String {
-        switch self {
-        case .ask: return "manual"
-        case .auto: return "auto"
-        case .yolo: return "bypassPermissions"
-        }
-    }
-}
-
 enum ProviderKind: String, CaseIterable, Identifiable {
     case claude = "CLAUDE"
     case copilot = "COPILOT"

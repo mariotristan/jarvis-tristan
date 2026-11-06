@@ -1,6 +1,7 @@
 import AppKit
 
 let args = CommandLine.arguments
+nonisolated(unsafe) var demoKeepAlive: (Any, Any)?
 
 // `Tristan --mcp-permission <socket>`: MCP stdio shim spawned by Claude Code (see PermissionBridge.swift).
 if let flag = args.firstIndex(of: "--mcp-permission"), args.indices.contains(flag + 1) {
@@ -64,8 +65,35 @@ if args.contains("--sound-demo") {
 
 // `Tristan --make-icon <file.png>`: renders the app icon (used by scripts/bundle.sh).
 if let flag = args.firstIndex(of: "--make-icon"), args.indices.contains(flag + 1) {
-    MainActor.assumeIsolated { Snapshot.renderIcon(to: URL(fileURLWithPath: args[flag + 1])) }
+    MainActor.assumeIsolated { Snapshot.renderIcon(to: URL(fileURLWithPath: args[flag + 1]), fullBleed: args.contains("--full-bleed")) }
     exit(0)
+}
+
+// `Tristan --remote-demo`: serves a demo Session over the remote protocol, without any UI. For developing the iOS
+// app in the simulator: it prints a pairing link for 127.0.0.1.
+if args.contains("--remote-demo") {
+    let demoServer: RemoteServer = MainActor.assumeIsolated {
+        let session = Session(history: nil)
+        session.soundsOn = false; session.voiceOn = false; session.notificationsOn = false
+        session.provider = .demo
+        session.approvalMode = .ask
+        session.workingDirectory = FileManager.default.temporaryDirectory
+        let server = RemoteServer(secret: PairingSecret.generate(), advertise: false, preferredPort: RemoteServer.defaultPort)
+        server.attach(to: session)
+        server.start()
+        demoKeepAlive = (session, server)
+        return server
+    }
+    Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { timer in
+        MainActor.assumeIsolated {
+            guard let port = demoServer.port else { return }
+            timer.invalidate()
+            let link = PairingLink(name: "Demo Mac", host: "127.0.0.1", port: port, secret: demoServer.secret)
+            print("PAIR \(link.url.absoluteString)")
+            fflush(stdout)
+        }
+    }
+    RunLoop.main.run()
 }
 
 let app = NSApplication.shared

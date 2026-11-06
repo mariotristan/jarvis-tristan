@@ -1,0 +1,60 @@
+name: TristanIOS
+options:
+  bundleIdPrefix: com.tristan
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    # The simulator needs at least an ad-hoc signature for the Keychain to work. Real devices use your own team.
+    "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
+targets:
+  TristanIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      # The protocol, client, theme and models are shared with the Mac app, compiled straight from there.
+      - path: ../Sources/Tristan/Shared
+        name: Shared
+    scheme:
+      testTargets: [TristanIOSTests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tristan.ios
+        PRODUCT_NAME: Tristan
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_PREVIEWS: NO
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Tristan
+        UILaunchScreen: {}
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSLocalNetworkUsageDescription: Tristan connects to the Tristan app on your Mac over your local network.
+        NSCameraUsageDescription: Tristan scans the pairing QR code shown on your Mac.
+        NSMicrophoneUsageDescription: Tristan listens when you dictate a task.
+        NSSpeechRecognitionUsageDescription: Tristan turns your voice into a task.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.tristan.pairing
+            CFBundleURLSchemes: [tristan]
+  TristanIOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: TristanIOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.tristan.ios.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Tristan.app/Tristan
+        BUNDLE_LOADER: $(TEST_HOST)

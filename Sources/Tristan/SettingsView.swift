@@ -33,6 +33,7 @@ struct SettingsOverlay: View {
                         generalSection
                         voiceSection
                         musicSection
+                        RemoteSettings(remote: session.remote)
                         providerSections
                         rulesSection
                     }
@@ -431,5 +432,71 @@ struct HistoryOverlay: View {
         }
         .padding(8)
         .overlay(Rectangle().stroke(Theme.cyan.opacity(0.25), lineWidth: 1))
+    }
+}
+
+/// Pairing and status for the iPhone/iPad app.
+struct RemoteSettings: View {
+    @ObservedObject var remote: RemoteServer
+    @EnvironmentObject var session: Session
+    @State private var confirmingRegenerate = false
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("REMOTE CONTROL  (iPhone and iPad app)")
+                .font(.system(size: 10, design: .monospaced)).tracking(2).foregroundStyle(Theme.cyan.opacity(0.7))
+            Button { session.remoteOn.toggle() } label: {
+                Text("REMOTE CONTROL  \(session.remoteOn ? "ON" : "OFF")")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(1)
+                    .frame(maxWidth: .infinity).padding(.vertical, 7)
+                    .background(session.remoteOn ? Theme.cyan.opacity(0.2) : .clear)
+                    .overlay(Rectangle().stroke(Theme.cyan.opacity(session.remoteOn ? 1 : 0.4), lineWidth: 1))
+                    .foregroundStyle(Theme.cyan.opacity(session.remoteOn ? 1 : 0.6))
+            }
+            .buttonStyle(.plain)
+
+            Text("Off by default. When on, a paired iPhone or iPad on your network can start missions, approve actions and control Spotify. It cannot enable YOLO, and tasks are refused while the Mac is in YOLO mode. Connections are encrypted and need the pairing secret below.")
+                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let problem = remote.problem {
+                Text(problem).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.amber)
+            }
+            if session.remoteOn, remote.running, let link = remote.pairingLink {
+                HStack(alignment: .top, spacing: 14) {
+                    if let image = QRCode.image(for: link.url.absoluteString, points: 150) {
+                        Image(nsImage: image).interpolation(.none)
+                            .padding(6).background(Color.white)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Scan this with the Tristan app, or copy the link and open it on the phone.")
+                            .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.7))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("\(link.host):\(link.port)")
+                            .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.amber)
+                        HStack(spacing: 8) {
+                            hudButton(copied ? "COPIED" : "COPY LINK", tint: Theme.cyan) {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(link.url.absoluteString, forType: .string)
+                                copied = true
+                            }
+                            if confirmingRegenerate {
+                                hudButton("CONFIRM", tint: Theme.red) { remote.regenerateSecret(); confirmingRegenerate = false; copied = false }
+                                hudButton("CANCEL", tint: Theme.cyan) { confirmingRegenerate = false }
+                            } else {
+                                hudButton("NEW SECRET", tint: Theme.amber) { confirmingRegenerate = true }
+                            }
+                        }
+                        if confirmingRegenerate {
+                            Text("This disconnects every paired device. They must pair again.")
+                                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.red)
+                        }
+                    }
+                }
+                Text(remote.devices.isEmpty ? "No device connected." : "Connected: \(remote.devices.joined(separator: ", "))")
+                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(remote.devices.isEmpty ? Theme.cyan.opacity(0.5) : Theme.green)
+            }
+        }
     }
 }
