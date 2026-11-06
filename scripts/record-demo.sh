@@ -1,7 +1,7 @@
 #!/bin/bash
 # Records a video of the live app on the DEMO provider (no accounts or agent needed), cropped to the Tristan window
 # so nothing else on your screen ends up in the file. Output: docs/demo/tristan-demo.mp4
-#   scripts/record-demo.sh                 records until the autopilot finishes (about 65 seconds, 75 at most)
+#   scripts/record-demo.sh                 records for 75 seconds, then trims the video to just after the demo finishes
 #   SECONDS_TO_RECORD=120 scripts/record-demo.sh
 #   DEMO_MODE=ask scripts/record-demo.sh   open in ask or auto instead of yolo (the default)
 #   scripts/record-demo.sh kids            the kids video: Paw Patrol theme, kids safe mode, school questions
@@ -53,18 +53,19 @@ echo "Recording starts in 5 seconds and the demo plays by itself (about 65 secon
 fi
 for i in 5 4 3 2 1; do printf "%s " "$i"; sleep 1; done; echo "recording"
 
-# A background job in a script ignores SIGINT, so reset it first or the early stop below would do nothing.
-python3 -c 'import os,signal,sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.execvp(sys.argv[1], sys.argv[1:])' \
-  screencapture -v -V "$SECS" "$RAW" &
+# The recorder runs to its time limit (stopping it early with a signal is not reliable); the autopilot's finish is noted and
+# the video is trimmed to just after it, so the idle tail is cut.
+RECLOG=$(mktemp)
+START=$(date +%s)
+screencapture -v -V "$SECS" "$RAW" 2> "$RECLOG" &
 REC=$!
+DONE_AT=""
 if [ -z "${MANUAL:-}" ]; then
-  # Stop as soon as the autopilot is done (a few seconds of tail), or at the time limit.
-  for _ in $(seq 1 $((SECS * 5))); do grep -q '^DEMO_DONE' "$LOG" && break; sleep 0.2; done
-  sleep 2
-  kill -INT "$REC" 2>/dev/null || true
+  for _ in $(seq 1 $((SECS * 5))); do grep -q '^DEMO_DONE' "$LOG" && { DONE_AT=$(date +%s); break; }; sleep 0.2; done
 fi
 wait "$REC" || true
-[ -s "$RAW" ] || { echo "Nothing was recorded (is Screen Recording allowed for this terminal?). Nothing to convert."; exit 1; }
+[ -s "$RAW" ] || { echo "Nothing was recorded (is Screen Recording allowed for this terminal?). Nothing to convert."; echo "screencapture said: $(cat "$RECLOG")"; rm -f "$RECLOG"; exit 1; }
+rm -f "$RECLOG"
 
 # Crop to the window plus a small margin, converting screen points to video pixels.
 VW=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$RAW")
@@ -80,7 +81,9 @@ print(f"{even(w * sx)}:{even(h * sy)}:{even(x * sx)}:{even(y * sy)}")
 PY
 )
 DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$RAW")
-LEN=$(python3 -c "print(max(1, float('$DUR') - $TRIM_START - $TRIM_END))")
+END="$DUR"
+[ -n "$DONE_AT" ] && END=$(python3 -c "print(min(float('$DUR'), $DONE_AT - $START + 3))")
+LEN=$(python3 -c "print(max(1, float('$END') - $TRIM_START - $TRIM_END))")
 ffmpeg -y -loglevel error -ss "$TRIM_START" -t "$LEN" -i "$RAW" -vf "crop=$CROP" \
   -c:v libx264 -crf 22 -preset slow -pix_fmt yuv420p -movflags +faststart "$OUT/$NAME.mp4"
 [ "${KEEP_RAW:-0}" = 1 ] || rm -f "$RAW"
