@@ -109,7 +109,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
 - **Several sessions at the same time.** Run a Claude session and a Copilot session (or two Claude sessions in different folders) side by side. Each session is a tab with its own provider, folder, mission log, code stream and approvals, and a status light (pulsing cyan while working, amber while it needs you, green when done, red on failure). **+ NEW SESSION** (`⌘T`) opens another, `⌘1`…`⌘9` switch, `⌘W` closes (a running session asks first). A session that needs approval in the background raises an amber banner, a sound, a spoken "Session 2, authorization required" and a notification, and the notch shows and answers it. Up to 8 sessions; the open sessions (provider and folder) come back after a restart. Starting a session in a folder another session is already working in warns you that edits may collide. The approval mode and always-allow rules are shared by all sessions.
 - **Rounded buttons you can hit anywhere, and a big, configurable orb.** Every button is clickable over its whole area, not just on its text. While Tristan waits for the model (or listens to you) the orb grows and, with effects on, adds a breathing halo, pulse rings and orbiting sparks. **Configuration > ORB WHILE WAITING** sets the size (60 to 160%), the effects (off, subtle, full) and a switch that lets the orb fill the whole window.
-- **Kids safe mode.** **Configuration > KIDS SAFE MODE**. While on, questions are answered by a local Ollama model so they stay on the Mac (see [Ollama](#ollama-local-models)), Tristan speaks in a brighter voice, opening Settings needs a parent, and YOLO and AUTO are switched off (the mode goes back to ASK whenever it locks). A parent unlocks with a PIN (4 or more digits, stored hashed in the Keychain) or with Touch ID / the Mac password, whichever you choose. It locks again when Settings close or after 5 minutes, and paired phones cannot change the mode.
+- **Kids safe mode.** **Configuration > KIDS SAFE MODE**. While on, questions are answered by a local Ollama model so they stay on the Mac (see [Local models](https://mariotristan.github.io/jarvis-tristan/local-models.html)), Tristan speaks in a brighter voice, opening Settings needs a parent, and YOLO and AUTO are switched off (the mode goes back to ASK whenever it locks). A parent unlocks with a PIN (4 or more digits, stored hashed in the Keychain) or with Touch ID / the Mac password, whichever you choose. It locks again when Settings close or after 5 minutes, and paired phones cannot change the mode.
 - **Session memory.** A finished mission stays in its session's context. Each session keeps the task, the actions taken and the result of its recent missions (the last 12; the newest three in detail, older ones as one line) and puts that briefing in front of the next task, so "now add tests for what you just wrote" works whichever provider runs it. Only missions from the same folder are included. The tab shows **REMEMBERS n**; click it (or open **+ NEW SESSION**, which starts empty) to forget. The memory survives a restart. On the iPhone and iPad standalone mode the same memory is kept, and **NEW CONVERSATION** in Settings clears it. The briefing is plain text in the prompt, so it costs a few thousand characters per mission at most; it is not the model's own hidden state, so details that never reached the log or the final reply are not remembered.
 - **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the whole screen, hides the Dock and menu bar completely (they do not slide in at the edges) and puts the window above everything else, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
 - **Rendered markdown in the code stream.** What an agent writes is shown as it would read: headings, bold and italic, inline code, bullet, numbered and task lists, tables with alignment, quotes, rules, and code blocks as cards with the file name, language and a COPY button. A file the agent writes is a card too, and a written `.md` file is rendered with a SOURCE switch. **RAW** shows the plain text. Links only open if they are web or mail links, so model output can never plant a `tristan://` pairing link or a `file://` link. The iPhone and iPad apps use the same renderer.
@@ -127,49 +127,24 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 |----------|--------|--------------|
 | `DEMO` | Working | Scripted run with a fake approval, for trying the HUD without spending tokens. |
 | `CLAUDE` | Working | Runs `claude -p <task> --output-format stream-json --verbose` in the chosen folder and turns the JSON events into log lines and code. In `ASK` mode, permission prompts are routed back to you (see [how approvals work](#how-approvals-work)). |
-| `BEDROCK` | Built, needs live validation | Tristan's own agent loop on Bedrock's Converse API (see [Bedrock](#aws-bedrock)). Covered by tests with a scripted model; not yet run against real AWS. |
-| `COPILOT` | Built, needs live validation | Drives the GitHub Copilot CLI headlessly. Approval modes map onto the CLI's tool permissions (see [GitHub Copilot](#github-copilot)). |
-| `OLLAMA` | Built, needs live validation | Tristan's own agent loop on a model running on this Mac through [Ollama](https://ollama.com), so nothing leaves the machine (see [Ollama](#ollama-local-models)). Covered by tests with a scripted model; not yet run against a real Ollama model. |
-| `AZURE` | Working (tested live on the Mac) | Tristan's own agent loop on an Azure OpenAI deployment, streaming tokens, tested against a real deployment with an API key (see [Azure OpenAI](#azure-openai)). |
+| `BEDROCK` | Built, needs live validation | Tristan's own agent loop on Bedrock's Converse API (see [Providers](https://mariotristan.github.io/jarvis-tristan/providers.html)). Covered by tests with a scripted model; not yet run against real AWS. |
+| `COPILOT` | Built, needs live validation | Drives the GitHub Copilot CLI headlessly. Approval modes map onto the CLI's tool permissions (see [Providers](https://mariotristan.github.io/jarvis-tristan/providers.html)). |
+| `OLLAMA` | Built, needs live validation | Tristan's own agent loop on a model running on this Mac through [Ollama](https://ollama.com), so nothing leaves the machine (see [Local models](https://mariotristan.github.io/jarvis-tristan/local-models.html)). Covered by tests with a scripted model; not yet run against a real Ollama model. |
+| `AZURE` | Working (tested live on the Mac) | Tristan's own agent loop on an Azure OpenAI deployment, streaming tokens, tested against a real deployment with an API key (see [Providers](https://mariotristan.github.io/jarvis-tristan/providers.html)). |
 
 Claude Code runs its own agent loop, so Tristan only has to drive it and display the output. Bedrock, Azure OpenAI and Copilot's models are models, not agents, so Tristan runs its own small agent loop for them (built for Bedrock, reusable for the rest).
 
-### Azure OpenAI
+### Setting up each provider
 
-Point Tristan at an Azure OpenAI **deployment** in Configuration: endpoint (for example `https://my-resource.openai.azure.com`), deployment name and API version (default `2024-10-21`). The deployment's model must support tool calling (the GPT-4 and GPT-5 families do).
+The full setup, limits and what has been tested for each provider are in the [Providers guide](https://mariotristan.github.io/jarvis-tristan/providers.html). In short:
 
-- **Credentials:** paste an API key and it is stored in the **macOS Keychain** (tested live). With no key, Tristan uses your Azure CLI login (`az login`) and an Entra ID token, so no secret is stored at all (this path has not been tried live yet).
-- **Key safety:** the key is only ever sent to an `https` endpoint on an Azure host (`openai.azure.com`, `cognitiveservices.azure.com`, `services.ai.azure.com`, and the US and China sovereign-cloud equivalents). A typo such as `http://…` or a look-alike host is refused before anything is sent.
-- **Streaming:** text arrives token by token. Rate limits (429) and transient server errors are retried up to twice, honouring `Retry-After`.
-- **Tools and approvals:** identical to Bedrock, since both use the same agent loop (see below).
-- **Errors:** wrong credentials, a missing deployment, rate limits and content-filter blocks produce readable messages in the mission log.
+- **Claude Code:** install and sign in to the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code). Tristan finds `claude` on `PATH`, `/opt/homebrew/bin` or `/usr/local/bin`.
+- **Azure OpenAI:** set the endpoint, deployment name and API version in Configuration. Paste an API key (stored in the Keychain) or leave it blank to use `az login`. The deployment's model must support tool calling. The key is only sent to `https` Azure hosts.
+- **Ollama (local models):** run `scripts/setup-ollama.sh`, pick `OLLAMA`, choose a model in Configuration. Nothing leaves the Mac. See the [Local models guide](https://mariotristan.github.io/jarvis-tristan/local-models.html) or [docs/ollama.md](docs/ollama.md).
+- **GitHub Copilot:** `npm install -g @github/copilot`, run `copilot` once to sign in. Its headless mode cannot ask per action, so Tristan asks once and blocks risky commands. See [Approvals](https://mariotristan.github.io/jarvis-tristan/approvals.html).
+- **AWS Bedrock:** set the model id, region and optional profile; it calls the AWS CLI so your usual login works. Not yet run against live AWS.
 
-### Ollama (local models)
-
-The `OLLAMA` provider runs the same agent loop as Azure, but against a model on your own Mac, using Ollama's OpenAI-compatible endpoint (`http://localhost:11434/v1`). No account, key or network is needed.
-
-- **Setup:** run `scripts/setup-ollama.sh` (or `scripts/setup-ollama.sh qwen2.5-coder` for another model). It installs Ollama with Homebrew if missing, starts the server, pulls the model (default `llama3.1`), checks that it answers and that it supports tools. Or do it by hand: install [Ollama](https://ollama.com), start it (`ollama serve` or the app) and `ollama pull llama3.1`. In Configuration > OLLAMA, the installed models are listed (click one to choose it, **REFRESH** to rescan), or leave it blank to use the first installed one.
-- **Pick a model that supports tools.** Tristan edits files and runs commands through tool calls. Small models often handle questions well but fumble tools; `llama3.1` and `qwen2.5-coder` are reasonable starting points. A model without tool support gets a clear message saying so.
-- **Local only:** the host must be this Mac (`localhost`, `127.0.0.1` or `::1`). Anything else is refused before a prompt is sent.
-- **Errors:** Ollama not running, no model installed or a missing model each give a readable message with the command to fix it.
-
-The full guide, with what every step of the setup script does, model advice and troubleshooting, is in [docs/ollama.md](docs/ollama.md).
-
-**Kids safe mode and Ollama.** While kids safe mode is on, every question goes to Ollama, whichever provider is selected, so a child's questions stay on the Mac. If Ollama isn't running or has no model, nothing is sent anywhere: the child sees "Please ask a parent" and a parent is asked (PIN, or Touch ID / Mac password) whether this one question may go to the selected cloud provider (`CLAUDE` if Ollama itself was selected). Approving does not unlock kids mode, and the next question is local again. Kids mode also speaks in a brighter, more playful voice with friendlier lines. It uses the most child-like voice installed (macOS's "Junior" or "Kathy" if present, otherwise a friendly American voice); it does not imitate any TV character.
-
-### GitHub Copilot
-
-The `COPILOT` provider drives the [GitHub Copilot CLI](https://github.com/github/copilot-cli) (`npm install -g @github/copilot`, then run `copilot` once to sign in) with `copilot -p`. Optionally set a model in Configuration.
-
-**Important limitation.** In headless mode the Copilot CLI cannot ask before each action. It only understands `--allow-tool`, `--deny-tool` and `--allow-all-tools`, with denials always winning. Tristan maps the approval modes onto that:
-
-| Mode | What Tristan does |
-|------|-------------------|
-| `ASK` | One approval up front ("Copilot cannot ask per action, allow it in this folder?"), then all tools are allowed **except** a deny list: `rm`, `sudo`, `dd`, `chmod`, `chown`, `mv`, `kill`, `curl`, `wget`, `ssh`, `scp`, `git push`, `git reset` and similar. |
-| `AUTO` | Only file writes and a short list of routine commands (`git status/diff/log/add/commit`, `ls`, `cat`, `grep`, `swift build/test`, `npm test/run`, …) are allowed. Anything else is refused by the CLI. The deny list still applies. |
-| `YOLO` | `--allow-all-tools`, no deny list. |
-
-So per-action approval and `ALWAYS ALLOW` are **not available for Copilot**; that is a limit of the CLI, not a choice. Output is streamed as plain text because the CLI has no structured output mode yet.
+**Kids safe mode and Ollama.** While kids safe mode is on, every question goes to Ollama so a child's questions stay on the Mac. With no usable local model nothing is sent: the child is told to ask a parent, who can allow one question to go to the cloud. See the [Kids safe mode guide](https://mariotristan.github.io/jarvis-tristan/kids-mode.html).
 
 ### Spotify
 
@@ -180,115 +155,41 @@ Tristan controls the **Spotify desktop app** through AppleScript, so there is no
 - **Ducking:** while Tristan speaks or listens, Spotify drops to about 30% and returns afterwards. If you change the volume yourself during that time, Tristan leaves your choice alone. Switch it off with **LOWER MUSIC WHEN I TALK**. If the app quits mid-duck, it restores the volume first.
 - Commands only match whole short phrases, so a real task such as "add a pause button to the player" is never mistaken for a music command.
 
-### AWS Bedrock
-
-The `BEDROCK` provider calls `aws bedrock-runtime converse` through the **AWS CLI**, so your credentials, SSO and profiles work exactly as in your terminal. Set the model id, region and optional profile in Configuration (the gear button).
-
-- **Tools the model gets:** `read_file`, `list_dir`, `write_file`, `run_command`. File access is confined to the working folder (symlinks resolved, including for files that do not exist yet).
-- **Approvals:** reads and listings never ask. `ASK` mode asks before every write and command. `AUTO` skips the prompt for file writes inside the folder and for plain commands, but still asks for chained, redirected or risky ones. `YOLO` never asks. `ALWAYS ALLOW` works the same as for Claude Code.
-- **Model:** it must support tool use (Anthropic Claude models do). The default id is a guess, `us.anthropic.claude-sonnet-4-20250514-v1:0`. List what your account can use with `aws bedrock list-inference-profiles`.
-- **Errors:** expired credentials, missing model access and a wrong model id produce a readable message in the mission log.
-- **Streaming:** Tristan streams over HTTPS (`ConverseStream`), signing each request with SigV4 and borrowing credentials from `aws configure export-credentials` (so SSO, profiles and SAML helpers work). If streaming cannot start for any reason it falls back to the non-streaming AWS CLI call, which also produces the clearest error messages. The signer is verified against AWS's published test vectors and the binary stream decoder against the wire format, but a real streamed call has not been made yet.
-
-`run_command` is not sandboxed beyond the working folder as its starting directory: a command can do anything your shell can. The approval prompt is the safety net, so be careful with `YOLO`.
-
 ## iPhone and iPad
 
-An iPhone can't run the Claude Code, Copilot or AWS command-line tools, so the iOS app is a **remote for the Mac**: the Mac does the real work with every provider, and the phone shows the HUD (reactor, mission log, code stream), answers approval prompts with large buttons and haptics, starts missions (typed or dictated), switches provider, mode and folder, controls Spotify and browses mission history. On iPad the log and code sit side by side. Without a Mac, the same screen also works in a **standalone mode** that talks to Azure OpenAI or Bedrock directly (see [Standalone mode](#standalone-mode-no-mac-needed) below). The design is in [docs/superpowers/specs](docs/superpowers/specs/2026-11-06-ios-remote-design.md).
+The iOS app is a **remote for the Mac**: the Mac does the real work with every provider, and the phone shows the HUD, answers approvals with large buttons and haptics, starts missions, switches provider, mode and folder, controls Spotify and browses history. Without a Mac, a **standalone mode** talks to Azure OpenAI or Bedrock directly, with file tools but no shell. Pair by switching **REMOTE CONTROL** on in the Mac's Configuration and scanning the QR code.
 
-**Pairing.** On the Mac open Configuration, switch **REMOTE CONTROL** on and scan the QR code with the app, or copy the link and open or paste it on the phone. You can also type the address and secret by hand.
+The link is TLS with a pre-shared key held in the Keychain on both sides; it is off by default, a phone cannot turn on `YOLO`, and **NEW SECRET** locks out every paired device. Approvals only reach the phone while the app is open in front, and it has been run in the **iOS simulator only**, not on a physical device.
 
-**How it is secured.**
-- Off by default. The Mac shows and logs every connection ("iPhone connected") and lists connected devices.
-- The link is TLS 1.2 with a pre-shared-key cipher suite from Apple's Network framework. The key is a random 256-bit secret from the QR code, held in the Keychain on both sides. A device with the wrong key is refused during the handshake, so nothing unauthenticated is ever read. **NEW SECRET** on the Mac locks out every paired device.
-- A phone cannot switch on `YOLO`, and remote tasks are refused while the Mac is in `YOLO` mode.
-- A phone can only choose a working folder from the Mac's own list (its current folder and recent mission folders), never an arbitrary path.
-- Messages are limited to 1 MB, tasks to 4,000 characters, and a handful of simultaneous connections.
-
-**Limits you should know.**
-- Approvals only reach the phone while the app is open in front. iOS pauses background apps and real push notifications need a server, which this project does not have. Keep Tristan open during a mission.
-- The Mac must be awake and reachable: same Wi-Fi, or a VPN such as Tailscale (enter its address by hand).
-- It has been run in the **iOS simulator only**, not on a physical iPhone or iPad, and not over real Wi-Fi. Camera scanning, dictation and haptics are untested because the simulator has none of them.
-- All paired devices share one secret.
-
-### Standalone mode (no Mac needed)
-
-On the pairing screen choose **USE WITHOUT A MAC**, or switch in Settings (**ON THIS DEVICE**). The phone then runs the same agent loop as the Mac, talking straight to a model:
-
-- **Providers:** Azure OpenAI (endpoint, deployment and API key) and AWS Bedrock (region, model id, access key, secret and an optional session token). Bedrock streams over HTTPS with SigV4 signing, the same code the Mac uses. Keys are stored in this device's Keychain, never in preferences.
-- **Files, no shell:** the model gets `read_file`, `list_dir` and `write_file`, confined to one folder. The default is **Workspace**, which appears in the Files app under *On My iPhone > Tristan*. **Choose a folder in Files…** adds another (kept as a security-scoped bookmark, so it survives restarts). iOS has no shell, so the model is never offered a command tool and Tristan cannot run commands or tests here.
-- **Approvals:** the same approve, deny and always-allow card. In `AUTO` mode writes inside the folder go ahead without asking. `YOLO` does not exist on the device.
-- **History, voice dictation, haptics** work as in the remote mode. Spotify control is Mac-only.
-- **Key hygiene:** use an AWS key that can only call Bedrock, and prefer temporary keys with a session token over long-lived ones. Anyone who unlocks the phone can use the saved keys.
-
-**Verified:** the shared agent loop, tools, approvals and folder handling are covered by 14 iOS tests with a scripted model, and a debug-only scripted model drove a full mission in the simulator (approval card, a real file written into Workspace). **Not verified:** a live call to Azure OpenAI or Bedrock from the phone, a physical device, and the Files folder picker.
-
-**Build and run it.**
-
-```bash
-scripts/ios-demo.sh                          # iPhone simulator against a demo Mac, no accounts needed
-SIM="iPad Pro 11-inch (M4)" scripts/ios-demo.sh   # the iPad layout
-MODE=standalone scripts/ios-demo.sh          # the on-device mode with a scripted model, no Mac side
-```
-
-The project lives in `ios/` and is generated from `ios/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`, then `cd ios && xcodegen generate`; the generated project is committed too). The protocol, client, theme and models in `Sources/Tristan/Shared/` are compiled by both apps. To run on a real device, open `ios/TristanIOS.xcodeproj` in Xcode, choose your team under Signing and run. Developer launch arguments (debug builds only): `-tristanPairURL <link>`, `-tristanAutoSubmit <task>`, `-tristanAutoApprove YES`, `-tristanTab code`, `-tristanStandaloneDemo YES`, `-tristanOpenSettings YES`.
+The full guide (pairing, security, limits, standalone mode, running the simulator) is [iPhone and iPad](https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html). The design is in [docs/superpowers/specs](docs/superpowers/specs/2026-11-06-ios-remote-design.md). Run it in the simulator with `scripts/ios-demo.sh`; the iOS project is generated with `cd ios && xcodegen generate` (needed whenever a file is added to `Sources/Tristan/Shared`).
 
 ## Install
 
-### From a release (no Xcode needed)
+You need an **Apple Silicon** Mac on macOS 14 or later. The full guide, with every script and troubleshooting, is [Install](https://mariotristan.github.io/jarvis-tristan/install.html).
 
-Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then either open the DMG and drag Tristan to Applications, or use the terminal:
+**From a release (no Xcode needed).** Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then:
 
 ```bash
-# 1. Optional: check the download against the .sha256 file from the release
-cd ~/Downloads && shasum -a 256 -c Tristan-0.4.0.dmg.sha256
-
-# 2. Mount the disk image and copy the app to Applications
+cd ~/Downloads && shasum -a 256 -c Tristan-0.4.0.dmg.sha256      # optional: check the download
 hdiutil attach ~/Downloads/Tristan-0.4.0.dmg
 cp -R "/Volumes/Tristan 0.4.0/Tristan.app" /Applications/
-
-# 3. Remove the quarantine flag. macOS stamps every download with it, and Gatekeeper refuses apps that
-#    are not notarized. Tristan is only ad-hoc signed, because notarization needs a paid Apple Developer account.
-xattr -dr com.apple.quarantine /Applications/Tristan.app
-
-# 4. Launch it
+xattr -dr com.apple.quarantine /Applications/Tristan.app          # Tristan is ad-hoc signed, not notarized
 open /Applications/Tristan.app
 ```
 
-If you skip step 3, macOS says the app "cannot be opened". You can also allow it under **System Settings > Privacy & Security > Open Anyway**.
+If you skip the `xattr` step, macOS says the app "cannot be opened". You can also allow it under **System Settings > Privacy & Security > Open Anyway**.
 
-### From source
+**From source** (needs the full Xcode, not just the command line tools, because SwiftUI's macros need it):
 
 ```bash
 git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
 scripts/install.sh      # builds, copies Tristan.app into /Applications and launches it
+scripts/bundle.sh       # or just build Tristan.app here
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build   # a quick debug build
 ```
 
-Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git push origin vX.Y.Z` publishes a release. See [docs/ci-and-release.md](docs/ci-and-release.md).
-
-## Requirements
-
-- macOS 14 or later, on an **Apple Silicon** Mac. The release DMG is built for `arm64` only; it has not been tried on an Intel Mac, so build from source there (also untested). Developed on macOS 26.
-- To build from source: Xcode installed. The command line tools alone are not enough because SwiftUI's macros need the full toolchain. `scripts/bundle.sh` picks up `/Applications/Xcode.app` automatically even if `xcode-select` points elsewhere. Installing from a release needs no Xcode.
-- For the `CLAUDE` provider: the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code) installed and logged in. Tristan looks for `claude` on `PATH`, plus `/opt/homebrew/bin` and `/usr/local/bin`.
-
-## Build and run
-
-```bash
-git clone https://github.com/mariotristan/jarvis-tristan.git
-cd jarvis-tristan
-scripts/bundle.sh      # builds a release binary and wraps it into Tristan.app (with icon and version)
-open Tristan.app
-```
-
-For a quick debug build without the app bundle:
-
-```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build
-```
-
-Tristan has no Dock icon. Look for the notch overlay, the menu bar icon, or press `⌥ Space`.
+Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git push origin vX.Y.Z` publishes a release. See [docs/ci-and-release.md](docs/ci-and-release.md). Tristan has no Dock icon: look for the notch overlay, the menu bar icon, or press `⌥ Space`.
 
 ## Using it
 
@@ -368,23 +269,9 @@ enum AgentEvent { case status(String), log(String), code(String), done(String), 
 
 ### How approvals work
 
-In `ASK` mode Tristan starts Claude Code with `--permission-mode manual` and `--permission-prompt-tool mcp__tristan__approve`, plus an MCP config that points at **its own binary** run as `Tristan --mcp-permission <socket>`. When Claude Code needs permission for a tool call:
+In `ASK` mode Tristan starts Claude Code with a permission-prompt tool that points at **its own binary** (`Tristan --mcp-permission <socket>`). Claude Code calls it, the helper forwards the request over a private Unix socket (a `0700` temp folder) to the running app, the app shows it in the HUD or notch, and your answer goes back as allow or deny. `AUTO` and `YOLO` skip the bridge.
 
-1. It calls the `approve` tool on that tiny MCP stdio shim.
-2. The shim forwards the request over a private Unix socket (a temp folder with `0700` permissions) to the running app.
-3. The app shows the action in the HUD or notch and waits for you.
-4. Your answer goes back as `{"behavior":"allow"}` or `{"behavior":"deny"}`.
-
-**Always allow rules are deliberately narrow.** Tristan only offers `ALWAYS ALLOW` where generalising is reasonably safe:
-
-| Action | Rule it remembers |
-|--------|-------------------|
-| `Edit`, `Write`, `MultiEdit`, `NotebookEdit` | That tool, for files **inside the working folder** only |
-| `Bash` | The program name only (for example `npm` or `touch`) |
-
-It is **not** offered for shell commands that chain or redirect (`;`, `&&`, `|`, `>`, `<`, backticks, `$(…)`), for risky programs (`rm`, `sudo`, `dd`, `chmod`, `mv`, `curl`, `sh`, `ssh` and similar), or for any other tool. Those always ask. Note that allowing a program like `npm` lets it run any arguments you did not see, so treat it as trust in that program.
-
-Your existing Claude Code allow rules still apply, so actions you already allowed in your own settings are not asked about again. `AUTO` and `YOLO` skip the bridge and pass `--permission-mode auto` or `bypassPermissions` instead.
+**Always allow rules are deliberately narrow.** They are offered only for file edits inside the working folder and for plain program names (for example `npm`), never for chained or redirected shell commands or risky programs such as `rm`, `sudo`, `curl` or `ssh`. The full explanation, with the table of what each rule remembers, is in the [Approvals guide](https://mariotristan.github.io/jarvis-tristan/approvals.html).
 
 ### Running the tests
 
@@ -419,7 +306,7 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **Wake word, push-to-talk, sound and notifications** build, launch and have unit tests for the logic (matching, timing, synthesis, gating), but have not been heard or seen working by me. Voice needs microphone and speech permission; the wake word needs a language with on-device recognition.
 - **`YOLO` is exactly as risky as it sounds.** Do not use it in a folder you cannot afford to lose.
 - **Actions you already allowed in your own Claude Code settings are not asked about again** in `ASK` mode.
-- **Copilot cannot be approved per action** (see [GitHub Copilot](#github-copilot)).
+- **Copilot cannot be approved per action** (see [Providers](https://mariotristan.github.io/jarvis-tristan/providers.html)).
 - **Spotify control** is tested against a pretend Spotify (commands, parsing, ducking, error handling) but has not been run against the real app. macOS asks for permission on first use.
 - **Launch at login** uses the system login-item service, which may ask you to approve an ad-hoc signed app in System Settings.
 - **Several sessions:** two real **Claude Code** sessions ran at the same time, each with its own approval, in its own folder (see the headless check `Tristan --headless-sessions`). Two real **Copilot** sessions also ran together in `AUTO` mode, each creating its own file in its own folder (same driver, `... copilot auto`); in `ASK` mode Copilot's blanket-permission launch was only tested with a stand-in process, not live. Each Copilot run gets its own log directory so concurrent runs never share one. The iPhone and iPad remote controls only the Mac's active session, so approvals for a session in the background reach the phone only after you switch to it on the Mac.
@@ -480,7 +367,7 @@ Tristan runs agents that can change files and run commands on your machine. Revi
 - Secrets (the Azure OpenAI key) are stored in the macOS Keychain, never in the repository or in preferences. Entra ID and AWS logins are borrowed from the Azure CLI and AWS CLI and are never stored by Tristan. Because the app is only ad-hoc signed, macOS may ask for Keychain access again after you rebuild it.
 - Mission history stores task text and short summaries, so treat it as private; it is `0600` and can be cleared in the app.
 - The wake word is off by default, runs on-device only, and the microphone is released while a mission runs.
-- Claude Code actions are gated per action in `ASK` mode, but Copilot's headless mode cannot be (see above).
+- Claude Code actions are gated per action in `ASK` mode, but Copilot's headless mode cannot be (see the [Providers guide](https://mariotristan.github.io/jarvis-tristan/providers.html)).
 
 ## License
 
