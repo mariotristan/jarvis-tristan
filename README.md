@@ -172,9 +172,9 @@ You need an **Apple Silicon** Mac on macOS 14 or later. The full guide, with eve
 **From a release (no Xcode needed).** Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then:
 
 ```bash
-cd ~/Downloads && shasum -a 256 -c Tristan-0.4.0.dmg.sha256      # optional: check the download
-hdiutil attach ~/Downloads/Tristan-0.4.0.dmg
-cp -R "/Volumes/Tristan 0.4.0/Tristan.app" /Applications/
+cd ~/Downloads && shasum -a 256 -c Tristan-0.5.0.dmg.sha256      # optional: check the download
+hdiutil attach ~/Downloads/Tristan-0.5.0.dmg
+cp -R "/Volumes/Tristan 0.5.0/Tristan.app" /Applications/
 xattr -dr com.apple.quarantine /Applications/Tristan.app          # Tristan is ad-hoc signed, not notarized
 open /Applications/Tristan.app
 ```

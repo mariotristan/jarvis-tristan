@@ -59,17 +59,17 @@
     <h2>From a release</h2>
 
     <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.4.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download</b> <code>Tristan-0.5.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Open the disk image</b> and drag Tristan into Applications. Or use Terminal, below.</li>
       <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and Tristan is not notarized yet (that needs a paid Apple account).</li>
       <li><b>Open Tristan.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>. Tristan has no Dock icon.</li>
     </ol>
     <pre data-copy><span class="c"># 1. Optional: check the download</span>
-cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.4.0.dmg.sha256
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.5.0.dmg.sha256
 
 <span class="c"># 2. Install</span>
-hdiutil attach Tristan-0.4.0.dmg
-cp -R "/Volumes/Tristan 0.4.0/Tristan.app" /Applications/
+hdiutil attach Tristan-0.5.0.dmg
+cp -R "/Volumes/Tristan 0.5.0/Tristan.app" /Applications/
 
 <span class="c"># 3. Remove the quarantine flag</span>
 xattr -dr com.apple.quarantine /Applications/Tristan.app
