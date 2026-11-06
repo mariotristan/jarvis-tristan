@@ -31,6 +31,7 @@
         <a href="#demo">Demo</a>
         <a href="#screens">Screens</a>
         <a href="#control">Stay in charge</a>
+        <a href="#offline">Offline</a>
         <a href="#guides">Guides</a>
         <a href="#install">Install</a>
         <a href="#status">What’s tested</a>
@@ -117,7 +118,7 @@
 
     <div class="facts" role="list">
       <div role="listitem"><b>5</b><span>AI providers in one window</span></div>
-      <div role="listitem"><b>198</b><span>automated tests</span></div>
+      <div role="listitem"><b>206</b><span>automated tests</span></div>
       <div role="listitem"><b>0</b><span>accounts needed to try the demo</span></div>
       <div role="listitem"><b>MIT</b><span>license, free to use and change</span></div>
     </div>
@@ -230,6 +231,47 @@
       <li><b>Links can’t trick you.</b> Links in agent output only open if they are web or mail links, so a model can’t plant a pairing link or a file link.</li>
       <li><b>One honest exception.</b> Copilot’s command line can’t ask before each action, so T.R.I.S.T.A.N. asks once up front and blocks dangerous commands such as <code>rm</code> and <code>git push</code>.</li>
     </ul>
+  </div>
+</section>
+
+<section id="offline" class="soft">
+  <div class="wrap">
+    <span class="eyebrow">Offline</span>
+    <h2>If the internet goes down, work carries on.</h2>
+    <p class="intro">Cloud providers need a connection. When the Mac loses it, T.R.I.S.T.A.N. moves your next mission to a model on your own Mac and tells you it did. Here is exactly what happens.</p>
+
+    <ol class="steps">
+      <li><b>It notices.</b> macOS reports that the Mac has no route to the internet. An amber <b>NO INTERNET · USING OLLAMA</b> note appears in the header, and it disappears when the connection is back.</li>
+      <li><b>You send a task as usual.</b> If the chosen provider is Claude Code, Copilot, Amazon Bedrock or Azure OpenAI, that mission is switched to Ollama, the local-model runner. The status reads <code>NO INTERNET: FALLBACK TO OLLAMA</code> and the mission log says why.</li>
+      <li><b>It checks that Ollama is ready.</b> If Ollama is running and has a model, the mission starts right away.</li>
+      <li><b>If Ollama is off, it starts it.</b> The status shows <code>STARTING OLLAMA</code> and the log says it is working on the fallback. T.R.I.S.T.A.N. runs its bundled <code>setup-ollama.sh --start-only</code>, which only starts the server: it installs nothing and downloads nothing, because there is no internet to fetch anything with.</li>
+      <li><b>The mission runs on this Mac.</b> It uses the same approval mode you chose (Ask still asks) and the same sandboxed file and command tools. Nothing leaves the machine.</li>
+      <li><b>When the connection returns,</b> the note goes away and your next mission uses the provider you picked again.</li>
+    </ol>
+
+    <div class="tablewrap">
+    <table>
+      <caption>What you see in each situation</caption>
+      <thead><tr><th scope="col">Situation</th><th scope="col">What happens</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Ollama is running and has a model</th><td>The mission runs on it straight away, with a line in the log: “No internet connection. Falling back to the local model (Ollama) for this mission.”</td></tr>
+        <tr><th scope="row">Ollama is installed but stopped</th><td>It shows <code>STARTING OLLAMA</code>, starts it, logs “Ollama is running”, then the mission runs.</td></tr>
+        <tr><th scope="row">Ollama is not installed</th><td>The mission stops with <code>FALLBACK FAILED</code> and tells you to run <code>scripts/setup-ollama.sh</code> once you are online. Nothing is sent anywhere.</td></tr>
+        <tr><th scope="row">Ollama has no model</th><td>It stops and tells you to run <code>ollama pull llama3.1</code> when you are online.</td></tr>
+        <tr><th scope="row">Ollama will not start</th><td>It stops and suggests running <code>ollama serve</code> in a terminal to see why.</td></tr>
+        <tr><th scope="row">You chose Ollama, or the demo</th><td>Nothing changes: they never needed the internet.</td></tr>
+        <tr><th scope="row">Kids safe mode is on</th><td>Nothing changes: kids questions already go to the local model.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <ul class="plain">
+      <li><b>Get ready while you are online.</b> Run <code>scripts/setup-ollama.sh</code> once. It installs Ollama and downloads a model, and after that the fallback works without any internet.</li>
+      <li><b>A running mission is not moved.</b> The switch happens when you send a task. If the connection drops in the middle of a cloud mission, that mission fails on its own; send it again and it uses the fallback.</li>
+      <li><b>Expect different answers.</b> A small local model is not as capable as a cloud model. For coding tasks pick a model that supports tools, such as <code>llama3.1</code>.</li>
+      <li><b>“Offline” means no route.</b> A Wi-Fi network that is connected but has no real internet behind it may not be noticed.</li>
+    </ul>
+    <p><a href="local-models.html#offline">Read the full guide</a></p>
   </div>
 </section>
 
