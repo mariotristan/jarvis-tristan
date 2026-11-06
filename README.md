@@ -17,7 +17,22 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-6e40c9?logo=githubcopilot&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-local_models-000000?logo=ollama&logoColor=white)
 
-**Website:** <https://mariotristan.github.io/jarvis-tristan/> · **Download:** [latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest) · **Backlog:** [issue #21](https://github.com/mariotristan/jarvis-tristan/issues/21)
+<p align="center">
+  <a href="https://mariotristan.github.io/jarvis-tristan/"><img alt="Website" src="https://img.shields.io/badge/WEBSITE-open-B80F1F?style=for-the-badge&logo=safari&logoColor=white"></a>
+  <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest"><img alt="Download the latest release" src="https://img.shields.io/github/v/release/mariotristan/jarvis-tristan?style=for-the-badge&label=DOWNLOAD&color=F5B82E&labelColor=1A0A0D&logo=apple&logoColor=white"></a>
+  <a href="https://mariotristan.github.io/jarvis-tristan/install.html"><img alt="Install guide" src="https://img.shields.io/badge/INSTALL-guide-1A0A0D?style=for-the-badge&logo=gitbook&logoColor=F5B82E"></a>
+  <a href="https://github.com/mariotristan/jarvis-tristan/issues/21"><img alt="Backlog" src="https://img.shields.io/badge/BACKLOG-issue_%2321-B80F1F?style=for-the-badge&logo=github&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <b>Guides:</b>
+  <a href="https://mariotristan.github.io/jarvis-tristan/providers.html">Providers</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/approvals.html">Approvals</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/local-models.html">Local models</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/kids-mode.html">Kids safe mode</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html">iPhone and iPad</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/install.html">Install</a>
+</p>
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
