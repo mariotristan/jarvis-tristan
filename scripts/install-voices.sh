@@ -51,7 +51,7 @@ open "x-apple.systempreferences:com.apple.Accessibility-Settings.extension" 2>/d
 for _ in $(seq 1 360); do   # up to 30 minutes
   found="$(good_voices)"
   if [ -n "$found" ]; then
-    name="$(echo "$found" | head -1 | sed 's/[[:space:]]\{2,\}.*//')"
+    name="$(echo "$found" | head -1 | sed -E 's/[[:space:]]+[a-z]{2}_[A-Z]{2}[[:space:]].*//')"
     echo
     echo "Installed: ${name}. Playing a sample..."
     say -v "$name" "Good evening, sir. All systems are operational."
