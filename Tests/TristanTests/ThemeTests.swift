@@ -32,4 +32,19 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(ThemeStore.resolve("nord", systemIsDark: false).id, "nord")
         XCTAssertEqual(ThemeStore.resolve("gone", systemIsDark: true).id, "tristan")
     }
+
+    func testEveryThemeHasWelcomes() {
+        for palette in ThemeStore.all {
+            let lines = ThemeStore.welcomes[palette.id] ?? []
+            XCTAssertGreaterThanOrEqual(lines.count, 2, palette.name)
+            XCTAssertFalse(lines.contains { $0.trimmingCharacters(in: .whitespaces).isEmpty }, palette.name)
+        }
+        XCTAssertEqual(Set(ThemeStore.welcomes.keys), Set(ThemeStore.all.map(\.id)))
+    }
+
+    func testWelcomeIsStablePerSeedAndFallsBack() {
+        XCTAssertEqual(ThemeStore.welcome(for: "matrix", seed: 7), ThemeStore.welcome(for: "matrix", seed: 7))
+        XCTAssertNotEqual(ThemeStore.welcome(for: "matrix", seed: 0), ThemeStore.welcome(for: "matrix", seed: 1))
+        XCTAssertEqual(ThemeStore.welcome(for: "nope", seed: 3), "Awaiting orders, sir.")
+    }
 }

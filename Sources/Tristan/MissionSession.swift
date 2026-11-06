@@ -18,6 +18,11 @@ final class MissionSession: ObservableObject, Identifiable {
     /// Changes at the start of every mission, so a connected phone knows when to clear its log.
     @Published private(set) var missionID = UUID().uuidString
 
+    /// Picks this session's welcome line from the theme's set; fixed for the life of the session.
+    let welcomeSeed = Int.random(in: 0..<10_000)
+    /// What the session says while it has nothing to show, in the voice of the current theme.
+    var welcome: String { ThemeStore.welcome(for: ThemeStore.palette.id, seed: welcomeSeed) }
+
     weak var hub: Session?
     private var approval: CheckedContinuation<Bool, Never>?
     private var runner: Task<Void, Never>?

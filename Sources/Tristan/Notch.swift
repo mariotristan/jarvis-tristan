@@ -46,7 +46,7 @@ final class NotchState: ObservableObject {
         let focus = session.attention ?? session.active
         let title = session.sessions.count > 1 ? "\(session.label(for: focus).uppercased())  ·  \(focus.status)" : focus.status
         let detail = session.listening ? (session.draft.isEmpty ? "Listening…" : session.draft)
-            : focus.pending?.summary ?? focus.log.last?.text ?? "Ready when you are, sir."
+            : focus.pending?.summary ?? focus.log.last?.text ?? focus.welcome
         let next = NotchSnapshot(phase: session.overallPhase, listening: session.listening, title: title, detail: detail,
                                  hasPending: focus.pending != nil, canAlwaysAllow: focus.pending?.rule != nil)
         if next != snapshot { snapshot = next }

@@ -134,7 +134,7 @@ final class SoundFX {
 
     static let startLines = ["On it, sir.", "Right away.", "Working on it.", "Consider it done."]
     static let approvalLines = ["Authorization required.", "I need your permission, sir.", "Awaiting your approval."]
-    static let doneLines = ["Mission complete.", "All done, sir.", "Task complete.", "Done, sir."]
+    static let doneLines = ["Mission complete.", "All done, sir.", "As always, sir, a great pleasure watching you work.", "Task complete.", "Done, sir."]
     static let failLines = ["Mission failed.", "I'm afraid that didn't work, sir.", "Something went wrong."]
 }
 

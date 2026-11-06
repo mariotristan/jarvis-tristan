@@ -125,7 +125,7 @@ struct HUDView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        RenderedStream(text: session.code, rendered: session.renderMarkdown)
+                        RenderedStream(text: session.code, rendered: session.renderMarkdown, placeholder: session.active.welcome)
                         Color.clear.frame(height: 1).id("end")
                     }
                 }
@@ -218,7 +218,10 @@ struct HUDView: View {
                     .buttonStyle(.hud)
                 }
                 Button { session.chooseFolder() } label: {
-                    Text("📁 \(session.workingDirectory.lastPathComponent)")
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder").font(.system(size: 11))
+                        Text(session.workingDirectory.lastPathComponent)
+                    }
                         .font(.system(size: 10, design: .monospaced))
                         .padding(.vertical, 5).padding(.horizontal, 10)
                         .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber.opacity(0.7), lineWidth: 1))

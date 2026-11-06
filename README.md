@@ -96,8 +96,9 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **Session memory.** A finished mission stays in its session's context. Each session keeps the task, the actions taken and the result of its recent missions (the last 12; the newest three in detail, older ones as one line) and puts that briefing in front of the next task, so "now add tests for what you just wrote" works whichever provider runs it. Only missions from the same folder are included. The tab shows **REMEMBERS n**; click it (or open **+ NEW SESSION**, which starts empty) to forget. The memory survives a restart. On the iPhone and iPad standalone mode the same memory is kept, and **NEW CONVERSATION** in Settings clears it. The briefing is plain text in the prompt, so it costs a few thousand characters per mission at most; it is not the model's own hidden state, so details that never reached the log or the final reply are not remembered.
 - **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the whole screen, hides the Dock and menu bar completely (they do not slide in at the edges) and puts the window above everything else, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
 - **Rendered markdown in the code stream.** What an agent writes is shown as it would read: headings, bold and italic, inline code, bullet, numbered and task lists, tables with alignment, quotes, rules, and code blocks as cards with the file name, language and a COPY button. A file the agent writes is a card too, and a written `.md` file is rendered with a SOURCE switch. **RAW** shows the plain text. Links only open if they are web or mail links, so model output can never plant a `tristan://` pairing link or a `file://` link. The iPhone and iPad apps use the same renderer.
+- **Greeting.** When the app opens, Tristan greets you aloud and in the mission log, for example "Good evening, sir. It is 7:42 PM on a Friday. Friday, sir. The weekend is within reach." The opening depends on the time of day (morning, afternoon, evening, late night, including "Welcome home, sir." from the first Iron Man film), it states the time and weekday, and the closing remark varies by hour and by day of the week. Speech follows the voice feedback setting, so turn **VOICE FEEDBACK** off in Configuration for a silent start. Finishing a mission can also end with "As always, sir, a great pleasure watching you work."
 - **Quitting.** Several ways, so you are never stuck, even in full screen: `⌘Q` (while the HUD is in front), the red power button in the command bar, the red **QUIT** button that appears when you hover the notch, typing or saying "quit", "exit" or "close Tristan", or **Quit Tristan** in the menu bar item. There is no confirmation, even if a mission is running.
-- **Themes.** Not everyone likes cyan on near-black. **Configuration > THEME** switches the whole HUD, the notch accents and the rendered markdown between 17 looks, each previewed in its own colors: Tristan (the original), Deep Blue, Graphite, Light and High contrast; dark classics (Tron, Dracula, Nord, Tokyo Night, Catppuccin, Gruvbox, Solarized Dark, Monokai, Rosé Pine); and light ones (GitHub Light, Solarized Light, Catppuccin Latte). **Match system** uses Tristan in dark mode and Light in light mode, and follows the switch live. The choice is remembered. A unit test checks that every palette keeps its text at 4.5:1 contrast or better on its backgrounds. The notch pill itself stays black so it blends with the camera notch.
+- **Themes.** Not everyone likes cyan on near-black. **Configuration > THEME** switches the whole HUD, the notch accents and the rendered markdown between 30 looks, each previewed in its own colors: Tristan (the original), Deep Blue, Graphite, Light and High contrast; pop culture (Tron, WarGames, The Simpsons, Futurama, Iron Man, Terminator, Power Rangers, Superman, Batman, Hackers, The Matrix, Peanuts, Dilbert, Garfield); dark classics (Dracula, Nord, Tokyo Night, Catppuccin, Gruvbox, Solarized Dark, Monokai, Rosé Pine); and light ones (GitHub Light, Solarized Light, Catppuccin Latte). **Match system** uses Tristan in dark mode and Light in light mode, and follows the switch live. The choice is remembered. A unit test checks that every palette keeps its text at 4.5:1 contrast or better on its backgrounds. Each theme also greets you in its own voice: an empty session (and the notch, when idle) shows one of a few welcome lines for the theme, such as "Wake up. The code is waiting." for The Matrix, and every session keeps its own line. The notch pill itself stays black so it blends with the camera notch.
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
 - **Menu bar item** next to the clock to open Tristan or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -209,11 +210,11 @@ Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mar
 
 ```bash
 # 1. Optional: check the download against the .sha256 file from the release
-cd ~/Downloads && shasum -a 256 -c Tristan-0.2.0.dmg.sha256
+cd ~/Downloads && shasum -a 256 -c Tristan-0.3.0.dmg.sha256
 
 # 2. Mount the disk image and copy the app to Applications
-hdiutil attach ~/Downloads/Tristan-0.2.0.dmg
-cp -R "/Volumes/Tristan 0.2.0/Tristan.app" /Applications/
+hdiutil attach ~/Downloads/Tristan-0.3.0.dmg
+cp -R "/Volumes/Tristan 0.3.0/Tristan.app" /Applications/
 
 # 3. Remove the quarantine flag. macOS stamps every download with it, and Gatekeeper refuses apps that
 #    are not notarized. Tristan is only ad-hoc signed, because notarization needs a paid Apple Developer account.
@@ -313,7 +314,7 @@ Sources/Tristan/
 ├── Theme.swift        Colour roles, glow panel, arc reactor, animated backdrop
 ├── Themes.swift       The palettes, contrast maths and the theme picker's data
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    160 tests: multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast
+Tests/TristanTests/    167 tests: multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
 ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
 scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
@@ -417,7 +418,8 @@ Done:
 - [x] iOS standalone mode: Azure OpenAI and Bedrock straight from the device, file tools in a Files folder, no shell
 - [x] Sessions remember their finished missions, the notch no longer blinks and uses less CPU, and the app opens on the primary display
 - [x] Full-screen mode, rendered markdown in the code stream, several concurrent sessions (verified live with two Claude Code sessions and with two Copilot sessions)
-- [x] Automated tests (160)
+- [x] 30 themes with a picker and Match system, a welcome line per theme and session, a spoken greeting that follows the time and day, and easier ways to quit
+- [x] Automated tests (167)
 
 Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 

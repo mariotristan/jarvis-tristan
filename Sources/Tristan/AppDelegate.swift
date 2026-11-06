@@ -64,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] on in self?.applyFullScreen(on) }
             .store(in: &bag)
         showHUD()
+        session.greet()
     }
 
     @objc private func toggleFullScreen() {

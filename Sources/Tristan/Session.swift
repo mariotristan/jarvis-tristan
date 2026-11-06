@@ -301,6 +301,13 @@ final class Session: ObservableObject {
         active.submit(prompt, viaVoice: viaVoice)
     }
 
+    /// Said (when voice feedback is on) and written to the log once when the app opens.
+    func greet(at date: Date = Date()) {
+        let line = Greeting.line(at: date)
+        active.note(line)
+        fx.say(line)
+    }
+
     func cancel() { active.cancel() }
 
     func resolve(_ approved: Bool, always: Bool = false) { active.resolve(approved, always: always) }
