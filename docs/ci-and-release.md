@@ -7,6 +7,8 @@ Two GitHub Actions workflows, following the same pattern as the `catch-a-break` 
 | CI | `.github/workflows/ci.yml` | Push to `main`, pull requests | Runs the tests, builds the app and a DMG, checks the signature, uploads the DMG as an artifact |
 | Release | `.github/workflows/release.yml` | Push a tag `v*` | Runs the tests, builds `Tristan-<version>.dmg`, publishes a GitHub Release with generated notes, the DMG and its SHA-256 |
 
+CI has two jobs. `build-and-test` is the Mac app (above). `ios` builds the iPhone and iPad app in `ios/` and runs its tests on an iPhone simulator. The iOS job uses the **newest Xcode 16.x** on the runner rather than 16.2: the `macos-15` image has no simulator runtime matching Xcode 16.2 (it reports "iOS 18.2 is not installed"), while Xcode 16.4 has the iOS 18.5 runtime. The generated `ios/TristanIOS.xcodeproj` is committed, so CI does not need XcodeGen; regenerate it with `cd ios && xcodegen generate` after editing `ios/project.yml`.
+
 Every CI run leaves a `Tristan-dmg` artifact on the run page, so any build can be installed for testing without a release.
 
 ## Publishing a release
