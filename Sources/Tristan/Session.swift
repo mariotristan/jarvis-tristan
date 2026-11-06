@@ -82,7 +82,7 @@ final class Session: ObservableObject {
     @Published var orbEffects: OrbEffects = .full {
         didSet { UserDefaults.standard.set(orbEffects.rawValue, forKey: "orbEffects") }
     }
-    @Published var orbFillsScreen = false {
+    @Published var orbFillsScreen = true {
         didSet { UserDefaults.standard.set(orbFillsScreen, forKey: "orbFill") }
     }
     /// Kids safe mode: Settings, YOLO and AUTO need a parent (a PIN or the Mac's own login).
@@ -149,7 +149,7 @@ final class Session: ObservableObject {
         applyTheme()
         if standard.object(forKey: "orbScale") != nil { orbScale = min(max(standard.double(forKey: "orbScale"), 0.6), 1.6) }
         if let saved = standard.string(forKey: "orbEffects"), let value = OrbEffects(rawValue: saved) { orbEffects = value }
-        orbFillsScreen = standard.bool(forKey: "orbFill")
+        if standard.object(forKey: "orbFill") != nil { orbFillsScreen = standard.bool(forKey: "orbFill") }
         if let saved = standard.string(forKey: "parentAuth"), let value = ParentAuth(rawValue: saved) { parentAuth = value }
         kidsMode = standard.bool(forKey: "kidsMode")
         fx.soundsOn = soundsOn

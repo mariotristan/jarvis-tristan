@@ -31,6 +31,20 @@ struct HUDView: View {
                 }
                 .allowsHitTesting(false)
                 .transition(.opacity)
+                // The orb covers the window, so the way out stays on top of it: a big button and Esc.
+                VStack {
+                    Spacer()
+                    if session.busy {
+                        VStack(spacing: 6) {
+                            hudButton("ABORT MISSION", tint: Theme.red) { session.cancel() }
+                            Text("or press Esc")
+                                .font(.system(size: 10, design: .monospaced)).tracking(2)
+                                .foregroundStyle(Theme.red.opacity(0.8))
+                        }
+                        .padding(.bottom, 110)
+                    }
+                }
+                .transition(.opacity)
             }
             if let request = session.pending { ApprovalOverlay(request: request) }
             if session.showSettings { SettingsOverlay() }
@@ -47,8 +61,9 @@ struct HUDView: View {
         .onAppear { focused = true }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in focused = true }
         .onExitCommand {
-            // Esc first leaves full screen, then hides the HUD.
-            if session.fullScreen { session.fullScreen = false } else { NSApp.keyWindow?.orderOut(nil) }
+            // Esc first aborts a running mission, then leaves full screen, then hides the HUD.
+            if session.busy { session.cancel() }
+            else if session.fullScreen { session.fullScreen = false } else { NSApp.keyWindow?.orderOut(nil) }
         }
     }
 
