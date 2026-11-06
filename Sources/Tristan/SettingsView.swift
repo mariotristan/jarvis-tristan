@@ -264,9 +264,11 @@ struct SettingsOverlay: View {
                 toggleButton("VOICE FEEDBACK", isOn: $session.voiceOn)
                 toggleButton("NOTIFICATIONS", isOn: $session.notificationsOn)
             }
-            if session.voiceOn, SoundFX.voiceIsCompact {
+            if session.voiceOn, session.kidsMode ? SoundFX.kidsVoiceIsCompact : SoundFX.voiceIsCompact {
                 HStack(spacing: 8) {
-                    Text("Only a basic voice is installed, so speech can crackle. Download an Enhanced voice (Daniel, English UK) for a clean sound.")
+                    Text(session.kidsMode
+                         ? "Only a basic voice is installed, so speech can crackle. Download Samantha (Enhanced, English US): run scripts/install-voices.sh en_US."
+                         : "Only a basic voice is installed, so speech can crackle. Download an Enhanced voice (Daniel, English UK) for a clean sound.")
                         .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.amber)
                     chip("OPEN SETTINGS", on: false) {
                         if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") { NSWorkspace.shared.open(url) }

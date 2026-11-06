@@ -179,8 +179,8 @@ final class SoundFX {
         utterance.volume = Self.voiceLevel
         if kidsVoice {
             utterance.voice = Self.kidsPreferredVoice
-            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 1.0
-            utterance.pitchMultiplier = 1.3
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.95
+            utterance.pitchMultiplier = 1.12   // a small lift: the old +30% on a compact voice crackled
         } else {
             utterance.voice = Self.preferredVoice
             utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
@@ -221,10 +221,14 @@ final class SoundFX {
         return british.max(by: { $0.quality.rawValue < $1.quality.rawValue }) ?? AVSpeechSynthesisVoice(language: "en-US")
     }()
 
-    /// The youngest, brightest voice installed: the macOS child-like voices first, then friendly American ones.
+    /// True when the kids voice is a compact one. See `voiceIsCompact`.
+    static var kidsVoiceIsCompact: Bool { (kidsPreferredVoice?.quality.rawValue ?? 0) < AVSpeechSynthesisVoiceQuality.enhanced.rawValue }
+
+    /// A friendly American voice: Samantha first (her Enhanced version when installed), then other warm ones. The
+    /// child-like Junior voice is last: boosted in pitch it sounded squeaky and crackled.
     private static let kidsPreferredVoice: AVSpeechSynthesisVoice? = {
         let american = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == "en-US" }
-        for name in ["Junior", "Kathy", "Samantha", "Ava", "Allison", "Nicky"] {
+        for name in ["Samantha", "Ava", "Allison", "Nicky", "Kathy", "Junior"] {
             if let voice = american.filter({ $0.name.contains(name) }).max(by: { $0.quality.rawValue < $1.quality.rawValue }) { return voice }
         }
         return american.max(by: { $0.quality.rawValue < $1.quality.rawValue }) ?? AVSpeechSynthesisVoice(language: "en-US")
