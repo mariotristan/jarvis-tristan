@@ -4,29 +4,39 @@ struct HUDView: View {
     @EnvironmentObject var session: Session
     @FocusState private var focused: Bool
 
+    private var scale: CGFloat { session.fullScreen ? 1.3 : 1 }
+
     var body: some View {
         ZStack {
             Backdrop()
             VStack(spacing: 12) {
                 topBar
+                SessionTabs()
+                if let waiting = session.backgroundApprovals.first { backgroundBanner(waiting) }
                 if session.musicOn { MusicStrip(music: session.music) }
                 HStack(spacing: 12) {
-                    missionLog.frame(width: 270)
+                    missionLog.frame(width: 270 * scale)
                     codeStream
                 }
                 commandBar
             }
             .padding(18)
+            .padding(.top, session.fullScreen ? session.fullScreenTopInset : 0)
             if let request = session.pending { ApprovalOverlay(request: request) }
             if session.showSettings { SettingsOverlay() }
             if session.showHistory { HistoryOverlay() }
         }
+        .environment(\.hudScale, scale)
         .frame(minWidth: 900, minHeight: 560)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.cyan.opacity(0.5), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: session.fullScreen ? 0 : 18))
+        .overlay(RoundedRectangle(cornerRadius: session.fullScreen ? 0 : 18).stroke(Theme.cyan.opacity(session.fullScreen ? 0 : 0.5), lineWidth: 1))
+        .background(ShortcutLayer())
         .onAppear { focused = true }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in focused = true }
-        .onExitCommand { NSApp.keyWindow?.orderOut(nil) }
+        .onExitCommand {
+            // Esc first leaves full screen, then hides the HUD.
+            if session.fullScreen { session.fullScreen = false } else { NSApp.keyWindow?.orderOut(nil) }
+        }
     }
 
     private var topBar: some View {
@@ -43,7 +53,7 @@ struct HUDView: View {
                     .foregroundStyle(Theme.cyan.opacity(0.55))
             }
             Spacer()
-            ReactorView(active: session.phase == .working || session.listening, tint: Theme.tint(for: session.phase), size: 84)
+            ReactorView(active: session.overallPhase == .working || session.listening, tint: Theme.tint(for: session.overallPhase), size: 84)
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
                 Text(session.status)
@@ -62,6 +72,24 @@ struct HUDView: View {
         .frame(height: 90)
     }
 
+    private func backgroundBanner(_ waiting: MissionSession) -> some View {
+        Button { session.select(waiting.id) } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                Text("\(session.label(for: waiting)) (\(waiting.provider.rawValue), \(waiting.workingDirectory.lastPathComponent)) is waiting for approval")
+                    .lineLimit(1)
+                Spacer()
+                Text("SWITCH").font(.system(size: 10, weight: .bold, design: .monospaced)).tracking(2)
+            }
+            .font(.system(size: 11, design: .monospaced))
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(Theme.amber.opacity(0.15))
+            .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1))
+            .foregroundStyle(Theme.amber)
+        }
+        .buttonStyle(.plain)
+    }
+
     private var missionLog: some View {
         GlowPanel(title: "MISSION LOG") {
             ScrollViewReader { proxy in
@@ -73,7 +101,7 @@ struct HUDView: View {
                                     .foregroundStyle(Theme.cyan.opacity(0.5))
                                 Text(entry.text).foregroundStyle(color(for: entry.kind))
                             }
-                            .font(.system(size: 11, design: .monospaced))
+                            .font(.system(size: 11 * scale, design: .monospaced))
                             .id(entry.id)
                         }
                     }
@@ -91,16 +119,24 @@ struct HUDView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(session.code.isEmpty ? "Awaiting orders, sir." : session.code)
-                            .font(Theme.mono)
-                            .foregroundStyle(session.code.isEmpty ? Theme.cyan.opacity(0.5) : Theme.green)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        RenderedStream(text: session.code, rendered: session.renderMarkdown)
                         Color.clear.frame(height: 1).id("end")
                     }
                 }
                 .onChange(of: session.code) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
             }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { session.renderMarkdown.toggle() } label: {
+                Text(session.renderMarkdown ? "RENDERED" : "RAW")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1)
+                    .padding(.vertical, 3).padding(.horizontal, 7)
+                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
+                    .foregroundStyle(Theme.cyan)
+            }
+            .buttonStyle(.plain)
+            .help("Show the stream as rendered markdown or as raw text")
+            .padding(10)
         }
     }
 
@@ -114,6 +150,13 @@ struct HUDView: View {
                     .foregroundStyle(Theme.cyan)
                     .focused($focused)
                     .onSubmit(send)
+                Button { session.fullScreen.toggle() } label: {
+                    Image(systemName: session.fullScreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Theme.amber)
+                }
+                .buttonStyle(.plain)
+                .help("Full screen (⌃⌘F). Esc leaves it.")
                 Button { session.showHistory.toggle() } label: {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 18))
@@ -280,5 +323,102 @@ struct MusicStrip: View {
             Image(systemName: symbol).font(.system(size: 12)).foregroundStyle(Theme.cyan).frame(width: 24, height: 20)
         }
         .buttonStyle(.plain)
+    }
+}
+
+
+/// One chip per open session: a status light, the provider and the folder, and a close button.
+struct SessionTabs: View {
+    @EnvironmentObject var session: Session
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(Array(session.sessions.enumerated()), id: \.element.id) { index, tab in
+                        SessionTab(tab: tab, index: index, isActive: tab.id == session.activeID)
+                    }
+                }
+            }
+            Button { session.newSession() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                    Text("NEW SESSION").tracking(1)
+                }
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .padding(.vertical, 6).padding(.horizontal, 10)
+                .overlay(Rectangle().stroke(Theme.amber.opacity(0.8), lineWidth: 1))
+                .foregroundStyle(Theme.amber)
+            }
+            .buttonStyle(.plain)
+            .disabled(session.sessions.count >= Session.maxSessions)
+            .help("Open another session that runs alongside this one (⌘T)")
+        }
+    }
+}
+
+private struct SessionTab: View {
+    @ObservedObject var tab: MissionSession
+    let index: Int
+    let isActive: Bool
+    @EnvironmentObject var session: Session
+    @State private var confirmingClose = false
+
+    private var tint: Color {
+        switch tab.phase {
+        case .awaitingApproval: return Theme.amber
+        case .failed: return Theme.red
+        case .done: return Theme.green
+        default: return Theme.cyan
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 7) {
+            TimelineView(.animation) { timeline in
+                let pulse = tab.phase == .working || tab.phase == .awaitingApproval
+                    ? 0.55 + 0.45 * sin(timeline.date.timeIntervalSinceReferenceDate * (tab.phase == .awaitingApproval ? 7 : 4)) : 1
+                Circle().fill(tab.phase == .idle ? Theme.cyan.opacity(0.35) : tint).frame(width: 8, height: 8)
+                    .opacity(pulse).shadow(color: tint.opacity(tab.phase == .idle ? 0 : 0.9), radius: 4)
+            }
+            Text("\(index + 1)")
+                .font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(Theme.amber)
+            Text("\(tab.provider.rawValue) · \(tab.workingDirectory.lastPathComponent)")
+                .font(.system(size: 10, design: .monospaced)).lineLimit(1)
+                .foregroundStyle(Theme.cyan.opacity(isActive ? 1 : 0.7))
+            Button {
+                if tab.busy && !confirmingClose { confirmingClose = true } else { session.close(tab.id) }
+            } label: {
+                Text(confirmingClose ? "ABORT?" : "✕")
+                    .font(.system(size: confirmingClose ? 8 : 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(confirmingClose ? Theme.red : Theme.cyan.opacity(0.5))
+            }
+            .buttonStyle(.plain)
+            .help(tab.busy ? "Abort and close this session" : "Close this session (⌘W)")
+        }
+        .padding(.vertical, 6).padding(.horizontal, 10)
+        .background(isActive ? Theme.cyan.opacity(0.18) : Color.clear)
+        .overlay(Rectangle().stroke(tint.opacity(isActive || tab.phase == .awaitingApproval ? 1 : 0.4), lineWidth: 1))
+        .contentShape(Rectangle())
+        .onTapGesture { session.select(tab.id) }
+        .onChange(of: tab.busy) { _, _ in confirmingClose = false }
+    }
+}
+
+/// Invisible buttons that carry the keyboard shortcuts (they work while the HUD is the key window).
+private struct ShortcutLayer: View {
+    @EnvironmentObject var session: Session
+
+    var body: some View {
+        ZStack {
+            Button("") { session.fullScreen.toggle() }.keyboardShortcut("f", modifiers: [.command, .control])
+            Button("") { session.newSession() }.keyboardShortcut("t", modifiers: .command)
+            Button("") { session.close(session.activeID) }.keyboardShortcut("w", modifiers: .command)
+            ForEach(0..<9, id: \.self) { index in
+                Button("") { session.select(index: index) }
+                    .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+            }
+        }
+        .opacity(0)
     }
 }

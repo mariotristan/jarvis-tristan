@@ -22,22 +22,34 @@ enum Snapshot {
             entry("Write auth.ts", .step),
             entry("Bash: npm test", .step),
         ]
+        let routes = CodeFence.block(path: "Sources/routes.ts", content: """
+        router.post("/login", async (req, res) => {
+          const user = await verify(req.body);
+          res.json({ token: login(user) });
+        });
+        """)
         working.code = """
-        // Sources/auth.ts
-        import { sign } from "./jwt";
+        ## Adding login to the API
 
+        I read `routes.ts` first, then made two changes:
+
+        - created **auth.ts** with a `login` function that signs a JWT
+        - wired a `POST /login` route
+
+        | File | Change | Tests |
+        |:-----|:------:|------:|
+        | `auth.ts` | new | 12 pass |
+        | `routes.ts` | edited | 12 pass |
+
+        > Next I will run the full suite.
+
+        """ + CodeFence.block(path: "Sources/auth.ts", content: """
         export function login(user: User): string {
           const token = sign({ sub: user.id, role: user.role });
           audit("login", user.id);
           return token;
         }
-
-        // Sources/routes.ts
-        router.post("/login", async (req, res) => {
-          const user = await verify(req.body);
-          res.json({ token: login(user) });
-        });
-        """
+        """) + routes
         save(HUDView().environmentObject(working), width: 1000, height: 660, name: "hud-working.png")
 
         let asking = Session(history: nil)
@@ -49,6 +61,37 @@ enum Snapshot {
         asking.pending = ApprovalRequest(summary: "Allow Bash?", detail: "npm test",
                                          rule: ApprovalRule(key: "Bash:npm", label: "Bash: npm …"))
         save(HUDView().environmentObject(asking), width: 1000, height: 660, name: "hud-approval.png")
+
+        let wide = Session(history: nil)
+        wide.provider = .claude
+        wide.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
+        wide.phase = .working
+        wide.status = "WRITING CODE"
+        wide.log = working.log
+        wide.code = working.code
+        wide.musicOn = false
+        wide.fullScreen = true
+        wide.fullScreenTopInset = 32
+        save(HUDView().environmentObject(wide), width: 1728, height: 1117, name: "hud-fullscreen.png")
+
+        // Three sessions side by side: one working, one waiting for approval in the background, one finished.
+        let many = Session(history: nil)
+        many.musicOn = false
+        many.soundsOn = false; many.voiceOn = false; many.notificationsOn = false
+        let one = many.active
+        one.provider = .claude
+        one.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
+        one.phase = .working; one.status = "WRITING CODE"
+        one.log = working.log; one.code = working.code
+        let two = many.newSession(provider: .copilot, folder: URL(fileURLWithPath: "/Users/you/code/scripts"), select: false)!
+        two.phase = .awaitingApproval; two.status = "AWAITING AUTHORIZATION"
+        two.pending = ApprovalRequest(summary: "Run Copilot CLI with its tools allowed?", detail: "It will edit files in /Users/you/code/scripts")
+        two.log = [LogEntry(text: "Task: update the deploy scripts", kind: .info)]
+        let three = many.newSession(provider: .bedrock, folder: URL(fileURLWithPath: "/Users/you/code/docs"), select: false)!
+        three.phase = .done; three.status = "MISSION COMPLETE"
+        three.log = [LogEntry(text: "Task: summarise the changelog", kind: .info), LogEntry(text: "Done.", kind: .ok)]
+        many.select(one.id)
+        save(HUDView().environmentObject(many), width: 1000, height: 660, name: "hud-sessions.png")
 
         let settings = Session(history: nil)
         settings.provider = .claude

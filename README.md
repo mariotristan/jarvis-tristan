@@ -18,7 +18,7 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 122 automated tests pass (106 for the Mac app and 16 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 160 automated tests pass (144 for the Mac app and 16 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Screenshots
 
@@ -35,6 +35,14 @@ Rendered from the real views with sample data (`Tristan --snapshot docs/screensh
 **Configuration.** Choose how much supervision a run gets.
 
 ![Configuration panel](docs/screenshots/hud-settings.png)
+
+**Several sessions at once.** Each tab has its own provider, folder, log, code stream and approvals; the amber banner flags a session that is waiting in the background.
+
+![Several sessions](docs/screenshots/hud-sessions.png)
+
+**Full screen and rendered markdown.** Full screen fills the display with larger text; the code stream renders markdown (headings, lists, tables, quotes, code cards with a copy button) and has a RAW switch.
+
+![Full screen](docs/screenshots/hud-fullscreen.png)
 
 **Mission history.** Past missions with one-click re-run.
 
@@ -81,6 +89,9 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 - **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` hides it. Pick a preset or record your own combination in Configuration; Tristan tells you if another app already owns it.
 - **Launch at login** switch for the installed app.
 - **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
+- **Several sessions at the same time.** Run a Claude session and a Copilot session (or two Claude sessions in different folders) side by side. Each session is a tab with its own provider, folder, mission log, code stream and approvals, and a status light (pulsing cyan while working, amber while it needs you, green when done, red on failure). **+ NEW SESSION** (`⌘T`) opens another, `⌘1`…`⌘9` switch, `⌘W` closes (a running session asks first). A session that needs approval in the background raises an amber banner, a sound, a spoken "Session 2, authorization required" and a notification, and the notch shows and answers it. Up to 8 sessions; the open sessions (provider and folder) come back after a restart. Starting a session in a folder another session is already working in warns you that edits may collide. The approval mode and always-allow rules are shared by all sessions.
+- **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the screen, hides the Dock and menu bar, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
+- **Rendered markdown in the code stream.** What an agent writes is shown as it would read: headings, bold and italic, inline code, bullet, numbered and task lists, tables with alignment, quotes, rules, and code blocks as cards with the file name, language and a COPY button. A file the agent writes is a card too, and a written `.md` file is rendered with a SOURCE switch. **RAW** shows the plain text. Links only open if they are web or mail links, so model output can never plant a `tristan://` pairing link or a `file://` link. The iPhone and iPad apps use the same renderer.
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
 - **Menu bar item** next to the clock to open Tristan or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -252,7 +263,10 @@ Tristan has no Dock icon. Look for the notch overlay, the menu bar icon, or pres
 | Key | Action |
 |-----|--------|
 | `⌥ Space` | Show or hide the HUD from anywhere |
-| `Esc` | Hide the HUD |
+| `Esc` | Leave full screen, or hide the HUD |
+| `⌃⌘F` | Full screen on and off |
+| `⌘T` / `⌘W` | New session / close the current session |
+| `⌘1`…`⌘9` | Switch to that session |
 | `Return` | Execute the task |
 | Hold `⌥ ⇧ Space` | Push-to-talk, release to send |
 
@@ -262,7 +276,9 @@ Tristan has no Dock icon. Look for the notch overlay, the menu bar icon, or pres
 Sources/Tristan/
 ├── main.swift         App entry point (accessory app, no Dock icon)
 ├── AppDelegate.swift  HUD window, menu bar item, global hotkey, notch setup
-├── Session.swift      Observable state: phase, log, code, pending approval, provider
+├── Session.swift      The hub: shared settings and services, the open sessions, sound/notification/history callbacks
+├── MissionSession.swift  One session: provider, folder, log, code, approvals and the task that runs it
+├── FullScreen.swift   Full-screen mode for the borderless window
 ├── Providers.swift    AgentProvider protocol, approval modes, Demo and Claude Code providers, stream parser
 ├── PermissionBridge.swift  Unix-socket server in the app plus the MCP stdio shim Claude Code calls
 ├── AgentLoop.swift    The shared agent loop and provider-neutral transcript types
@@ -276,7 +292,7 @@ Sources/Tristan/
 ├── Shortcut.swift     Shortcut model and presets for the global hotkey
 ├── RemoteServer.swift Mac side of the iPhone/iPad remote (listener, commands, live updates)
 ├── QRCode.swift       The pairing QR code
-├── Shared/            Compiled by both the Mac and iOS apps: the agent loop and tools, Azure and Bedrock backends (SigV4, streaming), remote protocol and client, theme, models
+├── Shared/            Compiled by both the Mac and iOS apps: the markdown parser and views, the agent loop and tools, Azure and Bedrock backends (SigV4, streaming), remote protocol and client, theme, models
 ├── Notifier.swift     Mac notifications
 ├── WakeWord.swift     "Hey Tristan" matcher, silence-timing state machine and on-device listener
 ├── SettingsView.swift Configuration and history overlays
@@ -288,7 +304,7 @@ Sources/Tristan/
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
 ├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    106 tests: agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio
+Tests/TristanTests/    144 tests: multiple sessions, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio
 ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 16 tests)
 scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
@@ -363,6 +379,9 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **Copilot cannot be approved per action** (see [GitHub Copilot](#github-copilot)).
 - **Spotify control** is tested against a pretend Spotify (commands, parsing, ducking, error handling) but has not been run against the real app. macOS asks for permission on first use.
 - **Launch at login** uses the system login-item service, which may ask you to approve an ad-hoc signed app in System Settings.
+- **Several sessions:** two real **Claude Code** sessions ran at the same time, each with its own approval, in its own folder (see the headless check `Tristan --headless-sessions`). Concurrent **Copilot** sessions were not run live. The iPhone and iPad remote controls only the Mac's active session, so approvals for a session in the background reach the phone only after you switch to it on the Mac.
+- **Full screen:** the window and Dock behaviour is verified by a real self-test (`Tristan --fullscreen-selftest`) and a unit test, and the layout by a screenshot, but I have not watched it on your display, and the notch inset is only known for the one notched screen it ran on.
+- **Markdown:** the renderer covers what agents produce (no images, HTML, footnotes or nested quotes, and no syntax highlighting). It is covered by parser tests, a fuzz test and an every-prefix streaming test.
 - **iOS standalone mode has never called a real Azure OpenAI or Bedrock endpoint**: the model is scripted in the tests and in the simulator demo. The Files folder picker and Keychain-stored AWS keys are only tested through unit tests.
 - **The iOS app has only run in the simulator** (see [iPhone and iPad](#iphone-and-ipad)): no physical device, no real Wi-Fi, no camera, microphone or haptics. The secure link and the remote commands are tested end to end on loopback, and the remote design rules (no remote YOLO, folder allow-list, replay for late joiners, wrong secret refused) have automated tests.
 - **The release workflow has not run yet** (it needs a first tag), and the CI workflow's Xcode 16.2 pin follows `catch-a-break` but is untested for this project.
@@ -387,12 +406,15 @@ Done:
 - [x] Installable DMG with icon and versioning, release and CI workflows, install script, launch at login
 - [x] iPhone and iPad remote: encrypted pairing, mission screen, approvals, history, music, dictation, side-by-side iPad layout
 - [x] iOS standalone mode: Azure OpenAI and Bedrock straight from the device, file tools in a Files folder, no shell
-- [x] Automated tests (122)
+- [x] Full-screen mode, rendered markdown in the code stream, several concurrent sessions (verified live with two Claude Code sessions)
+- [x] Automated tests (160)
 
 Next:
 
 - [ ] Live validation of Bedrock, Azure OpenAI, Copilot, wake word, notifications and the iOS app on a real device (needs real credentials and a human in front of the hardware)
 - [ ] iOS: Bonjour discovery of the Mac, per-device pairing keys, Live Activities for approvals
+- [ ] Several sessions on the iPhone and iPad remote (it controls the Mac's active session for now)
+- [ ] Syntax highlighting in code cards
 - [ ] Per-action approvals for Copilot, if the CLI gains a permission prompt hook
 - [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
 - [ ] Track title in the notch, and Apple Music support

@@ -36,8 +36,8 @@ struct DemoProvider: AgentProvider {
                 guard ok else { c.yield(.failed("Denied by operator")); c.finish(); return }
                 c.yield(.status("WRITING CODE"))
                 c.yield(.log("Writing Sources/auth.ts"))
-                let snippet = """
-                // Sources/auth.ts
+                let intro = "## Adding login\n\nI'll create **Sources/auth.ts** with a `login` function:\n"
+                let snippet = intro + CodeFence.block(path: "Sources/auth.ts", content: """
                 import { sign } from "./jwt";
 
                 export function login(user: User): string {
@@ -45,8 +45,7 @@ struct DemoProvider: AgentProvider {
                   audit("login", user.id);
                   return token;
                 }
-
-                """
+                """)
                 for ch in snippet {
                     if Task.isCancelled { c.finish(); return }
                     c.yield(.code(String(ch)))
@@ -169,7 +168,7 @@ enum ClaudeStream {
                     events.append(.log(describe(tool: name, input: input)))
                     if let path = input["file_path"] as? String {
                         if let body = (input["content"] ?? input["new_string"]) as? String {
-                            events.append(.code("// \(path)\n\(body)\n\n"))
+                            events.append(.code(CodeFence.block(path: (path as NSString).abbreviatingWithTildeInPath, content: body)))
                         }
                     }
                 default: break

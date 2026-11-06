@@ -38,6 +38,7 @@ struct LogPanel: View {
 
 struct CodePanel: View {
     let code: String
+    @AppStorage("renderMarkdown") private var rendered = true
 
     var body: some View {
         GlowPanel(title: "CODE STREAM", tint: Theme.green) {
@@ -45,16 +46,23 @@ struct CodePanel: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         // Long lines wrap: sideways scrolling is awkward on a phone and was clipping the left edge.
-                        Text(code.isEmpty ? "Awaiting orders, sir." : code)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(code.isEmpty ? Theme.cyan.opacity(0.5) : Theme.green)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        RenderedStream(text: code, rendered: rendered)
                         Color.clear.frame(height: 1).id("end")
                     }
                 }
                 .onChange(of: code) { _, _ in proxy.scrollTo("end", anchor: .bottom) }
             }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { rendered.toggle() } label: {
+                Text(rendered ? "RENDERED" : "RAW")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced)).tracking(1)
+                    .padding(.vertical, 3).padding(.horizontal, 7)
+                    .overlay(Rectangle().stroke(Theme.cyan.opacity(0.6), lineWidth: 1))
+                    .foregroundStyle(Theme.cyan)
+            }
+            .buttonStyle(.plain)
+            .padding(10)
         }
     }
 }

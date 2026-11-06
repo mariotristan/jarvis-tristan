@@ -39,33 +39,34 @@ struct NotchView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                ReactorView(active: session.phase == .working || session.listening, tint: Theme.tint(for: session.phase), size: geometry.height - 8)
+                ReactorView(active: session.overallPhase == .working || session.listening, tint: Theme.tint(for: session.overallPhase), size: geometry.height - 8)
                     .frame(width: wing)
                 Spacer().frame(width: geometry.width)
                 Circle()
-                    .fill(Theme.tint(for: session.phase))
+                    .fill(Theme.tint(for: session.overallPhase))
                     .frame(width: 8, height: 8)
-                    .shadow(color: Theme.tint(for: session.phase), radius: 5)
+                    .shadow(color: Theme.tint(for: session.overallPhase), radius: 5)
                     .frame(width: wing)
             }
             .frame(height: geometry.height)
 
             if expanded {
                 VStack(spacing: 8) {
-                    Text(session.status)
+                    let focus = session.attention ?? session.active
+                    Text(session.sessions.count > 1 ? "\(session.label(for: focus).uppercased())  ·  \(focus.status)" : focus.status)
                         .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(2)
-                        .foregroundStyle(Theme.tint(for: session.phase))
+                        .foregroundStyle(Theme.tint(for: session.overallPhase))
                     Text(session.listening ? (session.draft.isEmpty ? "Listening…" : session.draft)
-                         : session.pending?.summary ?? session.log.last?.text ?? "Ready when you are, sir.")
+                         : focus.pending?.summary ?? focus.log.last?.text ?? "Ready when you are, sir.")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(Theme.cyan.opacity(0.85))
                         .lineLimit(2).multilineTextAlignment(.center)
                     HStack(spacing: 10) {
-                        if session.pending != nil {
-                            hudButton("DENY", tint: Theme.red) { session.resolve(false) }
-                            hudButton("APPROVE", tint: Theme.green) { session.resolve(true) }
-                            if session.pending?.rule != nil {
-                                hudButton("ALWAYS", tint: Theme.cyan) { session.resolve(true, always: true) }
+                        if focus.pending != nil {
+                            hudButton("DENY", tint: Theme.red) { session.resolveAttention(false) }
+                            hudButton("APPROVE", tint: Theme.green) { session.resolveAttention(true) }
+                            if focus.pending?.rule != nil {
+                                hudButton("ALWAYS", tint: Theme.cyan) { session.resolveAttention(true, always: true) }
                             }
                         } else {
                             hudButton("OPEN HUD", tint: Theme.cyan, action: openHUD)
@@ -81,8 +82,8 @@ struct NotchView: View {
             UnevenRoundedRectangle(bottomLeadingRadius: 22, bottomTrailingRadius: 22)
                 .fill(.black)
                 .overlay(UnevenRoundedRectangle(bottomLeadingRadius: 22, bottomTrailingRadius: 22)
-                    .stroke(Theme.tint(for: session.phase).opacity(expanded ? 0.6 : 0.25), lineWidth: 1))
-                .shadow(color: Theme.tint(for: session.phase).opacity(session.phase == .working ? 0.7 : 0.2), radius: 10)
+                    .stroke(Theme.tint(for: session.overallPhase).opacity(expanded ? 0.6 : 0.25), lineWidth: 1))
+                .shadow(color: Theme.tint(for: session.overallPhase).opacity(session.overallPhase == .working ? 0.7 : 0.2), radius: 10)
         )
         .onHover { state.hovering = $0 }
     }
@@ -116,7 +117,7 @@ final class NotchController {
         applyFrame(animated: false)
         panel.orderFrontRegardless()
 
-        Publishers.CombineLatest4(state.$hovering, session.$phase, state.$peek, session.$listening)
+        Publishers.CombineLatest4(state.$hovering, session.$overallPhase, state.$peek, session.$listening)
             .receive(on: RunLoop.main)
             .sink { [weak self] hovering, phase, peek, listening in
                 let want = hovering || phase == .awaitingApproval || peek || listening
@@ -128,11 +129,16 @@ final class NotchController {
             .store(in: &bag)
 
         // Peek open for a few seconds when a mission ends.
-        session.$phase
+        session.$overallPhase
             .removeDuplicates()
             .filter { $0 == .done || $0 == .failed }
             .sink { [weak self] _ in self?.flash() }
             .store(in: &bag)
+    }
+
+    /// Hidden while the HUD is full screen.
+    func setHidden(_ hidden: Bool) {
+        if hidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
     }
 
     private func flash() {

@@ -6,6 +6,8 @@ import Carbon.HIToolbox
 final class HUDWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+    /// A borderless window may cover the whole screen, including the menu bar area, in full-screen mode.
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
 
 @MainActor
@@ -17,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var openItem: NSMenuItem!
     private var hotKey: GlobalHotKey?
     private var talkKey: GlobalHotKey?
+    private var fullScreen: FullScreenController!
+    private var fullScreenItem: NSMenuItem!
     private var bag = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -29,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hud.isReleasedWhenClosed = false
         hud.contentView = NSHostingView(rootView: HUDView().environmentObject(session))
         hud.center()
+        fullScreen = FullScreenController(window: hud)
 
         notch = NotchController(session: session) { [weak self] in self?.showHUD() }
         Notifier.shared.onOpen = { [weak self] in self?.showHUD() }
@@ -38,6 +43,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         openItem = menu.addItem(withTitle: "", action: #selector(toggleHUD), keyEquivalent: "")
         openItem.target = self
+        fullScreenItem = menu.addItem(withTitle: "Enter Full Screen  (⌃⌘F)", action: #selector(toggleFullScreen), keyEquivalent: "")
+        fullScreenItem.target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Tristan", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
@@ -46,7 +53,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Publishers.CombineLatest(session.$hotkey, session.$recordingShortcut)
             .sink { [weak self] shortcut, recording in self?.registerHotKeys(shortcut, paused: recording) }
             .store(in: &bag)
+        session.$fullScreen
+            .removeDuplicates()
+            .sink { [weak self] on in self?.applyFullScreen(on) }
+            .store(in: &bag)
         showHUD()
+    }
+
+    @objc private func toggleFullScreen() {
+        session.fullScreen.toggle()
+        if session.fullScreen { showHUD() }
+    }
+
+    private func applyFullScreen(_ on: Bool) {
+        if on { session.fullScreenTopInset = fullScreen.topInset }
+        fullScreen.set(on)
+        notch.setHidden(on)         // the HUD shows everything, and the notch pill would sit on top of it
+        fullScreenItem.title = on ? "Exit Full Screen  (⌃⌘F)" : "Enter Full Screen  (⌃⌘F)"
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -71,7 +94,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleHUD() {
-        if hud.isVisible && hud.isKeyWindow { hud.orderOut(nil) } else { showHUD() }
+        if hud.isVisible && hud.isKeyWindow {
+            if session.fullScreen { session.fullScreen = false }    // never leave the Dock and menu bar hidden
+            hud.orderOut(nil)
+        } else {
+            showHUD()
+        }
     }
 
     private func showHUD() {

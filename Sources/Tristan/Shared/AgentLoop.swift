@@ -149,7 +149,7 @@ struct AgentLoop {
                     : true
                 if allowed {
                     c.yield(.status("WRITING CODE")); c.yield(.log("write_file \(sandbox.relative(url))"))
-                    c.yield(.code("// \(sandbox.relative(url))\n\(text)\n\n"))
+                    c.yield(.code(CodeFence.block(path: sandbox.relative(url), content: text)))
                     result = sandbox.write(path, content: text)
                 } else { result = denied }
             } else {

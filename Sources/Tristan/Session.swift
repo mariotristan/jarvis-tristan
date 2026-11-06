@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import AVFoundation
+import Combine
 
 
 struct LogEntry: Identifiable {
@@ -11,15 +12,17 @@ struct LogEntry: Identifiable {
     let kind: Kind
 }
 
+/// The hub: shared settings and services (sound, voice, music, remote, history) plus the open sessions.
+/// The properties for a single mission (`log`, `code`, `phase`, `pending`, `provider`, `workingDirectory`, ...) forward
+/// to the active session, so the HUD, the remote server and the tests keep talking to "the current session".
 @MainActor
 final class Session: ObservableObject {
-    @Published var phase: Phase = .idle {
-        didSet { refreshWake() }
-    }
-    @Published var log: [LogEntry] = []
-    @Published var code = ""
-    @Published var status = "STANDING BY"
-    @Published var pending: ApprovalRequest?
+    static let maxSessions = 8
+
+    @Published private(set) var sessions: [MissionSession] = []
+    @Published private(set) var activeID = UUID()
+    /// What the notch and the reactor show: the most urgent thing happening in any session.
+    @Published private(set) var overallPhase: Phase = .idle
     @Published var approvalMode: ApprovalMode = .ask {
         didSet { UserDefaults.standard.set(approvalMode.rawValue, forKey: "approvalMode") }
     }
@@ -56,63 +59,59 @@ final class Session: ObservableObject {
             if remoteOn { remote.start() } else { remote.stop() }
         }
     }
-    /// Changes at the start of every mission, so a connected phone knows when to clear its log.
-    @Published private(set) var missionID = UUID().uuidString
+    @Published var renderMarkdown = true {
+        didSet { UserDefaults.standard.set(renderMarkdown, forKey: "renderMarkdown") }
+    }
+    /// Full-screen mode. Set by the HUD button or ⌃⌘F; the window itself is resized by the AppDelegate.
+    @Published var fullScreen = false
+    @Published var fullScreenTopInset: CGFloat = 0
     @Published var showSettings = false
     @Published var showHistory = false
-    @Published var draft = ""
     @Published var listening = false {
         didSet { refreshWake(); music.setDuck("mic", active: listening) }
     }
-    @Published var provider: ProviderKind = .demo {
-        didSet { UserDefaults.standard.set(provider.rawValue, forKey: "provider") }
-    }
-    @Published var workingDirectory = FileManager.default.homeDirectoryForCurrentUser {
-        didSet { UserDefaults.standard.set(workingDirectory.path, forKey: "workingDirectory") }
-    }
     @Published var records: [MissionRecord] = []
 
-    private var approval: CheckedContinuation<Bool, Never>?
-    private var runner: Task<Void, Never>?
     private let voice = VoiceInput()
     private let wake = WakeListener()
-    private let fx = SoundFX()
+    let fx = SoundFX()
     let music: SpotifyController
     let remote = RemoteServer()
     private let history: HistoryStore?
-    private var announcedApproval = false
-    private var spokenReply = false
-    private var currentTask = ""
-    private var recorded = false
+    private let defaults: UserDefaults
+    private var observers: [UUID: AnyCancellable] = [:]
+    private var updateScheduled = false
 
-    /// `history: nil` keeps everything in memory (tests, headless runs, screenshots).
-    init(history: HistoryStore? = HistoryStore.standard, music: SpotifyController? = nil) {
+    private struct SavedTab: Codable { var provider: String; var folder: String }
+
+    /// `history: nil` keeps everything in memory: nothing is saved or restored, including the open sessions (tests,
+    /// headless runs, screenshots).
+    init(history: HistoryStore? = HistoryStore.standard, music: SpotifyController? = nil, defaults: UserDefaults = .standard) {
         self.history = history
+        self.defaults = defaults
         self.music = music ?? SpotifyController()
-        let defaults = UserDefaults.standard
-        if defaults.object(forKey: "soundsOn") != nil { soundsOn = defaults.bool(forKey: "soundsOn") }
-        if defaults.object(forKey: "voiceOn") != nil { voiceOn = defaults.bool(forKey: "voiceOn") }
-        if defaults.object(forKey: "notificationsOn") != nil { notificationsOn = defaults.bool(forKey: "notificationsOn") }
+        let standard = UserDefaults.standard
+        if standard.object(forKey: "renderMarkdown") != nil { renderMarkdown = standard.bool(forKey: "renderMarkdown") }
+        if standard.object(forKey: "soundsOn") != nil { soundsOn = standard.bool(forKey: "soundsOn") }
+        if standard.object(forKey: "voiceOn") != nil { voiceOn = standard.bool(forKey: "voiceOn") }
+        if standard.object(forKey: "notificationsOn") != nil { notificationsOn = standard.bool(forKey: "notificationsOn") }
         fx.soundsOn = soundsOn
         fx.voiceOn = voiceOn
         fx.onSpeaking = { [weak self] speaking in self?.music.setDuck("speech", active: speaking) }
-        if defaults.object(forKey: "duckMusic") != nil { duckMusic = defaults.bool(forKey: "duckMusic") }
+        if standard.object(forKey: "duckMusic") != nil { duckMusic = standard.bool(forKey: "duckMusic") }
         self.music.duckingEnabled = duckMusic
         Notifier.shared.enabled = notificationsOn
-        if let saved = defaults.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) { approvalMode = mode }
-        if let saved = defaults.string(forKey: "provider"), let kind = ProviderKind(rawValue: saved) { provider = kind }
-        if let data = defaults.data(forKey: "shortcut"), let saved = try? JSONDecoder().decode(Shortcut.self, from: data) {
+        if let saved = standard.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) { approvalMode = mode }
+        if let data = standard.data(forKey: "shortcut"), let saved = try? JSONDecoder().decode(Shortcut.self, from: data) {
             hotkey = saved
-        } else if let legacy = defaults.string(forKey: "hotkey"), let preset = HotkeyPreset(rawValue: legacy) {
+        } else if let legacy = standard.string(forKey: "hotkey"), let preset = HotkeyPreset(rawValue: legacy) {
             hotkey = preset.shortcut      // settings saved by an earlier version
         }
-        if let path = defaults.string(forKey: "workingDirectory"), FileManager.default.fileExists(atPath: path) {
-            workingDirectory = URL(fileURLWithPath: path)
-        }
-        if let data = defaults.data(forKey: "allowRules"), let rules = try? JSONDecoder().decode([ApprovalRule].self, from: data) {
+        if let data = standard.data(forKey: "allowRules"), let rules = try? JSONDecoder().decode([ApprovalRule].self, from: data) {
             allowRules = rules
         }
         records = history?.load() ?? []
+        restoreSessions()
 
         wake.onStarted = { [weak self] in self?.wakeStarted() }
         wake.onUpdate = { [weak self] in self?.draft = $0 }
@@ -120,15 +119,145 @@ final class Session: ObservableObject {
         wake.onCancel = { [weak self] in self?.wakeCancelled() }
         wake.onError = { [weak self] message in
             self?.wakeOn = false
-            self?.add(message, .warn)
+            self?.active.note(message, .warn)
         }
-        if defaults.bool(forKey: "wakeOn") { wakeOn = true }
-        if defaults.bool(forKey: "musicOn") { musicOn = true }
+        if standard.bool(forKey: "wakeOn") { wakeOn = true }
+        if standard.bool(forKey: "musicOn") { musicOn = true }
         remote.attach(to: self)
-        if defaults.bool(forKey: "remoteOn") { remoteOn = true }
+        if standard.bool(forKey: "remoteOn") { remoteOn = true }
     }
 
-    var busy: Bool { phase == .working || phase == .awaitingApproval }
+    // MARK: the active session (what the HUD and the remote show)
+
+    var active: MissionSession { sessions.first { $0.id == activeID } ?? sessions[0] }
+
+    var phase: Phase { get { active.phase } set { active.phase = newValue } }
+    var log: [LogEntry] { get { active.log } set { active.log = newValue } }
+    var code: String { get { active.code } set { active.code = newValue } }
+    var status: String { get { active.status } set { active.status = newValue } }
+    var pending: ApprovalRequest? { get { active.pending } set { active.pending = newValue } }
+    var provider: ProviderKind { get { active.provider } set { active.provider = newValue } }
+    var workingDirectory: URL { get { active.workingDirectory } set { active.workingDirectory = newValue } }
+    var draft: String { get { active.draft } set { active.draft = newValue } }
+    var missionID: String { active.missionID }
+    var busy: Bool { active.busy }
+
+    // MARK: managing sessions
+
+    /// The session that needs an answer from the operator: the active one if it is waiting, else any other.
+    var attention: MissionSession? {
+        active.phase == .awaitingApproval ? active : sessions.first { $0.phase == .awaitingApproval }
+    }
+
+    /// Sessions other than the active one that are waiting for approval.
+    var backgroundApprovals: [MissionSession] {
+        sessions.filter { $0.phase == .awaitingApproval && $0.id != activeID }
+    }
+
+    func label(for session: MissionSession) -> String {
+        "Session \((sessions.firstIndex { $0.id == session.id } ?? 0) + 1)"
+    }
+
+    /// Opens another session (a copy of the current provider and folder unless told otherwise) and switches to it.
+    @discardableResult
+    func newSession(provider: ProviderKind? = nil, folder: URL? = nil, select: Bool = true) -> MissionSession? {
+        guard sessions.count < Self.maxSessions else { return nil }
+        let created = MissionSession(provider: provider ?? active.provider, workingDirectory: folder ?? active.workingDirectory)
+        adopt(created)
+        if select { activeID = created.id }
+        sessionsChanged()
+        return created
+    }
+
+    func select(_ id: UUID) {
+        guard sessions.contains(where: { $0.id == id }), id != activeID else { return }
+        activeID = id
+        sessionsChanged()
+    }
+
+    func select(index: Int) {
+        guard sessions.indices.contains(index) else { return }
+        select(sessions[index].id)
+    }
+
+    /// Closes a session, aborting it if it is running. The last session is replaced by a fresh one.
+    func close(_ id: UUID) {
+        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        let closing = sessions[index]
+        closing.cancel()
+        observers[id] = nil
+        sessions.remove(at: index)
+        if sessions.isEmpty {
+            let fresh = MissionSession(provider: closing.provider, workingDirectory: closing.workingDirectory)
+            adopt(fresh)
+            activeID = fresh.id
+        } else if activeID == id {
+            activeID = sessions[min(index, sessions.count - 1)].id
+        }
+        sessionsChanged()
+    }
+
+    private func adopt(_ session: MissionSession) {
+        session.hub = self
+        sessions.append(session)
+        observers[session.id] = session.objectWillChange.sink { [weak self] _ in self?.sessionChanged() }
+    }
+
+    /// Forwards a change in any session to whoever is watching the hub, and schedules the follow-up work once.
+    private func sessionChanged() {
+        objectWillChange.send()
+        guard !updateScheduled else { return }
+        updateScheduled = true
+        Task { @MainActor [weak self] in
+            self?.updateScheduled = false
+            self?.sessionsChanged()
+        }
+    }
+
+    private func sessionsChanged() {
+        let phases = sessions.map(\.phase)
+        let overall: Phase = phases.contains(.awaitingApproval) ? .awaitingApproval : phases.contains(.working) ? .working : active.phase
+        if overall != overallPhase { overallPhase = overall }
+        refreshWake()
+        saveSessions()
+    }
+
+    private func restoreSessions() {
+        var restored: [MissionSession] = []
+        var activeIndex = 0
+        if history != nil, let data = defaults.data(forKey: "sessionTabs"), let tabs = try? JSONDecoder().decode([SavedTab].self, from: data) {
+            restored = tabs.prefix(Self.maxSessions).map { tab in
+                let exists = FileManager.default.fileExists(atPath: tab.folder)
+                return MissionSession(provider: ProviderKind(rawValue: tab.provider) ?? .demo,
+                                      workingDirectory: exists ? URL(fileURLWithPath: tab.folder) : FileManager.default.homeDirectoryForCurrentUser)
+            }
+            activeIndex = min(defaults.integer(forKey: "activeTab"), max(restored.count - 1, 0))
+        }
+        if restored.isEmpty {
+            // First launch, or settings saved before there were several sessions.
+            let kind = defaults.string(forKey: "provider").flatMap(ProviderKind.init(rawValue:)) ?? .demo
+            let folder = defaults.string(forKey: "workingDirectory").flatMap { FileManager.default.fileExists(atPath: $0) ? URL(fileURLWithPath: $0) : nil }
+                ?? FileManager.default.homeDirectoryForCurrentUser
+            restored = [MissionSession(provider: kind, workingDirectory: folder)]
+        }
+        for session in restored { adopt(session) }
+        activeID = restored[activeIndex].id
+    }
+
+    /// The open sessions come back (idle) after a restart. Only the real app saves them.
+    private func saveSessions() {
+        guard history != nil else { return }
+        let tabs = sessions.map { SavedTab(provider: $0.provider.rawValue, folder: $0.workingDirectory.path) }
+        defaults.set(try? JSONEncoder().encode(tabs), forKey: "sessionTabs")
+        defaults.set(sessions.firstIndex { $0.id == activeID } ?? 0, forKey: "activeTab")
+    }
+
+    /// Labels of the other sessions that are running in the same folder.
+    func sessionsBusy(in folder: URL, besides session: MissionSession) -> [String] {
+        sessions.filter { $0.id != session.id && $0.busy && $0.workingDirectory.path == folder.path }.map { label(for: $0) }
+    }
+
+    // MARK: working with the active session
 
     func submit(_ prompt: String, viaVoice: Bool = false) {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -137,60 +266,65 @@ final class Session: ObservableObject {
             runMusic(command, viaVoice: viaVoice)
             return
         }
-        guard !prompt.isEmpty else { return }
-        guard !busy else {
-            if viaVoice { add("A mission is running. Abort it or wait before giving another task.", .warn) }
-            return
-        }
-        spokenReply = viaVoice
-        missionID = UUID().uuidString
-        log = []
-        code = ""
-        currentTask = prompt
-        recorded = false
-        guard let impl = provider.makeProvider(mode: approvalMode) else {
-            phase = .failed
-            status = "OFFLINE"
-            add("\(provider.rawValue) is not wired up yet", .warn)
-            return
-        }
-        phase = .working
-        status = "INITIALIZING"
-        announcedApproval = false
-        add("Task: \(prompt)", .info)
+        active.submit(prompt, viaVoice: viaVoice)
+    }
+
+    func cancel() { active.cancel() }
+
+    func resolve(_ approved: Bool, always: Bool = false) { active.resolve(approved, always: always) }
+
+    /// Answers whichever session is waiting (the active one first). The notch uses this.
+    func resolveAttention(_ approved: Bool, always: Bool = false) { attention?.resolve(approved, always: always) }
+
+    /// Mission-log line for something a remote device did ("iPhone connected").
+    func noteRemote(_ text: String) { active.note("📱 \(text)") }
+
+    // MARK: what sessions report back (sound, notifications, history)
+
+    private var several: Bool { sessions.count > 1 }
+
+    private func spoken(_ line: String, for session: MissionSession) -> String {
+        several ? "\(label(for: session)). \(line)" : line
+    }
+
+    func missionStarted(_ session: MissionSession) {
         fx.play(.missionStart)
-        fx.say(SoundFX.startLines.randomElement()!)
-        let dir = workingDirectory
-        runner = Task { [weak self] in
-            let stream = impl.run(task: prompt, workingDirectory: dir) { [weak self] req in
-                await self?.ask(req) ?? false
-            }
-            for await event in stream { self?.handle(event) }
-            self?.streamEnded()
+        fx.say(spoken(SoundFX.startLines.randomElement()!, for: session), interrupt: false)
+    }
+
+    func approvalNeeded(_ session: MissionSession, _ request: ApprovalRequest) {
+        fx.play(.approvalNeeded)
+        Notifier.shared.post(title: several ? "\(label(for: session)) needs your approval" : "Tristan needs your approval",
+                             body: "\(request.summary) \(request.detail)")
+        if !session.announcedApproval {
+            session.announcedApproval = true
+            fx.say(spoken(SoundFX.approvalLines.randomElement()!, for: session), interrupt: false)
         }
     }
 
-    func cancel() {
-        runner?.cancel()
-        resolve(false)
-        if busy {
-            phase = .failed; status = "ABORTED"; add("Aborted by operator", .warn)
-            record(status: "aborted", summary: "Aborted by operator")
-        }
-    }
-
-    func resolve(_ approved: Bool, always: Bool = false) {
-        guard let cont = approval else { return }
-        if approved, always, let rule = pending?.rule, !allowRules.contains(rule) {
-            allowRules.append(rule)
-            add("Always allowed: \(rule.label)", .ok)
-        }
-        approval = nil
-        pending = nil
-        phase = .working
-        add(approved ? "Authorization granted" : "Authorization denied", approved ? .ok : .warn)
+    func approvalAnswered(_ approved: Bool) {
         fx.play(approved ? .approved : .denied)
-        cont.resume(returning: approved)
+    }
+
+    func missionEnded(_ session: MissionSession, success: Bool, summary: String) {
+        fx.play(success ? .missionComplete : .missionFailed)
+        let prefix = several ? "\(label(for: session)): " : ""
+        Notifier.shared.post(title: prefix + (success ? "Mission complete" : "Mission failed"), body: summary)
+        if success {
+            // Tasks given by voice get the result read back; others get a short confirmation.
+            let line = session.spokenReply ? String(summary.prefix(240)) : spoken(SoundFX.doneLines.randomElement()!, for: session)
+            fx.say(line, interrupt: false)
+        } else {
+            fx.say(spoken(SoundFX.failLines.randomElement()!, for: session), interrupt: false)
+        }
+    }
+
+    func record(_ session: MissionSession, status: String, summary: String) {
+        guard session.markRecorded() else { return }
+        records.insert(MissionRecord(task: session.currentTask, provider: session.provider.rawValue, mode: approvalMode.rawValue, status: status,
+                                     summary: String(summary.prefix(240)), folder: session.workingDirectory.path), at: 0)
+        if records.count > 100 { records.removeLast(records.count - 100) }
+        history?.save(records)
     }
 
     // MARK: music
@@ -200,7 +334,7 @@ final class Session: ObservableObject {
         Task { [weak self] in
             guard let self else { return }
             let reply = await self.music.perform(command)
-            self.add("♪ \(reply)", .info)
+            self.active.note("♪ \(reply)")
             if viaVoice { self.fx.say(reply) }
         }
     }
@@ -219,7 +353,7 @@ final class Session: ObservableObject {
             guard let self else { return }
             self.listening = false
             self.status = "STANDING BY"
-            self.add(message, .warn)
+            self.active.note(message, .warn)
         })
     }
 
@@ -244,7 +378,7 @@ final class Session: ObservableObject {
 
     /// The wake listener only runs while the feature is on and nothing else needs the microphone.
     private func refreshWake() {
-        wake.setRunning(wakeOn && !busy && !listening)
+        wake.setRunning(wakeOn && !active.busy && !listening)
     }
 
     private func wakeStarted() {
@@ -270,26 +404,23 @@ final class Session: ObservableObject {
 
     // MARK: history
 
+    /// Puts a past mission's task in the box. If the current session is busy it opens a new one rather than waiting.
     func rerun(_ record: MissionRecord) {
-        guard !busy else { return }
-        if let kind = ProviderKind(rawValue: record.provider) { provider = kind }
-        if FileManager.default.fileExists(atPath: record.folder) { workingDirectory = URL(fileURLWithPath: record.folder) }
-        draft = record.task
+        let folder = FileManager.default.fileExists(atPath: record.folder) ? URL(fileURLWithPath: record.folder) : nil
+        let kind = ProviderKind(rawValue: record.provider)
+        var target = active
+        if active.busy, let fresh = newSession(provider: kind, folder: folder) { target = fresh }
+        else {
+            if let kind { target.provider = kind }
+            if let folder { target.workingDirectory = folder }
+        }
+        target.draft = record.task
         showHistory = false
     }
 
     func clearHistory() {
         records = []
         history?.save([])
-    }
-
-    private func record(status: String, summary: String) {
-        guard !recorded, !currentTask.isEmpty else { return }
-        recorded = true
-        records.insert(MissionRecord(task: currentTask, provider: provider.rawValue, mode: approvalMode.rawValue, status: status,
-                                     summary: String(summary.prefix(240)), folder: workingDirectory.path), at: 0)
-        if records.count > 100 { records.removeLast(records.count - 100) }
-        history?.save(records)
     }
 
     // MARK: folders
@@ -300,62 +431,5 @@ final class Session: ObservableObject {
         panel.canChooseDirectories = true
         panel.directoryURL = workingDirectory
         if panel.runModal() == .OK, let url = panel.url { workingDirectory = url }
-    }
-
-    // MARK: agent events
-
-    private func ask(_ request: ApprovalRequest) async -> Bool {
-        if let rule = request.rule, allowRules.contains(rule) {
-            add("Auto-allowed by rule: \(rule.label)", .ok)
-            return true
-        }
-        pending = request
-        phase = .awaitingApproval
-        status = "AWAITING AUTHORIZATION"
-        add(request.summary, .warn)
-        fx.play(.approvalNeeded)
-        Notifier.shared.post(title: "Tristan needs your approval", body: "\(request.summary) \(request.detail)")
-        if !announcedApproval {
-            announcedApproval = true
-            fx.say(SoundFX.approvalLines.randomElement()!)
-        }
-        return await withCheckedContinuation { approval = $0 }
-    }
-
-    private func handle(_ event: AgentEvent) {
-        switch event {
-        case .status(let s): if phase != .awaitingApproval { status = s }
-        case .log(let s): add(s, .step)
-        case .code(let s): code += s
-        case .done(let s):
-            phase = .done; status = "MISSION COMPLETE"; add(s, .ok)
-            record(status: "done", summary: s)
-            fx.play(.missionComplete)
-            Notifier.shared.post(title: "Mission complete", body: s)
-            // Tasks given by voice get the result read back; others get a short confirmation.
-            if spokenReply { fx.say(String(s.prefix(240))) } else { fx.say(SoundFX.doneLines.randomElement()!) }
-        case .failed(let s):
-            phase = .failed; status = "MISSION FAILED"; add(s, .warn)
-            record(status: "failed", summary: s)
-            fx.play(.missionFailed)
-            Notifier.shared.post(title: "Mission failed", body: s)
-            fx.say(SoundFX.failLines.randomElement()!)
-        }
-    }
-
-    private func streamEnded() {
-        if busy {
-            phase = .done; status = "MISSION COMPLETE"
-            record(status: "done", summary: "Complete")
-        }
-    }
-
-    /// Mission-log line for something a remote device did ("iPhone connected").
-    func noteRemote(_ text: String) {
-        add("📱 \(text)", .info)
-    }
-
-    private func add(_ text: String, _ kind: LogEntry.Kind) {
-        log.append(LogEntry(text: text, kind: kind))
     }
 }
