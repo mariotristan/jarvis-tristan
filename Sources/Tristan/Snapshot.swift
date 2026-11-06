@@ -47,6 +47,15 @@ enum Snapshot {
         asking.pending = ApprovalRequest(summary: "Let Claude Code edit files", detail: "Working folder: /Users/you/code/my-api")
         save(HUDView().environmentObject(asking), width: 1000, height: 640, name: "hud-approval.png")
 
+        let settings = Session()
+        settings.provider = .claude
+        settings.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
+        settings.approvalMode = .auto
+        settings.showSettings = true
+        settings.log = [entry("Task: add login to the API", .info)]
+        save(HUDView().environmentObject(settings), width: 1000, height: 640, name: "hud-settings.png")
+        UserDefaults.standard.removeObject(forKey: "approvalMode")
+
         let geometry = NotchGeometry.current()
         let state = NotchState()
         let notchSession = Session()

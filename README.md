@@ -4,7 +4,9 @@ A native macOS harness for AI coding agents, wrapped in an Iron Man style heads-
 
 You give Tristan a task ("add login to the API"). It works inside a project folder on your Mac, the way Claude Code does. You watch it think, write code and run commands through a glowing HUD, a notch overlay and a lot of animation. Before it edits files or runs commands, it asks you first.
 
-> **Status: early experiment.** The first slice works end to end with a scripted demo provider and the Claude Code CLI. Copilot, Bedrock, Azure OpenAI and voice are planned, not built. See the [roadmap](#roadmap) and [known limitations](#known-limitations).
+**T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
+
+> **Status: early experiment.** Working today: the HUD, the notch overlay, per-action approvals, three approval modes, a demo provider and the Claude Code CLI. Voice input is built but only lightly tested. Copilot, Bedrock and Azure OpenAI are planned, not built. See the [roadmap](#roadmap) and [known limitations](#known-limitations).
 
 ## Screenshots
 
@@ -17,6 +19,10 @@ Rendered from the real views with sample data (`Tristan --snapshot docs/screensh
 **Ask-first approval.** The reactor and borders turn amber until you approve or deny.
 
 ![HUD approval prompt](docs/screenshots/hud-approval.png)
+
+**Configuration.** Choose how much supervision a run gets.
+
+![Configuration panel](docs/screenshots/hud-settings.png)
 
 **The notch overlay**, expanded. It opens by itself when approval is needed, so you can answer without switching windows.
 
@@ -34,7 +40,12 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
   - **Arc reactor** at the top, which spins and pulses faster while the agent works and turns amber, green or red for waiting, done or failed.
   - Animated grid and scanline backdrop.
 - **Notch overlay.** A black pill around the camera notch with a mini reactor and a status dot. Hover to expand it. It also opens by itself when approval is needed and for a few seconds when a mission ends. On Macs without a notch it becomes a floating pill at the top centre of the screen.
-- **Ask-first approvals.** Approve or deny from the HUD or straight from the notch.
+- **Ask-first approvals.** Every action Claude Code wants permission for shows up as an approve or deny prompt, in the HUD or in the notch.
+- **Approval modes** (gear button, saved between launches):
+  - `ASK`: Tristan asks before each action. This is the default.
+  - `AUTO`: Claude's own safety classifier decides. Routine actions run, risky ones are blocked.
+  - `YOLO`: all permission checks are skipped. Needs an explicit confirmation to turn on and shows a red badge.
+- **Voice (push-to-talk).** Hold `⌥ ⇧ Space` and speak, release to send, or click the mic button. The transcript appears live in the input field and the notch. For tasks started by voice, Tristan reads the result aloud.
 - **Global shortcut.** `⌥ Space` shows or hides the HUD from any app. `Esc` hides it.
 - **Menu bar item** next to the clock to open Tristan or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -45,7 +56,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 | Provider | Status | How it works |
 |----------|--------|--------------|
 | `DEMO` | Working | Scripted run with a fake approval, for trying the HUD without spending tokens. |
-| `CLAUDE` | Working (basic) | Runs `claude -p <task> --output-format stream-json --verbose` in the chosen folder and turns the JSON events into log lines and code. |
+| `CLAUDE` | Working | Runs `claude -p <task> --output-format stream-json --verbose` in the chosen folder and turns the JSON events into log lines and code. In `ASK` mode, permission prompts are routed back to you (see [how approvals work](#how-approvals-work)). |
 | `COPILOT` | Planned | Not wired up yet. |
 | `BEDROCK` | Planned | Not wired up yet. |
 | `AZURE` | Planned | Not wired up yet. |
@@ -88,6 +99,7 @@ Tristan has no Dock icon. Look for the notch overlay, the menu bar icon, or pres
 | `⌥ Space` | Show or hide the HUD from anywhere |
 | `Esc` | Hide the HUD |
 | `Return` | Execute the task |
+| Hold `⌥ ⇧ Space` | Push-to-talk, release to send |
 
 ## How it works
 
@@ -96,7 +108,10 @@ Sources/Tristan/
 ├── main.swift         App entry point (accessory app, no Dock icon)
 ├── AppDelegate.swift  HUD window, menu bar item, global hotkey, notch setup
 ├── Session.swift      Observable state: phase, log, code, pending approval, provider
-├── Providers.swift    AgentProvider protocol, Demo and Claude Code providers, stream parser
+├── Providers.swift    AgentProvider protocol, approval modes, Demo and Claude Code providers, stream parser
+├── PermissionBridge.swift  Unix-socket server in the app plus the MCP stdio shim Claude Code calls
+├── Voice.swift        Push-to-talk speech recognition
+├── Snapshot.swift     Renders the README screenshots from the real views
 ├── HUDView.swift      The main HUD, command bar and approval overlay
 ├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
 ├── Theme.swift        Colours, glow panel, arc reactor, animated backdrop
@@ -115,6 +130,24 @@ enum AgentEvent { case status(String), log(String), code(String), done(String), 
 
 `Session` consumes that stream and publishes state. The HUD and the notch both render from the same `Session`, so they always agree. A provider asks for permission by calling `approve(...)`, which suspends until you tap Approve or Deny.
 
+### How approvals work
+
+In `ASK` mode Tristan starts Claude Code with `--permission-mode manual` and `--permission-prompt-tool mcp__tristan__approve`, plus an MCP config that points at **its own binary** run as `Tristan --mcp-permission <socket>`. When Claude Code needs permission for a tool call:
+
+1. It calls the `approve` tool on that tiny MCP stdio shim.
+2. The shim forwards the request over a private Unix socket (a temp folder with `0700` permissions) to the running app.
+3. The app shows the action in the HUD or notch and waits for you.
+4. Your answer goes back as `{"behavior":"allow"}` or `{"behavior":"deny"}`.
+
+Your existing Claude Code allow rules still apply, so actions you already allowed in your own settings are not asked about again. `AUTO` and `YOLO` skip the bridge and pass `--permission-mode auto` or `bypassPermissions` instead.
+
+### Testing without the UI
+
+```bash
+# Run the Claude provider headlessly. The last argument answers approvals: allow, deny, or picks a mode: auto, yolo
+.build/debug/Tristan --headless /path/to/folder "Use Bash to run: echo hi > out.txt" deny
+```
+
 ### Adding a provider
 
 1. Create a type conforming to `AgentProvider` in `Providers.swift` (or its own file).
@@ -125,21 +158,23 @@ enum AgentEvent { case status(String), log(String), code(String), done(String), 
 
 - **Approvals are coarse for Claude Code.** Tristan asks once before the run, then starts Claude Code with `--permission-mode acceptEdits`, so it can edit files in the chosen folder without asking again. Per-action approval needs Claude Code's permission prompt tool and is on the roadmap. Do not point it at a folder you are not comfortable with an agent editing.
 - Only `DEMO` and `CLAUDE` exist. The other providers show an "offline" state.
-- No voice yet.
+- Voice uses Apple's speech recognition and needs microphone and speech permission. It builds and is wired up, but has had little real-world testing, and there is no wake word.
 - The notch overlay has only been tested on a notched MacBook, and the visuals have not had a design pass on other displays.
 - No automated tests yet.
 
 ## Roadmap
 
-- [ ] Per-action approvals for Claude Code through its permission prompt tool
-- [ ] Voice input, push-to-talk first, wake word later
-- [ ] Spoken responses
+- [x] Per-action approvals for Claude Code through its permission prompt tool
+- [x] Approval modes: ask, auto, yolo
+- [x] Voice input (push-to-talk) and spoken results
+- [ ] Voice: wake word, better testing
+- [ ] "Always allow this" option on the approval prompt
 - [ ] Own agent loop with file and shell tools for the model-only providers
 - [ ] GitHub Copilot provider
 - [ ] AWS Bedrock provider
 - [ ] Azure OpenAI provider
 - [ ] Mac notifications for approvals and finished missions
-- [ ] Settings window (shortcut, default folder, credentials in the Keychain)
+- [ ] More settings (shortcut, default folder, credentials in the Keychain)
 - [ ] Task history
 - [ ] Tests
 

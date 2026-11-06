@@ -2,7 +2,6 @@ import SwiftUI
 
 struct HUDView: View {
     @EnvironmentObject var session: Session
-    @State private var input = ""
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -18,6 +17,7 @@ struct HUDView: View {
             }
             .padding(18)
             if let request = session.pending { ApprovalOverlay(request: request) }
+            if session.showSettings { SettingsOverlay() }
         }
         .frame(minWidth: 900, minHeight: 560)
         .clipShape(RoundedRectangle(cornerRadius: 18))
@@ -29,19 +29,33 @@ struct HUDView: View {
 
     private var topBar: some View {
         HStack {
-            Text("T.R.I.S.T.A.N.")
-                .font(.system(size: 20, weight: .bold, design: .monospaced))
-                .tracking(6)
-                .foregroundStyle(Theme.cyan)
-                .shadow(color: Theme.cyan, radius: 6)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("T.R.I.S.T.A.N.")
+                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .tracking(6)
+                    .foregroundStyle(Theme.cyan)
+                    .shadow(color: Theme.cyan, radius: 6)
+                Text("TACTICAL REASONING INTERFACE FOR\nSUPERVISING TASKS, AGENTS & NETWORKS")
+                    .font(.system(size: 8, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.cyan.opacity(0.55))
+            }
             Spacer()
-            ReactorView(active: session.phase == .working, tint: Theme.tint(for: session.phase), size: 84)
+            ReactorView(active: session.phase == .working || session.listening, tint: Theme.tint(for: session.phase), size: 84)
             Spacer()
-            Text(session.status)
-                .font(.system(size: 12, design: .monospaced))
-                .tracking(2)
-                .foregroundStyle(Theme.tint(for: session.phase))
-                .frame(minWidth: 200, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(session.status)
+                    .font(.system(size: 12, design: .monospaced))
+                    .tracking(2)
+                    .foregroundStyle(Theme.tint(for: session.phase))
+                Text("MODE \(session.approvalMode.rawValue)")
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .tracking(2)
+                    .padding(.vertical, 2).padding(.horizontal, 6)
+                    .overlay(Rectangle().stroke(session.approvalMode.tint, lineWidth: 1))
+                    .foregroundStyle(session.approvalMode.tint)
+            }
+            .frame(minWidth: 200, alignment: .trailing)
         }
         .frame(height: 90)
     }
@@ -92,12 +106,27 @@ struct HUDView: View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
                 Text("▸").foregroundStyle(Theme.amber)
-                TextField("Give Tristan a task…", text: $input)
+                TextField(session.listening ? "Listening…" : "Give Tristan a task…", text: $session.draft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14, design: .monospaced))
                     .foregroundStyle(Theme.cyan)
                     .focused($focused)
                     .onSubmit(send)
+                Button { session.showSettings.toggle() } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Theme.amber)
+                }
+                .buttonStyle(.plain)
+                .help("Configuration")
+                Button { session.listening ? session.stopListening() : session.startListening() } label: {
+                    Image(systemName: session.listening ? "waveform.circle.fill" : "mic.circle")
+                        .font(.system(size: 22))
+                        .foregroundStyle(session.listening ? Theme.red : Theme.cyan)
+                        .shadow(color: session.listening ? Theme.red : .clear, radius: 6)
+                }
+                .buttonStyle(.plain)
+                .help("Click to talk, or hold ⌥⇧Space")
                 if session.busy {
                     hudButton("ABORT", tint: Theme.red) { session.cancel() }
                 } else {
@@ -136,8 +165,10 @@ struct HUDView: View {
     }
 
     private func send() {
-        session.submit(input)
-        if !input.isEmpty { input = "" }
+        guard !session.busy else { return }
+        let text = session.draft
+        session.submit(text)
+        if session.busy { session.draft = "" }
     }
 
     private func color(for kind: LogEntry.Kind) -> Color {
@@ -191,6 +222,97 @@ struct ApprovalOverlay: View {
             .background(Theme.deep)
             .overlay(Rectangle().stroke(Theme.amber, lineWidth: 1.5))
             .shadow(color: Theme.amber.opacity(0.5), radius: 18)
+        }
+    }
+}
+
+extension ApprovalMode {
+    var tint: Color {
+        switch self {
+        case .ask: return Theme.green
+        case .auto: return Theme.amber
+        case .yolo: return Theme.red
+        }
+    }
+}
+
+struct SettingsOverlay: View {
+    @EnvironmentObject var session: Session
+    @State private var confirmingYolo = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.55).onTapGesture { session.showSettings = false }
+            VStack(alignment: .leading, spacing: 16) {
+                Text("CONFIGURATION")
+                    .font(.system(size: 11, design: .monospaced)).tracking(3)
+                    .foregroundStyle(Theme.amber)
+                Text("APPROVAL MODE")
+                    .font(.system(size: 10, design: .monospaced)).tracking(2)
+                    .foregroundStyle(Theme.cyan.opacity(0.7))
+                HStack(spacing: 8) {
+                    ForEach(ApprovalMode.allCases) { mode in
+                        let on = session.approvalMode == mode
+                        Button { choose(mode) } label: {
+                            Text(mode.rawValue)
+                                .font(.system(size: 12, weight: .bold, design: .monospaced)).tracking(2)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(on ? mode.tint.opacity(0.25) : .clear)
+                                .overlay(Rectangle().stroke(mode.tint.opacity(on ? 1 : 0.4), lineWidth: 1))
+                                .foregroundStyle(mode.tint.opacity(on ? 1 : 0.7))
+                                .shadow(color: on ? mode.tint.opacity(0.6) : .clear, radius: 6)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(session.busy)
+                    }
+                }
+                Text(session.approvalMode.summary)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(session.approvalMode.tint)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if confirmingYolo {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("YOLO means the agent can delete files and run any command in the working folder, with no questions asked. Only use it in a folder you can afford to lose.")
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(Theme.red)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 12) {
+                            hudButton("CANCEL", tint: Theme.cyan) { confirmingYolo = false }
+                            hudButton("ENABLE YOLO", tint: Theme.red) {
+                                session.approvalMode = .yolo
+                                confirmingYolo = false
+                            }
+                        }
+                    }
+                    .padding(12)
+                    .overlay(Rectangle().stroke(Theme.red, lineWidth: 1))
+                }
+                if session.busy {
+                    Text("Mode is locked while a mission is running.")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Theme.cyan.opacity(0.5))
+                }
+                HStack {
+                    Spacer()
+                    hudButton("CLOSE", tint: Theme.cyan) { session.showSettings = false }
+                }
+            }
+            .padding(24)
+            .frame(width: 500)
+            .background(Theme.deep)
+            .overlay(Rectangle().stroke(Theme.cyan, lineWidth: 1.5))
+            .shadow(color: Theme.cyan.opacity(0.4), radius: 18)
+        }
+    }
+
+    private func choose(_ mode: ApprovalMode) {
+        if mode == .yolo, session.approvalMode != .yolo {
+            confirmingYolo = true
+        } else {
+            confirmingYolo = false
+            session.approvalMode = mode
         }
     }
 }

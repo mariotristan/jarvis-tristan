@@ -21,6 +21,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSMicrophoneUsageDescription</key><string>Tristan listens for voice commands.</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>Tristan turns your voice into tasks.</string>
 </dict></plist>
 PLIST
 codesign --force --sign - "$APP" >/dev/null 2>&1 || true

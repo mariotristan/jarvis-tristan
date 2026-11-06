@@ -14,6 +14,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notch: NotchController!
     private var statusItem: NSStatusItem!
     private var hotKey: GlobalHotKey!
+    private var talkKey: GlobalHotKey!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         hud = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 640),
@@ -31,12 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = NSImage(systemSymbolName: "circle.hexagongrid.circle", accessibilityDescription: "Tristan")
         let menu = NSMenu()
-        menu.addItem(withTitle: "Open Tristan  (⌥Space)", action: #selector(toggleHUD), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Open Tristan  (⌥Space, hold ⌥⇧Space to talk)", action: #selector(toggleHUD), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Tristan", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
 
         hotKey = GlobalHotKey(keyCode: kVK_Space, modifiers: optionKey) { [weak self] in self?.toggleHUD() }
+        // Hold ⌥⇧Space to talk, release to send.
+        talkKey = GlobalHotKey(keyCode: kVK_Space, modifiers: optionKey | shiftKey,
+                               onRelease: { [weak self] in self?.session.stopListening() },
+                               handler: { [weak self] in self?.session.startListening() })
         showHUD()
     }
 

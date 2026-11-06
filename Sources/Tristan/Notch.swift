@@ -39,7 +39,7 @@ struct NotchView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                ReactorView(active: session.phase == .working, tint: Theme.tint(for: session.phase), size: geometry.height - 8)
+                ReactorView(active: session.phase == .working || session.listening, tint: Theme.tint(for: session.phase), size: geometry.height - 8)
                     .frame(width: wing)
                 Spacer().frame(width: geometry.width)
                 Circle()
@@ -55,7 +55,8 @@ struct NotchView: View {
                     Text(session.status)
                         .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(2)
                         .foregroundStyle(Theme.tint(for: session.phase))
-                    Text(session.pending?.summary ?? session.log.last?.text ?? "Ready when you are, sir.")
+                    Text(session.listening ? (session.draft.isEmpty ? "Listening…" : session.draft)
+                         : session.pending?.summary ?? session.log.last?.text ?? "Ready when you are, sir.")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(Theme.cyan.opacity(0.85))
                         .lineLimit(2).multilineTextAlignment(.center)
@@ -112,10 +113,10 @@ final class NotchController {
         applyFrame(animated: false)
         panel.orderFrontRegardless()
 
-        Publishers.CombineLatest3(state.$hovering, session.$phase, state.$peek)
+        Publishers.CombineLatest4(state.$hovering, session.$phase, state.$peek, session.$listening)
             .receive(on: RunLoop.main)
-            .sink { [weak self] hovering, phase, peek in
-                let want = hovering || phase == .awaitingApproval || peek
+            .sink { [weak self] hovering, phase, peek, listening in
+                let want = hovering || phase == .awaitingApproval || peek || listening
                 guard let self, want != self.expanded else { return }
                 self.expanded = want
                 self.render(openHUD: openHUD)

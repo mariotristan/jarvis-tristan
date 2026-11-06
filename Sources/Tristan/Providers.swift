@@ -20,6 +20,32 @@ protocol AgentProvider: Sendable {
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent>
 }
 
+/// How much supervision an agent run gets.
+enum ApprovalMode: String, CaseIterable, Identifiable {
+    case ask = "ASK"
+    case auto = "AUTO"
+    case yolo = "YOLO"
+
+    var id: String { rawValue }
+
+    var summary: String {
+        switch self {
+        case .ask: return "Tristan asks you before every action that needs permission. Safest."
+        case .auto: return "Claude's own safety classifier decides. Routine actions run without asking, risky ones are blocked."
+        case .yolo: return "All permission checks are skipped. The agent can edit files and run any command without asking."
+        }
+    }
+
+    /// Value for `claude --permission-mode`. ASK uses the prompt tool instead of a hands-off mode.
+    var claudeFlag: String {
+        switch self {
+        case .ask: return "manual"
+        case .auto: return "auto"
+        case .yolo: return "bypassPermissions"
+        }
+    }
+}
+
 enum ProviderKind: String, CaseIterable, Identifiable {
     case claude = "CLAUDE"
     case copilot = "COPILOT"
@@ -29,9 +55,9 @@ enum ProviderKind: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    func makeProvider() -> AgentProvider? {
+    func makeProvider(mode: ApprovalMode) -> AgentProvider? {
         switch self {
-        case .claude: return ClaudeCodeProvider()
+        case .claude: return ClaudeCodeProvider(mode: mode)
         case .demo: return DemoProvider()
         case .copilot, .bedrock, .azure: return nil
         }
@@ -82,22 +108,43 @@ struct DemoProvider: AgentProvider {
 }
 
 /// Drives the `claude` CLI headlessly and turns its stream-json output into HUD events.
+/// Every permission prompt is routed back to the operator through the PermissionServer / MCP shim.
 struct ClaudeCodeProvider: AgentProvider {
+    var mode: ApprovalMode = .ask
+
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
             let process = Process()
+            let server = PermissionServer { tool, detail in
+                await approve(ApprovalRequest(summary: "Allow \(tool)?", detail: detail))
+            }
             let worker = Task {
-                c.yield(.status("AWAITING AUTHORIZATION"))
-                // Coarse ask-first: one approval up front, then Claude Code may edit files in this folder.
-                let ok = await approve(ApprovalRequest(
-                    summary: "Let Claude Code edit files",
-                    detail: "Working folder: \(workingDirectory.path)"))
-                guard ok else { c.yield(.failed("Denied by operator")); c.finish(); return }
+                var arguments = ["claude", "-p", task,
+                                 "--output-format", "stream-json", "--verbose",
+                                 "--permission-mode", mode.claudeFlag]
+                if mode == .ask {
+                    // Route every permission prompt back to the operator through the MCP shim.
+                    guard server.start(), let executable = Bundle.main.executablePath else {
+                        c.yield(.failed("Could not start the approval bridge"))
+                        c.finish(); return
+                    }
+                    let config: [String: Any] = ["mcpServers": ["tristan": [
+                        "command": executable,
+                        "args": ["--mcp-permission", server.socketPath],
+                    ]]]
+                    let configURL = server.directory.appendingPathComponent("mcp.json")
+                    guard let json = try? JSONSerialization.data(withJSONObject: config),
+                          (try? json.write(to: configURL)) != nil else {
+                        c.yield(.failed("Could not write the MCP config"))
+                        c.finish(); return
+                    }
+                    arguments += ["--mcp-config", configURL.path, "--permission-prompt-tool", "mcp__tristan__approve"]
+                } else {
+                    c.yield(.log("Approval mode \(mode.rawValue): no per-action prompts"))
+                }
 
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = ["claude", "-p", task,
-                                     "--output-format", "stream-json", "--verbose",
-                                     "--permission-mode", "acceptEdits"]
+                process.arguments = arguments
                 process.currentDirectoryURL = workingDirectory
                 var env = ProcessInfo.processInfo.environment
                 env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
@@ -109,7 +156,7 @@ struct ClaudeCodeProvider: AgentProvider {
 
                 do { try process.run() } catch {
                     c.yield(.failed("Could not launch claude: \(error.localizedDescription)"))
-                    c.finish(); return
+                    server.stop(); c.finish(); return
                 }
                 c.yield(.status("ONLINE"))
                 var finished = false
@@ -128,11 +175,13 @@ struct ClaudeCodeProvider: AgentProvider {
                 if !finished {
                     c.yield(process.terminationStatus == 0 ? .done("Complete") : .failed("claude exited with status \(process.terminationStatus)"))
                 }
+                server.stop()
                 c.finish()
             }
             c.onTermination = { _ in
                 worker.cancel()
                 if process.isRunning { process.terminate() }
+                server.stop()
             }
         }
     }
@@ -145,7 +194,7 @@ enum ClaudeStream {
               let type = obj["type"] as? String else { return [] }
         switch type {
         case "system":
-            return [.log("Session started")]
+            return obj["subtype"] as? String == "init" ? [.log("Session started")] : []
         case "assistant":
             guard let msg = obj["message"] as? [String: Any],
                   let content = msg["content"] as? [[String: Any]] else { return [] }
