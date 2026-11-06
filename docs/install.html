@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install—Tristan</title>
+<meta name="description" content="Requirements, the download, building from source, and what to do when macOS complains.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/install.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Install—Tristan">
+<meta property="og:description" content="Requirements, the download, building from source, and what to do when macOS complains.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/install.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="local-models.html">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html" aria-current="page">Install</a>
+        <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Guide</span>
+      <h1>Up and running in a few minutes.</h1>
+      <p class="lead">Download the app or build it yourself, then pick DEMO and watch it work. No accounts needed.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <h2>Requirements</h2>
+
+    <ul class="plain">
+      <li><b>macOS 14 or later on an Apple Silicon Mac.</b> The release is built for <code>arm64</code> only. Intel Macs: build from source (untested).</li>
+      <li><b>To build from source:</b> the full Xcode, not just the command line tools, because SwiftUI’s macros need the full toolchain. <code>scripts/bundle.sh</code> finds <code>/Applications/Xcode.app</code> even if <code>xcode-select</code> points elsewhere.</li>
+      <li><b>For the Claude provider:</b> the Claude Code CLI, installed and signed in.</li>
+      <li><b>Nothing else</b> to try it: pick DEMO and type any task.</li>
+    </ul>
+  </div>
+</section>
+<section class="soft">
+  <div class="wrap">
+    <h2>From a release</h2>
+
+    <ol class="steps">
+      <li><b>Download</b> <code>Tristan-0.4.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Open the disk image</b> and drag Tristan into Applications. Or use Terminal, below.</li>
+      <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and Tristan is not notarized yet (that needs a paid Apple account).</li>
+      <li><b>Open Tristan.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>. Tristan has no Dock icon.</li>
+    </ol>
+    <pre data-copy><span class="c"># 1. Optional: check the download</span>
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.4.0.dmg.sha256
+
+<span class="c"># 2. Install</span>
+hdiutil attach Tristan-0.4.0.dmg
+cp -R "/Volumes/Tristan 0.4.0/Tristan.app" /Applications/
+
+<span class="c"># 3. Remove the quarantine flag</span>
+xattr -dr com.apple.quarantine /Applications/Tristan.app
+
+<span class="c"># 4. Open it</span>
+open /Applications/Tristan.app</pre>
+    <p class="note">If you skip step 3, macOS says the app “cannot be opened”. You can also allow it under <b>System Settings &gt; Privacy &amp; Security &gt; Open Anyway</b>.</p>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <h2>From source</h2>
+
+    <pre data-copy>git clone https://github.com/mariotristan/jarvis-tristan.git
+cd jarvis-tristan
+scripts/install.sh      <span class="c"># builds, copies Tristan.app into /Applications and launches it</span></pre>
+    <p>Or build without installing:</p>
+    <pre data-copy>scripts/bundle.sh      <span class="c"># a release build wrapped into Tristan.app, with icon and version</span>
+open Tristan.app
+
+<span class="c"># a quick debug build, no app bundle</span>
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build
+
+<span class="c"># the tests</span>
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
+    <p>Maintainers: <code>scripts/make-dmg.sh</code> builds the disk image, and <code>git tag vX.Y.Z &amp;&amp; git push origin vX.Y.Z</code> publishes a release. See <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/ci-and-release.md">docs/ci-and-release.md</a>.</p>
+  </div>
+</section>
+<section class="soft">
+  <div class="wrap">
+    <h2>The scripts</h2>
+<div class="tablewrap"><table><caption>Everything in the scripts folder</caption><thead><tr><th scope="col">Script</th><th scope="col">What it does</th></tr></thead><tbody>
+<tr><th scope="row"><code>scripts/install.sh</code></th><td>Builds from source, installs into Applications and launches.</td></tr>
+<tr><th scope="row"><code>scripts/bundle.sh</code></th><td>Builds a release binary and wraps it into <code>Tristan.app</code>.</td></tr>
+<tr><th scope="row"><code>scripts/make-dmg.sh</code></th><td>Builds <code>dist/Tristan-&lt;version&gt;.dmg</code> and a checksum next to it.</td></tr>
+<tr><th scope="row"><code>scripts/setup-ollama.sh</code></th><td>Installs and starts Ollama and pulls a model. See <a href="local-models.html">Local models</a>.</td></tr>
+<tr><th scope="row"><code>scripts/record-demo.sh</code></th><td>Films the built-in demo (<code>Tristan --demo</code>) for the videos.</td></tr>
+<tr><th scope="row"><code>scripts/ios-demo.sh</code></th><td>Runs the iPhone or iPad app in the simulator against a demo Mac.</td></tr>
+<tr><th scope="row"><code>scripts/ios-icon.sh</code></th><td>Regenerates the iOS app icon.</td></tr>
+</tbody></table></div>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <h2>First run</h2>
+
+    <ol class="steps">
+      <li><b>Pick a provider</b> along the bottom. Start with DEMO to see everything move.</li>
+      <li><b>Click the folder button</b> to choose the project folder.</li>
+      <li><b>Type a task</b> and press Return or click EXECUTE.</li>
+      <li><b>Approve or deny</b> when asked, in the window or from the notch.</li>
+      <li><b>Watch</b> the mission log and code stream. Click ABORT to stop a run.</li>
+    </ol>
+    <p>Shortcuts: <kbd>⌥ Space</kbd> opens the window, <kbd>⌥ ⇧ Space</kbd> held is push-to-talk, <kbd>⌘T</kbd> opens a new session, <kbd>⌘1</kbd>…<kbd>⌘9</kbd> switch, <kbd>⌘W</kbd> closes.</p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="iphone-ipad.html">← iPhone and iPad</a><a href="index.html">Home →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. Tristan is an independent project. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

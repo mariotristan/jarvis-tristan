@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local models—Tristan</title>
+<meta name="description" content="Set up Ollama with one script, pick a model, and keep everything on your machine.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/local-models.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Local models—Tristan">
+<meta property="og:description" content="Set up Ollama with one script, pick a model, and keep everything on your machine.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/local-models.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="local-models.html" aria-current="page">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html">Install</a>
+        <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Guide</span>
+      <h1>Your Mac, your model.</h1>
+      <p class="lead">Run Tristan on a local model with Ollama. One script sets it up, and nothing leaves the machine.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <h2>Quick start</h2>
+
+    <pre data-copy>scripts/setup-ollama.sh                 <span class="c"># installs Ollama if needed, pulls llama3.1</span>
+scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or pull a different model by name</span></pre>
+    <p>Then open Tristan, pick <b>OLLAMA</b> along the bottom and give it a task. In <b>Configuration &gt; OLLAMA</b> you can see the installed models, click one to choose it and press <b>REFRESH</b> to rescan. Leave the model blank to use the first installed one.</p>
+    <p class="note">Nothing is sent over the internet while you work. The only download is the model itself, from Ollama’s registry, when you pull it.</p>
+  </div>
+</section>
+<section class="soft">
+  <div class="wrap">
+    <h2>What the setup script does</h2>
+
+    <p>The script is plain bash (<code>set -euo pipefail</code>), safe to run again, and prints each step. It is 55 lines; read it before you run it.</p><div class="tablewrap"><table><caption>scripts/setup-ollama.sh, step by step</caption><thead><tr><th scope="col">Step</th><th scope="col">What happens</th><th scope="col">If it fails</th></tr></thead><tbody>
+<tr><th scope="row">1. Find Ollama</th><td>Looks for <code>ollama</code> on your <code>PATH</code>. If it is missing, runs <code>brew install ollama</code>.</td><td>Without Homebrew it stops and points you to ollama.com/download.</td></tr>
+<tr><th scope="row">2. Start the server</th><td>Asks <code>localhost:11434/api/tags</code>. If nothing answers it starts <code>ollama serve</code> in the background (log: <code>/tmp/ollama-serve.log</code>) and waits up to 30 seconds.</td><td>Stops and names the log file.</td></tr>
+<tr><th scope="row">3. Pull the model</th><td>Runs <code>ollama pull</code>. The default, <code>llama3.1</code>, is about 5 GB the first time; later runs finish at once.</td><td>Ollama’s own error is shown, for example an unknown model name.</td></tr>
+<tr><th scope="row">4. Check it answers</th><td>Sends one tiny chat request to <code>/v1/chat/completions</code>, the same endpoint Tristan uses, and prints the reply.</td><td>Stops and prints the error.</td></tr>
+<tr><th scope="row">5. Check tool support</th><td>Offers a <code>list_dir</code> tool. If Ollama replies “does not support tools”, it prints a warning.</td><td>Only a warning: the model still works for questions, not for coding.</td></tr>
+<tr><th scope="row">6. Summary</th><td>Prints <code>ollama list</code> and, if the script started the server, how to stop it (<code>pkill -f 'ollama serve'</code>).</td><td></td></tr>
+</tbody></table></div>
+    <p style="margin-top:18px">What it does <b>not</b> do: it never touches Tristan’s settings, never sends anything off your machine except the model download, and never deletes models.</p>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <h2>Choosing a model</h2>
+
+    <p>Tristan edits files and runs commands through <b>tool calls</b>, so a coding task needs a model that supports them. Questions (and kids mode) work with any model.</p><div class="tablewrap"><table><caption>Starting points</caption><thead><tr><th scope="col">Model</th><th scope="col">Good for</th></tr></thead><tbody>
+<tr><th scope="row"><code>llama3.1</code> (default)</th><td>A solid all-rounder that handles tools.</td></tr>
+<tr><th scope="row"><code>qwen2.5-coder</code></th><td>Coding tasks.</td></tr>
+<tr><th scope="row">Any other</th><td>Try it. A model without tool support gets a clear message in the log and still answers plain questions.</td></tr>
+</tbody></table></div>
+    <p style="margin-top:18px">Small models fumble tool calls more often than a cloud model, so expect simple edits to work better than long multi-step tasks. A short name such as <code>qwen</code> matches an installed <code>qwen:7b</code>.</p>
+  </div>
+</section>
+<section class="soft">
+  <div class="wrap">
+    <h2>How it works inside Tristan</h2>
+
+    <ul class="plain">
+      <li><b>One endpoint.</b> It talks to Ollama’s OpenAI-compatible <code>/v1/chat/completions</code>, streaming, and reuses the same agent loop as Azure OpenAI.</li>
+      <li><b>Model discovery.</b> <code>GET /api/tags</code> with a two-second timeout. A blank model means the first installed one.</li>
+      <li><b>This Mac only.</b> The host must be <code>localhost</code>, <code>127.0.0.1</code> or <code>::1</code> over plain <code>http</code>. Anything else is refused before a prompt is sent.</li>
+      <li><b>Readable errors.</b> Server not running, no model installed, model not found, model without tool support.</li>
+    </ul>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <h2>Troubleshooting</h2>
+<div class="tablewrap"><table><caption>Symptoms and fixes</caption><thead><tr><th scope="col">Symptom</th><th scope="col">Fix</th></tr></thead><tbody>
+<tr><th scope="row">“Ollama is not running”</th><td>Run <code>ollama serve</code>, or open the Ollama app.</td></tr>
+<tr><th scope="row">“No model installed”</th><td>Run <code>scripts/setup-ollama.sh</code> or <code>ollama pull llama3.1</code>.</td></tr>
+<tr><th scope="row">“Cannot use tools”</th><td>Choose a tool-capable model in Configuration.</td></tr>
+<tr><th scope="row">Kids mode says “ask a parent” every time</th><td>The local model is not ready. Check <code>ollama list</code> and that the server is running.</td></tr>
+<tr><th scope="row">The first answer is slow</th><td>Ollama loads the model into memory on first use.</td></tr>
+</tbody></table></div><p style="margin-top:18px">The same guide lives in the repository as <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/ollama.md">docs/ollama.md</a>.</p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="approvals.html">← Approvals</a><a href="kids-mode.html">Kids safe mode →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. Tristan is an independent project. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

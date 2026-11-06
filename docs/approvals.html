@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Approvals—Tristan</title>
+<meta name="description" content="The three trust modes, what Always allow remembers, and how an approval travels from the agent to your screen.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/approvals.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Approvals—Tristan">
+<meta property="og:description" content="The three trust modes, what Always allow remembers, and how an approval travels from the agent to your screen.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/approvals.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html" aria-current="page">Approvals</a>
+        <a href="local-models.html">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html">Install</a>
+        <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Guide</span>
+      <h1>You decide how much to trust.</h1>
+      <p class="lead">Tristan asks before it acts by default. Here is exactly what each mode does and how little an Always-allow rule remembers.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <h2>Three trust levels</h2>
+
+    <div class="modes">
+      <div class="mode"><span class="tag">Default</span><h3>ASK</h3><p>Tristan asks before each action. You approve or deny in the window or from the notch.</p></div>
+      <div class="mode gold"><span class="tag">Middle</span><h3>AUTO</h3><p>Routine actions run without asking. Risky ones are blocked or still ask.</p></div>
+      <div class="mode"><span class="tag">Careful</span><h3>YOLO</h3><p>All permission checks are skipped. It needs an explicit confirmation and shows a red badge.</p></div>
+    </div><div class="tablewrap"><table><caption>What Auto means for each provider</caption><thead><tr><th scope="col">Provider</th><th scope="col">In Auto mode</th></tr></thead><tbody>
+<tr><th scope="row">Claude Code</th><td>Its own safety classifier decides.</td></tr>
+<tr><th scope="row">Bedrock, Azure, Ollama</th><td>Writes inside the working folder and plain commands run; anything else asks.</td></tr>
+<tr><th scope="row">Copilot</th><td>A short allow-list of file writes and routine commands; everything else is refused.</td></tr>
+<tr><th scope="row">iPhone standalone</th><td>Writes inside the folder go ahead. There is no shell, and no Yolo.</td></tr>
+</tbody></table></div><p class="note warn" style="margin-top:18px"><b>Yolo is exactly as risky as it sounds.</b> Do not use it in a folder you cannot afford to lose.</p>
+  </div>
+</section>
+<section class="soft">
+  <div class="wrap">
+    <h2>Always allow, kept narrow</h2>
+
+    <p>The approval prompt has an <b>ALWAYS ALLOW</b> button that remembers a rule so you are not asked again. Rules are saved between launches and listed in Configuration, where you can remove them one by one or clear them all. Tristan only offers it where generalising is reasonably safe:</p><div class="tablewrap"><table><caption>What a rule remembers</caption><thead><tr><th scope="col">Action</th><th scope="col">Rule it remembers</th></tr></thead><tbody>
+<tr><th scope="row">Edit, Write, MultiEdit, NotebookEdit</th><td>That tool, for files <b>inside the working folder</b> only.</td></tr>
+<tr><th scope="row">Bash</th><td>The program name only, for example <code>npm</code> or <code>touch</code>.</td></tr>
+</tbody></table></div>
+    <p style="margin-top:18px">It is <b>not</b> offered for shell commands that chain or redirect (<code>;</code>, <code>&amp;&amp;</code>, <code>|</code>, <code>&gt;</code>, <code>&lt;</code>, backticks, <code>$(…)</code>), for risky programs (<code>rm</code>, <code>sudo</code>, <code>dd</code>, <code>chmod</code>, <code>mv</code>, <code>curl</code>, <code>sh</code>, <code>ssh</code> and similar), or for any other tool. Those always ask.</p>
+    <p class="note">Allowing a program such as <code>npm</code> lets it run any arguments you did not see, so treat the rule as trust in that program.</p>
+  </div>
+</section>
+<section>
+  <div class="wrap">
+    <h2>How an approval travels</h2>
+
+    <p>In Ask mode Tristan starts Claude Code with a permission-prompt tool that points at <b>its own binary</b>, run as a tiny helper (<code>Tristan --mcp-permission &lt;socket&gt;</code>). When Claude Code needs permission for a tool call:</p>
+    <ol class="steps">
+      <li>It calls the <code>approve</code> tool on that helper.</li>
+      <li>The helper forwards the request over a private Unix socket, in a temporary folder only you can read, to the running app.</li>
+      <li>The app shows the action in the window or the notch and waits for you.</li>
+      <li>Your answer goes back as allow or deny.</li>
+    </ol>
+    <p>Auto and Yolo skip this bridge and pass Claude Code’s own <code>auto</code> or <code>bypassPermissions</code> mode instead. For the model-only providers (Bedrock, Azure, Ollama) the shared agent loop asks you itself before each tool call; the file tools are confined to the working folder.</p>
+  </div>
+</section>
+<section class="soft">
+  <div class="wrap">
+    <h2>Several sessions, one set of rules</h2>
+
+    <p>Each tab is its own session with its own provider, folder, log and approvals. The approval mode and the Always-allow rules are shared by all of them. A session that needs you in the background raises an amber banner, a sound, a spoken line and a notification, and the notch can show and answer it. Starting a session in a folder another session is already working in warns you that edits may collide.</p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="providers.html">← Providers</a><a href="local-models.html">Local models →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. Tristan is an independent project. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>
