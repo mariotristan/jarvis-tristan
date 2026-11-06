@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &bag)
         showHUD()
         session.startNetworkMonitor()
+        session.fx.warmUp()
         session.greet()
         if demo {
             // The recording script crops the video to this rectangle (screen points, origin at the top left).

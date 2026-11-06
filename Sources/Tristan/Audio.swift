@@ -34,6 +34,21 @@ final class SoundFX {
 
     init() { speaker.delegate = speechDelegate }
 
+    /// Opens the audio output and keeps it open. Done at launch so the first spoken line does not start while the
+    /// speakers are still waking up, which is heard as a click at the start of the speech.
+    func warmUp() {
+        _ = startEngineIfNeeded()
+        // A new output device (headphones plugged in, display audio, sample rate change) stops the engine: bring it back.
+        NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.restartAfterRouteChange() }
+        }
+    }
+
+    private func restartAfterRouteChange() {
+        keepAlive.stop()
+        _ = startEngineIfNeeded()
+    }
+
     // MARK: sounds
 
     func play(_ cue: Cue) {
