@@ -166,3 +166,17 @@ footer p { max-width: 50em; color: #CFC4C6; font-size: .875rem; }
 .doc tbody th { min-width: 8.5em; }
 .doc .tablewrap { overflow-x: auto; scrollbar-color: var(--muted) transparent; }
 .doc img.shot { max-width: 320px; }
+
+/* ---------- "Fork me on GitHub" corner ribbon ---------- */
+.hero, .subhero { position: relative; }
+.ribbon { position: absolute; top: 0; right: 0; width: 150px; height: 150px; overflow: hidden; z-index: 10; pointer-events: none; }
+.ribbon a { pointer-events: auto; position: absolute; top: 36px; right: -52px; width: 220px; padding: 7px 0; text-align: center;
+  transform: rotate(45deg); background: var(--gold); color: #1B1214; font-size: .8125rem; font-weight: 800; letter-spacing: .03em;
+  text-decoration: none; border-top: 1px dashed rgba(27, 18, 20, .55); border-bottom: 1px dashed rgba(27, 18, 20, .55); box-shadow: 0 3px 8px rgba(0, 0, 0, .45); }
+.ribbon a:hover { filter: brightness(1.08); text-decoration: underline; }
+.ribbon a:focus-visible { outline: 3px solid #fff; outline-offset: -4px; }
+.hero .topbar, .subhero .topbar { padding-right: 96px; }
+@media (max-width: 600px) {
+  .ribbon { transform-origin: top right; transform: scale(.72); }
+  .hero .topbar, .subhero .topbar { padding-right: 70px; }
+}
