@@ -1,6 +1,6 @@
 # Local models with Ollama
 
-Tristan can run on a model that lives on your own Mac, through [Ollama](https://ollama.com). Nothing is sent over the internet: no account, no API key, no cloud. It is also what **kids safe mode** uses, so a child's questions stay on the Mac.
+T.R.I.S.T.A.N. can run on a model that lives on your own Mac, through [Ollama](https://ollama.com). Nothing is sent over the internet: no account, no API key, no cloud. It is also what **kids safe mode** uses, so a child's questions stay on the Mac.
 
 ## Quick start
 
@@ -9,7 +9,7 @@ scripts/setup-ollama.sh                 # installs Ollama if needed and pulls ll
 scripts/setup-ollama.sh qwen2.5-coder   # or pull a different model by name
 ```
 
-Then open Tristan, pick `OLLAMA` along the bottom and give it a task. In **Configuration > OLLAMA** you can see the installed models, click one to choose it, and press **REFRESH** to rescan. Leave the model blank to use the first installed one.
+Then open T.R.I.S.T.A.N., pick `OLLAMA` along the bottom and give it a task. In **Configuration > OLLAMA** you can see the installed models, click one to choose it, and press **REFRESH** to rescan. Leave the model blank to use the first installed one.
 
 ## What `scripts/setup-ollama.sh` does
 
@@ -20,15 +20,15 @@ The script is plain bash (`set -euo pipefail`), safe to run again, and prints ea
 | 1. Find Ollama | Looks for `ollama` on `PATH`. If missing, runs `brew install ollama`. | Without Homebrew it stops and points you to <https://ollama.com/download>. |
 | 2. Start the server | Asks `http://localhost:11434/api/tags`. If nothing answers, it starts `ollama serve` in the background (log: `/tmp/ollama-serve.log`) and waits up to 30 seconds. | Stops and names the log file. |
 | 3. Pull the model | Runs `ollama pull <model>`. The default, `llama3.1`, is about 5 GB the first time; later runs finish at once. | Ollama's own error is shown (for example, an unknown model name). |
-| 4. Check it answers | Sends one tiny chat request to `/v1/chat/completions` (the same endpoint Tristan uses) and prints the reply. | Stops and prints the error. |
+| 4. Check it answers | Sends one tiny chat request to `/v1/chat/completions` (the same endpoint T.R.I.S.T.A.N. uses) and prints the reply. | Stops and prints the error. |
 | 5. Check tool support | Sends a request that offers a `list_dir` tool. If Ollama replies "does not support tools", it prints a warning. | Only a warning: such a model still works for questions (kids mode) but not for coding. |
 | 6. Summary | Prints `ollama list` and, if the script started the server, how to stop it (`pkill -f 'ollama serve'`). | |
 
-What it does **not** do: it never touches Tristan's settings, never sends anything off the machine other than downloading the model from Ollama's registry, and never deletes models.
+What it does **not** do: it never touches T.R.I.S.T.A.N.'s settings, never sends anything off the machine other than downloading the model from Ollama's registry, and never deletes models.
 
 ## Choosing a model
 
-Tristan edits files and runs commands through **tool calls**, so a coding task needs a model that supports them.
+T.R.I.S.T.A.N. edits files and runs commands through **tool calls**, so a coding task needs a model that supports them.
 
 | Model | Good for |
 |-------|----------|
@@ -38,7 +38,7 @@ Tristan edits files and runs commands through **tool calls**, so a coding task n
 
 Small models are more likely to fumble tool calls than a cloud model, so expect simple edits to work better than long multi-step tasks.
 
-## How it works inside Tristan
+## How it works inside T.R.I.S.T.A.N.
 
 - `Shared/OllamaProvider.swift` talks to Ollama's OpenAI-compatible endpoint (`/v1/chat/completions`, streaming) and reuses the same agent loop as Azure OpenAI.
 - Model discovery uses `GET /api/tags` with a 2-second timeout. A blank model means "the first installed one"; a short name such as `qwen` matches `qwen:7b`.
@@ -53,7 +53,7 @@ While kids safe mode is on:
 2. If Ollama isn't running or has no model, **nothing is sent anywhere**. The child sees "Please ask a parent."
 3. A parent is asked (PIN, or Touch ID / Mac password) whether this one question may go to the selected cloud provider (`CLAUDE` if Ollama itself was selected).
 4. Approving does not unlock kids mode, and the next question is local again. Cancelling keeps the question off the cloud.
-5. Tristan speaks in a brighter voice with friendlier lines. It uses the most child-like voice installed (macOS's "Junior" or "Kathy" if present, otherwise a friendly American voice) and does not imitate any TV character.
+5. T.R.I.S.T.A.N. speaks in a brighter voice with friendlier lines. It uses the most child-like voice installed (macOS's "Junior" or "Kathy" if present, otherwise a friendly American voice) and does not imitate any TV character.
 
 Not built yet: a child-safe system prompt and screening of the model's answers.
 

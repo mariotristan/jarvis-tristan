@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iPhone and iPad—Tristan</title>
+<title>iPhone and iPad—T.R.I.S.T.A.N.</title>
 <meta name="description" content="Pair a phone with a QR code, approve from the couch, or run missions on the phone itself.">
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="theme-color" content="#1A0A0D">
 <meta property="og:type" content="website">
-<meta property="og:title" content="iPhone and iPad—Tristan">
+<meta property="og:title" content="iPhone and iPad—T.R.I.S.T.A.N.">
 <meta property="og:description" content="Pair a phone with a QR code, approve from the couch, or run missions on the phone itself.">
 <meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html">
 <meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
@@ -19,7 +19,7 @@
 <body>
 <a class="skip" href="#main">Skip to the content</a>
 <header class="subhero">
-  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork Tristan on GitHub">Fork me on GitHub</a></div>
+  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
   <div class="wrap">
     <div class="topbar">
       <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
@@ -83,7 +83,7 @@
     <h2>Limits you should know</h2>
 
     <ul class="plain">
-      <li><b>Approvals only arrive while the app is open in front.</b> iOS pauses background apps and real push notifications need a server, which this project does not have. Keep Tristan open during a mission.</li>
+      <li><b>Approvals only arrive while the app is open in front.</b> iOS pauses background apps and real push notifications need a server, which this project does not have. Keep T.R.I.S.T.A.N. open during a mission.</li>
       <li><b>The Mac must be awake and reachable:</b> the same Wi-Fi, or a VPN such as Tailscale (enter its address by hand).</li>
       <li><b>Simulator only so far.</b> It has run in the iOS simulator, not on a physical device or over real Wi-Fi. Camera scanning, dictation and haptics are untested.</li>
       <li><b>All paired devices share one secret.</b></li>
@@ -98,7 +98,7 @@
     <p>On the pairing screen choose <b>USE WITHOUT A MAC</b>, or switch in Settings (<b>ON THIS DEVICE</b>).</p>
     <ul class="plain">
       <li><b>Providers:</b> Azure OpenAI (endpoint, deployment, API key) and AWS Bedrock (region, model id, access key, secret and an optional session token). Keys live in this device’s Keychain, never in preferences.</li>
-      <li><b>Files, no shell:</b> the model gets <code>read_file</code>, <code>list_dir</code> and <code>write_file</code>, confined to one folder. The default is <b>Workspace</b>, which appears in the Files app under <i>On My iPhone &gt; Tristan</i>. <b>Choose a folder in Files…</b> adds another. iOS has no shell, so Tristan cannot run commands or tests here.</li>
+      <li><b>Files, no shell:</b> the model gets <code>read_file</code>, <code>list_dir</code> and <code>write_file</code>, confined to one folder. The default is <b>Workspace</b>, which appears in the Files app under <i>On My iPhone &gt; T.R.I.S.T.A.N.</i>. <b>Choose a folder in Files…</b> adds another. iOS has no shell, so T.R.I.S.T.A.N. cannot run commands or tests here.</li>
       <li><b>Approvals:</b> the same approve, deny and always-allow card. In Auto mode writes inside the folder go ahead. Yolo does not exist on the device.</li>
       <li><b>Key hygiene:</b> use an AWS key that can only call Bedrock, and prefer temporary keys with a session token. Anyone who unlocks the phone can use the saved keys.</li>
     </ul>
@@ -131,7 +131,7 @@ MODE=standalone scripts/ios-demo.sh          <span class="c"># the on-device mod
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
     </div>
-    <p>© 2026 Mario Tristan. Tristan is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
   </div>
 </footer>
 <script src="assets/site.js"></script>
