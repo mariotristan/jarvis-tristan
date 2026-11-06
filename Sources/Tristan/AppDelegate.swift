@@ -12,9 +12,11 @@ final class HUDWindow: NSWindow {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    /// `Tristan --demo` (used by scripts/record-demo.sh): the DEMO provider in ASK mode with kids mode off, nothing saved
+    /// `Tristan --demo [ask|auto|yolo]` (used by scripts/record-demo.sh): the DEMO provider in the given mode (ASK by default) with kids mode off, nothing saved
     /// as open tabs or history, and a separate Keychain slot for the parent PIN so a demo PIN never replaces a real one.
     private let demo = CommandLine.arguments.contains("--demo")
+    private var demoRestore: (() -> Void)?
+    private var demoSignal: DispatchSourceSignal?
     private lazy var session: Session = demo ? Session(history: nil) : Session()
     private var hud: HUDWindow!
     private var notch: NotchController!
@@ -29,8 +31,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if demo {
             ParentPIN.account = "kids.pin.demo"
+            // Changing the mode saves it, so put the real settings back when the demo ends (also on SIGTERM from the script).
+            let defaults = UserDefaults.standard
+            let saved = (mode: defaults.object(forKey: "approvalMode"), kids: defaults.object(forKey: "kidsMode"), wake: defaults.object(forKey: "wakeOn"))
+            let restore = {
+                for (key, value) in [("approvalMode", saved.mode), ("kidsMode", saved.kids), ("wakeOn", saved.wake)] {
+                    if let value { defaults.set(value, forKey: key) } else { defaults.removeObject(forKey: key) }
+                }
+            }
+            demoRestore = restore
+            signal(SIGTERM, SIG_IGN)
+            let term = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+            term.setEventHandler { restore(); exit(0) }
+            term.resume()
+            demoSignal = term
+            let word = CommandLine.arguments.drop { $0 != "--demo" }.dropFirst().first?.uppercased() ?? "ASK"
             session.provider = .demo
-            session.approvalMode = .ask
+            session.approvalMode = ApprovalMode(rawValue: word) ?? .ask
             session.kidsMode = false
             session.wakeOn = false
         }
@@ -97,6 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         session.music.restoreVolumeNow()
+        demoRestore?()
     }
 
     private func registerHotKeys(_ shortcut: Shortcut, paused: Bool) {

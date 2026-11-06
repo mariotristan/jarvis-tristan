@@ -3,13 +3,15 @@
 # so nothing else on your screen ends up in the file. Output: docs/demo/tristan-demo.mp4
 #   scripts/record-demo.sh                 records 75 seconds
 #   SECONDS_TO_RECORD=120 scripts/record-demo.sh
+#   DEMO_MODE=ask scripts/record-demo.sh   open in ask or auto instead of yolo (the default)
 #   TRIM_START=4 TRIM_END=3 scripts/record-demo.sh   cut seconds off the start and the end
 # Needs Screen Recording permission for your terminal (System Settings > Privacy & Security > Screen & System Audio
 # Recording), Xcode (for the build) and ffmpeg (brew install ffmpeg).
 # Do not move or resize the window while recording: the crop is fixed from where it opens. The screen is still filmed
 # in full before the crop, and the uncropped .mov is deleted afterwards (KEEP_RAW=1 keeps it).
-# `Tristan --demo` resets the approval mode to ASK and kids mode to off, and keeps the demo parent PIN in its own
-# Keychain slot, so a real PIN is never replaced.
+# `Tristan --demo` opens in the chosen approval mode (yolo by default) with kids mode off, and keeps the demo parent PIN
+# in its own Keychain slot. Your real approval mode, kids mode and wake word settings are put back when the demo exits.
+# Note: turning kids mode on during the demo locks the mode back to ASK, as it does in the real app.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; fi
@@ -22,7 +24,7 @@ LOG=$(mktemp)
 mkdir -p "$OUT"
 
 swift build >/dev/null
-.build/debug/Tristan --demo > "$LOG" 2>&1 &
+.build/debug/Tristan --demo "${DEMO_MODE:-yolo}" > "$LOG" 2>&1 &
 APP=$!
 trap 'kill $APP 2>/dev/null || true; rm -f "$LOG"' EXIT
 
