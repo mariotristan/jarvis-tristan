@@ -23,6 +23,8 @@ OUT=docs/demo
 RAW="$OUT/tristan-demo-raw.mov"
 LOG=$(mktemp)
 mkdir -p "$OUT"
+# screencapture cannot overwrite a file, and a leftover would be converted as if it were new.
+rm -f "$RAW" "$OUT/tristan-demo.mp4"
 
 swift build >/dev/null
 .build/debug/Tristan --demo "${DEMO_MODE:-yolo}" ${MANUAL:+--manual} > "$LOG" 2>&1 &
@@ -56,6 +58,7 @@ if [ -z "${MANUAL:-}" ]; then
   kill -INT "$REC" 2>/dev/null || true
 fi
 wait "$REC" || true
+[ -s "$RAW" ] || { echo "Nothing was recorded (is Screen Recording allowed for this terminal?). Nothing to convert."; exit 1; }
 
 # Crop to the window plus a small margin, converting screen points to video pixels.
 VW=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$RAW")
