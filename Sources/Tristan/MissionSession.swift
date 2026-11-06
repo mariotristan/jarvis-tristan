@@ -45,10 +45,14 @@ final class MissionSession: ObservableObject, Identifiable {
     /// Set by a parent's approval so exactly one question may go to the chosen cloud provider in kids mode.
     private var cloudOnce = false
 
+    private static let cloudKinds: Set<ProviderKind> = [.claude, .copilot, .bedrock, .azure]
+
     /// Kids mode keeps questions on this Mac: they go to Ollama unless a parent allowed this one question to leave it.
-    private func route(_ hub: Session) -> (kind: ProviderKind, local: Bool) {
-        if hub.kidsMode, !cloudOnce { return (.ollama, true) }
-        return (provider, provider == .ollama)
+    /// With no internet a cloud provider cannot work, so the mission falls back to Ollama (`fallback` is true then).
+    private func route(_ hub: Session) -> (kind: ProviderKind, local: Bool, fallback: Bool) {
+        if hub.kidsMode, !cloudOnce { return (.ollama, true, false) }
+        if hub.offline, Self.cloudKinds.contains(provider) { return (.ollama, true, true) }
+        return (provider, provider == .ollama, false)
     }
 
     func submit(_ prompt: String, viaVoice: Bool = false) {
@@ -72,7 +76,7 @@ final class MissionSession: ObservableObject, Identifiable {
             add("This session is detached from Tristan and cannot start a mission.", .warn)
             return
         }
-        let (kind, local) = route(hub)
+        let (kind, local, fallback) = route(hub)
         let cloudApproved = cloudOnce
         cloudOnce = false
         guard let impl = hub.providerFactory(kind, hub.approvalMode) else {
@@ -85,6 +89,10 @@ final class MissionSession: ObservableObject, Identifiable {
         status = "INITIALIZING"
         announcedApproval = false
         add("Task: \(prompt)", .info)
+        if fallback {
+            status = "NO INTERNET: FALLBACK TO OLLAMA"
+            add("No internet connection. Falling back to the local model (Ollama) for this mission.", .warn)
+        }
         if case let others = hub.sessionsBusy(in: workingDirectory, besides: self), !others.isEmpty {
             add("⚠︎ \(others.joined(separator: ", ")) is also working in this folder, so edits may collide.", .warn)
         }
@@ -94,7 +102,19 @@ final class MissionSession: ObservableObject, Identifiable {
         if briefed != prompt { add("Remembering \(memory.exchanges.filter { $0.folder == directory.path }.count) earlier mission(s) from this session", .info) }
         let kidsLocal = hub.kidsMode && !cloudApproved
         let localReady = hub.localModelReady
+        let startLocal = hub.startLocalModel
         runner = Task { [weak self] in
+            if fallback, !(await localReady()) {
+                self?.status = "STARTING OLLAMA"
+                self?.add("Ollama is off. Working on the fallback: starting it now.", .info)
+                let outcome = await startLocal()
+                guard !Task.isCancelled else { return }
+                if outcome != .ready {
+                    self?.failFallback(outcome)
+                    return
+                }
+                self?.add("Ollama is running.", .ok)
+            }
             if kidsLocal, !(await localReady()) {
                 self?.refuseWithoutLocalModel(prompt: prompt, viaVoice: viaVoice)
                 return
@@ -105,6 +125,22 @@ final class MissionSession: ObservableObject, Identifiable {
             for await event in stream { self?.handle(event) }
             self?.streamEnded()
         }
+    }
+
+    /// No internet and no usable local model: say exactly what is missing instead of failing in a confusing way later.
+    private func failFallback(_ outcome: LocalModelLauncher.Outcome) {
+        let text: String
+        switch outcome {
+        case .notInstalled: text = "No internet, and Ollama is not installed. When you are online, run scripts/setup-ollama.sh."
+        case .noModel: text = "No internet, and Ollama has no model. When you are online, run `ollama pull llama3.1`."
+        default: text = "No internet, and Ollama could not be started. Try `ollama serve` in a terminal."
+        }
+        phase = .failed; status = "FALLBACK FAILED"
+        code = "## No internet\n\n\(text)\n"
+        add(text, .warn)
+        remember(status: "failed", summary: text)
+        hub?.record(self, status: "failed", summary: text)
+        hub?.missionEnded(self, success: false, summary: text)
     }
 
     /// Kids mode with no usable local model: the question goes nowhere. The child is told to ask a parent,

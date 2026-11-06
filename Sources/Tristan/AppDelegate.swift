@@ -95,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .sink { [weak self] on in self?.applyFullScreen(on) }
             .store(in: &bag)
         showHUD()
+        session.startNetworkMonitor()
         session.greet()
         if demo {
             // The recording script crops the video to this rectangle (screen points, origin at the top left).

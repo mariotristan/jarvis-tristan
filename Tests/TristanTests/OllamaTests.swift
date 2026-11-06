@@ -1,13 +1,13 @@
 import XCTest
 @testable import Tristan
 
-private struct StubProvider: AgentProvider {
+struct StubProvider: AgentProvider {
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in c.yield(.code("answer")); c.yield(.done("ok")); c.finish() }
     }
 }
 
-private final class KindLog: @unchecked Sendable {
+final class KindLog: @unchecked Sendable {
     private let lock = NSLock()
     private var items: [ProviderKind] = []
     func add(_ kind: ProviderKind) { lock.lock(); items.append(kind); lock.unlock() }

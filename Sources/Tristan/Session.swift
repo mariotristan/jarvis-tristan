@@ -121,6 +121,16 @@ final class Session: ObservableObject {
     var providerFactory: (ProviderKind, ApprovalMode) -> AgentProvider? = { kind, mode in kind.makeProvider(mode: mode) }
     /// Whether a local model can answer right now. Kids mode asks before sending anything anywhere. Tests replace this.
     var localModelReady: @Sendable () async -> Bool = { await OllamaStatus.ready() }
+    /// Starts the local Ollama server when it is off. Tests replace this.
+    var startLocalModel: @Sendable () async -> LocalModelLauncher.Outcome = { await LocalModelLauncher.start() }
+    /// True while the Mac has no internet. Missions on a cloud provider then run on Ollama instead.
+    @Published var offline = false
+    private let network = NetworkMonitor()
+
+    func startNetworkMonitor() {
+        network.onChange = { [weak self] online in self?.offline = !online }
+        network.start()
+    }
 
     private let voice = VoiceInput()
     private let wake = WakeListener()

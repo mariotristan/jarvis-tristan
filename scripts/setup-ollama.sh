@@ -2,15 +2,22 @@
 # Sets up Ollama for Tristan: installs it if missing, starts the server, pulls a model and checks that it answers.
 #   scripts/setup-ollama.sh               pulls llama3.1 (good all-round, handles tools)
 #   scripts/setup-ollama.sh qwen2.5-coder pulls another model by name
+#   scripts/setup-ollama.sh --start-only  only starts the server if Ollama is installed (no install, no download).
+#                                         Tristan runs this when the internet is down. Exit 2 means not installed.
 set -euo pipefail
 
+START_ONLY=0
+if [ "${1:-}" = "--start-only" ]; then START_ONLY=1; shift; fi
 MODEL="${1:-llama3.1}"
+# An app launched from the Dock has a short PATH, so look where Ollama usually lives.
+export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/Applications/Ollama.app/Contents/Resources"
 HOST="http://localhost:11434"
 
 say() { printf '\033[36m==>\033[0m %s\n' "$1"; }
 die() { printf '\033[31mError:\033[0m %s\n' "$1" >&2; exit 1; }
 
 if ! command -v ollama >/dev/null 2>&1; then
+  [ "$START_ONLY" = 1 ] && { echo "Ollama is not installed" >&2; exit 2; }
   command -v brew >/dev/null 2>&1 || die "Ollama is not installed and Homebrew is missing. Install it from https://ollama.com/download and run this again."
   say "Installing Ollama with Homebrew"
   brew install ollama
@@ -27,6 +34,11 @@ if ! curl -fsS -m 2 "$HOST/api/tags" >/dev/null 2>&1; then
     sleep 1
   done
   curl -fsS -m 2 "$HOST/api/tags" >/dev/null 2>&1 || die "The server did not start. See /tmp/ollama-serve.log"
+fi
+
+if [ "$START_ONLY" = 1 ]; then
+  say "Ollama is running"
+  exit 0
 fi
 
 say "Pulling $MODEL (this can take a few minutes the first time)"

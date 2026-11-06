@@ -31,6 +31,7 @@ scripts/make-dmg.sh     # dist/Tristan-<version>.dmg and a .sha256 next to it
 scripts/install.sh      # build from source, install into /Applications and launch
 scripts/install-voices.sh # not part of releases: opens Settings to download an Enhanced voice (the built-in compact ones can crackle)
 scripts/setup-ollama.sh # not part of releases: sets up Ollama for local models (see docs/ollama.md)
+scripts/setup-ollama.sh --start-only   # only starts Ollama if installed; the app bundles and runs this for the offline fallback
 VERSION=2.0.0 scripts/make-dmg.sh   # override the version
 ```
 

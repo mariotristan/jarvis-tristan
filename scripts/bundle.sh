@@ -14,6 +14,8 @@ APP=Tristan.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Tristan "$APP/Contents/MacOS/Tristan"
+# The app runs this to start Ollama when the internet is down.
+cp scripts/setup-ollama.sh "$APP/Contents/Resources/setup-ollama.sh"
 
 # App icon: render the reactor, then build an .icns from it. Never fails the build.
 ICON_DIR=.build/icon

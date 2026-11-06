@@ -89,6 +89,13 @@ struct HUDView: View {
                     .font(.system(size: 12, design: .monospaced))
                     .tracking(2)
                     .foregroundStyle(Theme.tint(for: session.phase))
+                if session.offline {
+                    Label("NO INTERNET · USING OLLAMA", systemImage: "wifi.slash")
+                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.amber)
+                        .help("There is no internet connection. Missions fall back to the local Ollama model until it is back.")
+                }
                 Text("MODE \(session.approvalMode.rawValue)")
                     .font(.system(size: 9, weight: .bold, design: .monospaced))
                     .tracking(2)
@@ -96,7 +103,7 @@ struct HUDView: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(session.approvalMode.tint, lineWidth: 1))
                     .foregroundStyle(session.approvalMode.tint)
             }
-            .frame(minWidth: 200, alignment: .trailing)
+            .frame(minWidth: 240, alignment: .trailing)
         }
         .frame(height: orbSize + 8)
         .animation(.easeInOut(duration: 0.35), value: thinking)
