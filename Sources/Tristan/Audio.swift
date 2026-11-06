@@ -51,11 +51,21 @@ final class SoundFX {
 
     // MARK: sounds
 
+    /// When the effects already queued will have finished. Effects play one after another on a single player, and a
+    /// spoken line waits for them (up to `maxSpeechWait`) so the two never sound at once.
+    private var effectsEnd = Date.distantPast
+    private static let maxSpeechWait = 0.45
+    /// Bumped whenever speech is stopped, so a line that was waiting for an effect does not start late.
+    private var speechToken = 0
+
     func play(_ cue: Cue) {
         guard soundsOn, let buffer = buffer(for: cue) else { return }
         guard startEngineIfNeeded() else { return }
+        // An effect that lands while someone is talking stays under the voice instead of competing with it.
+        player.volume = (speaker.isSpeaking || speechPending) ? 0.35 : 1
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         if !player.isPlaying { player.play() }
+        effectsEnd = max(effectsEnd, Date()).addingTimeInterval(Double(buffer.frameLength) / sampleRate)
     }
 
     private func startEngineIfNeeded() -> Bool {
@@ -159,10 +169,26 @@ final class SoundFX {
             utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
             utterance.pitchMultiplier = 0.92
         }
-        speaker.speak(utterance)
+        // Let a sound effect that is playing finish first (a short wait), so the voice never starts on top of it.
+        let wait = min(Self.maxSpeechWait, effectsEnd.timeIntervalSinceNow)
+        guard wait > 0.02 else { speaker.speak(utterance); return }
+        speechPending = true
+        let token = speechToken
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(wait))
+            guard let self, token == self.speechToken else { return }
+            self.speechPending = false
+            self.speaker.speak(utterance)
+        }
     }
 
-    func stopSpeaking() { speaker.stopSpeaking(at: .immediate) }
+    private var speechPending = false
+
+    func stopSpeaking() {
+        speechToken += 1
+        speechPending = false
+        speaker.stopSpeaking(at: .word)
+    }
 
     /// True when the voice used for speech is a compact one (the lowest quality). Those render at 22 kHz and tend to
     /// sound rough or crackly; an Enhanced or Premium voice from System Settings fixes it.
