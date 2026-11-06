@@ -20,7 +20,7 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
-> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 173 automated tests pass (156 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 173 automated tests pass (156 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Screenshots
 
@@ -109,7 +109,7 @@ Agent CLIs are powerful but plain. Tristan is a nicer front door for them: one M
 | `CLAUDE` | Working | Runs `claude -p <task> --output-format stream-json --verbose` in the chosen folder and turns the JSON events into log lines and code. In `ASK` mode, permission prompts are routed back to you (see [how approvals work](#how-approvals-work)). |
 | `BEDROCK` | Built, needs live validation | Tristan's own agent loop on Bedrock's Converse API (see [Bedrock](#aws-bedrock)). Covered by tests with a scripted model; not yet run against real AWS. |
 | `COPILOT` | Built, needs live validation | Drives the GitHub Copilot CLI headlessly. Approval modes map onto the CLI's tool permissions (see [GitHub Copilot](#github-copilot)). |
-| `AZURE` | Built, needs live validation | Tristan's own agent loop on an Azure OpenAI deployment, streaming tokens (see [Azure OpenAI](#azure-openai)). |
+| `AZURE` | Working (tested live on the Mac) | Tristan's own agent loop on an Azure OpenAI deployment, streaming tokens, tested against a real deployment with an API key (see [Azure OpenAI](#azure-openai)). |
 
 Claude Code runs its own agent loop, so Tristan only has to drive it and display the output. Bedrock, Azure OpenAI and Copilot's models are models, not agents, so Tristan runs its own small agent loop for them (built for Bedrock, reusable for the rest).
 
@@ -117,7 +117,7 @@ Claude Code runs its own agent loop, so Tristan only has to drive it and display
 
 Point Tristan at an Azure OpenAI **deployment** in Configuration: endpoint (for example `https://my-resource.openai.azure.com`), deployment name and API version (default `2024-10-21`). The deployment's model must support tool calling (the GPT-4 and GPT-5 families do).
 
-- **Credentials:** paste an API key and it is stored in the **macOS Keychain**. With no key, Tristan uses your Azure CLI login (`az login`) and an Entra ID token, so no secret is stored at all.
+- **Credentials:** paste an API key and it is stored in the **macOS Keychain** (tested live). With no key, Tristan uses your Azure CLI login (`az login`) and an Entra ID token, so no secret is stored at all (this path has not been tried live yet).
 - **Key safety:** the key is only ever sent to an `https` endpoint on an Azure host (`openai.azure.com`, `cognitiveservices.azure.com`, `services.ai.azure.com`, and the US and China sovereign-cloud equivalents). A typo such as `http://…` or a look-alike host is refused before anything is sent.
 - **Streaming:** text arrives token by token. Rate limits (429) and transient server errors are retried up to twice, honouring `Retry-After`.
 - **Tools and approvals:** identical to Bedrock, since both use the same agent loop (see below).
@@ -373,10 +373,10 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 
 ## Known limitations
 
-**What has actually been verified live:** the Claude Code provider (all modes, including per-action approvals), the HUD and the packaged app launching. **Everything below is built and tested with fakes but not yet run against the real thing:**
+**What has actually been verified live:** the Claude Code provider (all modes, including per-action approvals), the Azure OpenAI provider on the Mac (streaming and tool calls against a real deployment, with an API key), the HUD and the packaged app launching. **Everything below is built and tested with fakes but not yet run against the real thing:**
 
 - **Bedrock** has not run against live AWS (the AWS session was expired when it was built). Request signing is verified against AWS's published examples and the stream decoder against the wire format; the CLI request format was checked against the CLI's own skeleton. If streaming fails it falls back to the CLI path automatically.
-- **Azure OpenAI** has not run against a real deployment. The streaming parser and wire format are tested with synthetic data in the OpenAI format.
+- **Azure OpenAI** has been tested live from the Mac app with an API key: streaming and tool calls worked against a real deployment. Not yet tried live: sign-in through the Azure CLI (Entra ID, no key) and the iOS standalone mode.
 - **Copilot** was not launched with real permissions during development. The command-line flags follow the CLI's own help text, and process handling is tested with a stand-in command. Its output format is unstructured, so the HUD shows it as plain text.
 - **Wake word, push-to-talk, sound and notifications** build, launch and have unit tests for the logic (matching, timing, synthesis, gating), but have not been heard or seen working by me. Voice needs microphone and speech permission; the wake word needs a language with on-device recognition.
 - **`YOLO` is exactly as risky as it sounds.** Do not use it in a folder you cannot afford to lose.
@@ -387,7 +387,7 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **Several sessions:** two real **Claude Code** sessions ran at the same time, each with its own approval, in its own folder (see the headless check `Tristan --headless-sessions`). Two real **Copilot** sessions also ran together in `AUTO` mode, each creating its own file in its own folder (same driver, `... copilot auto`); in `ASK` mode Copilot's blanket-permission launch was only tested with a stand-in process, not live. Each Copilot run gets its own log directory so concurrent runs never share one. The iPhone and iPad remote controls only the Mac's active session, so approvals for a session in the background reach the phone only after you switch to it on the Mac.
 - **Full screen:** the window and Dock behaviour is verified by a real self-test (`Tristan --fullscreen-selftest`) and a unit test, and the layout by a screenshot, but I have not watched it on your display, and the notch inset is only known for the one notched screen it ran on.
 - **Markdown:** the renderer covers what agents produce (no images, HTML, footnotes or nested quotes, and no syntax highlighting). It is covered by parser tests, a fuzz test and an every-prefix streaming test.
-- **iOS standalone mode has never called a real Azure OpenAI or Bedrock endpoint**: the model is scripted in the tests and in the simulator demo. The Files folder picker and Keychain-stored AWS keys are only tested through unit tests.
+- **iOS standalone mode has never called a real Azure OpenAI or Bedrock endpoint** (Azure OpenAI works live from the Mac app, but the phone's own client is not yet tried): the model is scripted in the tests and in the simulator demo. The Files folder picker and Keychain-stored AWS keys are only tested through unit tests.
 - **The iOS app has only run in the simulator** (see [iPhone and iPad](#iphone-and-ipad)): no physical device, no real Wi-Fi, no camera, microphone or haptics. The secure link and the remote commands are tested end to end on loopback, and the remote design rules (no remote YOLO, folder allow-list, replay for late joiners, wrong secret refused) have automated tests.
 - **The app is not notarized** (see [Install](#install)); there is no auto-update.
 - **Session memory** is covered by unit tests (the briefing, the folder filter, the limits, a restart, and a session briefing its next mission), but I have not tried it live with a real model across several missions. The notch changes (no blinking, faster, primary display) build and pass tests, but I have not watched them on a real screen.
@@ -417,7 +417,9 @@ Done:
 
 Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 
-- [ ] Live validation of Bedrock, Azure OpenAI, Copilot, wake word, notifications and the iOS app on a real device (needs real credentials and a human in front of the hardware)
+- [x] Live validation of Azure OpenAI on the Mac (API key)
+- [ ] Live validation of Azure OpenAI with Entra ID sign-in and from the iOS app
+- [ ] Live validation of Bedrock, Copilot's `ASK` mode, wake word, notifications and the iOS app on a real device (needs real credentials and a human in front of the hardware)
 - [ ] iOS: Bonjour discovery of the Mac, per-device pairing keys, Live Activities for approvals
 - [ ] Several sessions on the iPhone and iPad remote (it controls the Mac's active session for now)
 - [ ] Syntax highlighting in code cards
