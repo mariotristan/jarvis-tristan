@@ -47,7 +47,7 @@ Recordings of the real app on the built-in demo provider (no account or tokens n
 
 [![Demo video: kids safe mode](docs/demo/tristan-demo-kids-poster.jpg)](docs/demo/tristan-demo-kids.mp4)
 
-Record them again with `scripts/record-demo.sh` and `scripts/record-demo.sh kids`. The app plays the scenario by itself (`Tristan --demo`), and the script films the screen, crops to the window and trims the end. It needs Screen Recording permission for your terminal, Xcode and ffmpeg. The demo never touches your Keychain and restores your own settings when it ends.
+Record them again with `scripts/record-demo.sh` and `scripts/record-demo.sh kids`. The app plays the scenario by itself (`Tristan --demo`), and the script films just the app window together with the app's own sound (the effects and the voice, nothing else playing on the Mac) and trims the end. It needs Screen & System Audio Recording permission for your terminal, Xcode and ffmpeg. The demo never touches your Keychain and restores your own settings when it ends.
 
 ## Screenshots
 

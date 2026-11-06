@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NoKeychain.enabled = true
             // Changing the mode saves it, so put the real settings back when the demo ends (also on SIGTERM from the script).
             let defaults = UserDefaults.standard
-            let keys = ["approvalMode", "kidsMode", "wakeOn", "theme", "orbEffects", "orbFill", "parentAuth"]
+            let keys = ["approvalMode", "kidsMode", "wakeOn", "theme", "orbEffects", "orbFill", "parentAuth", "soundsOn", "voiceOn"]
             let saved = keys.map { ($0, defaults.object(forKey: $0)) }
             let restore = {
                 for (key, value) in saved {
@@ -54,6 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             session.approvalMode = ApprovalMode(rawValue: word) ?? .ask
             session.kidsMode = false
             session.wakeOn = false
+            session.soundsOn = true      // the recorded video carries the app's own sound and voice
+            session.voiceOn = true
         }
         hud = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 660),
                         styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
