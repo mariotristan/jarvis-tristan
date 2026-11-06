@@ -25,14 +25,28 @@ final class SoundFX {
     private let speaker = AVSpeechSynthesizer()
     private let speechDelegate = SpeechDelegate()
     /// Called with true when a spoken line starts and false when it ends or is cut off.
-    var onSpeaking: ((Bool) -> Void)? {
-        didSet { speechDelegate.onChange = onSpeaking }
-    }
+    var onSpeaking: ((Bool) -> Void)?
 
     var soundsOn = true
     var voiceOn = true
 
-    init() { speaker.delegate = speechDelegate }
+    init() {
+        speaker.delegate = speechDelegate
+        speechDelegate.onChange = { [weak self] speaking in
+            // Whatever effect is still ringing drops under the voice the moment it starts, and returns afterwards.
+            // Without this an effect that began before the voice adds to it and the sum clips (heard as crackle).
+            MainActor.assumeIsolated {
+                self?.player.volume = speaking ? Self.underVoice : 1
+                self?.onSpeaking?(speaking)
+            }
+        }
+    }
+
+    /// Speech level. Measured on a recording: 1.0 clips, 0.85 leaves headroom for the effects underneath.
+    private static let voiceLevel: Float = 0.85
+
+    /// Level of sound effects while a voice is talking.
+    private static let underVoice: Float = 0.3
 
     /// Opens the audio output and keeps it open. Done at launch so the first spoken line does not start while the
     /// speakers are still waking up, which is heard as a click at the start of the speech.
@@ -62,7 +76,7 @@ final class SoundFX {
         guard soundsOn, let buffer = buffer(for: cue) else { return }
         guard startEngineIfNeeded() else { return }
         // An effect that lands while someone is talking stays under the voice instead of competing with it.
-        player.volume = (speaker.isSpeaking || speechPending) ? 0.35 : 1
+        player.volume = (speaker.isSpeaking || speechPending) ? Self.underVoice : 1
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         if !player.isPlaying { player.play() }
         effectsEnd = max(effectsEnd, Date()).addingTimeInterval(Double(buffer.frameLength) / sampleRate)
@@ -78,7 +92,7 @@ final class SoundFX {
         engine.connect(player, to: engine.mainMixerNode, format: format)
         engine.attach(keepAlive)
         engine.connect(keepAlive, to: engine.mainMixerNode, format: format)
-        engine.mainMixerNode.outputVolume = 0.6
+        engine.mainMixerNode.outputVolume = 0.5
         started = true
         do { try engine.start() } catch { return false }
         startKeepAlive()
@@ -160,6 +174,8 @@ final class SoundFX {
         // Stopping at the end of the word, not mid-sample, avoids a click when one line cuts off another.
         if interrupt, speaker.isSpeaking { speaker.stopSpeaking(at: .word) }
         let utterance = AVSpeechUtterance(string: text)
+        // At full volume the voice peaks above full scale in the mix, and the clipped peaks are heard as crackle.
+        utterance.volume = Self.voiceLevel
         if kidsVoice {
             utterance.voice = Self.kidsPreferredVoice
             utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 1.0
