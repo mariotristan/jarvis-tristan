@@ -225,6 +225,7 @@ final class RemoteServer: ObservableObject {
             guard !session.busy else { return fail("Wait for the current mission to finish.") }
             guard let mode = ApprovalMode(rawValue: name) else { return fail("Unknown mode.") }
             guard mode != .yolo else { return fail("YOLO can only be switched on from the Mac itself.") }
+            guard !session.kidsMode else { return fail("Kids safe mode is on. A parent has to change the mode on the Mac.") }
             session.approvalMode = mode
         case .setFolder(let path):
             guard !session.busy else { return fail("Wait for the current mission to finish.") }

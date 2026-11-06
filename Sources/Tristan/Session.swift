@@ -75,6 +75,36 @@ final class Session: ObservableObject {
         ThemeStore.palette = palette
         if themeID != palette.id { themeID = palette.id }
     }
+    /// How big the orb is while it waits (a multiplier), what it does, and whether it takes over the whole window.
+    @Published var orbScale: Double = 1.0 {
+        didSet { UserDefaults.standard.set(orbScale, forKey: "orbScale") }
+    }
+    @Published var orbEffects: OrbEffects = .full {
+        didSet { UserDefaults.standard.set(orbEffects.rawValue, forKey: "orbEffects") }
+    }
+    @Published var orbFillsScreen = false {
+        didSet { UserDefaults.standard.set(orbFillsScreen, forKey: "orbFill") }
+    }
+    /// Kids safe mode: Settings, YOLO and AUTO need a parent (a PIN or the Mac's own login).
+    @Published var kidsMode = false {
+        didSet {
+            UserDefaults.standard.set(kidsMode, forKey: "kidsMode")
+            if kidsMode, approvalMode != .ask, !busy { approvalMode = .ask }
+        }
+    }
+    @Published var parentAuth: ParentAuth = .pin {
+        didSet { UserDefaults.standard.set(parentAuth.rawValue, forKey: "parentAuth") }
+    }
+    @Published var parentUnlocked = false
+    @Published var parentPrompt: ParentPrompt?
+    var relock: Task<Void, Never>?
+    /// True while Tristan is working, speaking or has only just finished: the microphone stays shut so it cannot
+    /// hear itself or start a second command.
+    @Published private(set) var micBusy = false {
+        didSet { if micBusy != oldValue { refreshWake() } }
+    }
+    private var speaking = false
+    private var micGrace: Task<Void, Never>?
     /// Full-screen mode. Set by the HUD button or ⌃⌘F; the window itself is resized by the AppDelegate.
     @Published var fullScreen = false
     @Published var fullScreenTopInset: CGFloat = 0
@@ -113,13 +143,23 @@ final class Session: ObservableObject {
         if standard.object(forKey: "notificationsOn") != nil { notificationsOn = standard.bool(forKey: "notificationsOn") }
         if let saved = standard.string(forKey: "theme") { themeChoice = saved }
         applyTheme()
+        if standard.object(forKey: "orbScale") != nil { orbScale = min(max(standard.double(forKey: "orbScale"), 0.6), 1.6) }
+        if let saved = standard.string(forKey: "orbEffects"), let value = OrbEffects(rawValue: saved) { orbEffects = value }
+        orbFillsScreen = standard.bool(forKey: "orbFill")
+        if let saved = standard.string(forKey: "parentAuth"), let value = ParentAuth(rawValue: saved) { parentAuth = value }
+        kidsMode = standard.bool(forKey: "kidsMode")
         fx.soundsOn = soundsOn
         fx.voiceOn = voiceOn
-        fx.onSpeaking = { [weak self] speaking in self?.music.setDuck("speech", active: speaking) }
+        fx.onSpeaking = { [weak self] speaking in
+            self?.music.setDuck("speech", active: speaking)
+            self?.speaking = speaking
+            self?.refreshMic()
+        }
         if standard.object(forKey: "duckMusic") != nil { duckMusic = standard.bool(forKey: "duckMusic") }
         self.music.duckingEnabled = duckMusic
         Notifier.shared.enabled = notificationsOn
         if let saved = standard.string(forKey: "approvalMode"), let mode = ApprovalMode(rawValue: saved) { approvalMode = mode }
+        if kidsMode, approvalMode != .ask { approvalMode = .ask }
         if let data = standard.data(forKey: "shortcut"), let saved = try? JSONDecoder().decode(Shortcut.self, from: data) {
             hotkey = saved
         } else if let legacy = standard.string(forKey: "hotkey"), let preset = HotkeyPreset(rawValue: legacy) {
@@ -239,6 +279,7 @@ final class Session: ObservableObject {
         let phases = sessions.map(\.phase)
         let overall: Phase = phases.contains(.awaitingApproval) ? .awaitingApproval : phases.contains(.working) ? .working : active.phase
         if overall != overallPhase { overallPhase = overall }
+        refreshMic()
         refreshWake()
         saveSessions()
     }
@@ -299,6 +340,7 @@ final class Session: ObservableObject {
             return
         }
         active.submit(prompt, viaVoice: viaVoice)
+        refreshMic()
     }
 
     /// Said (when voice feedback is on) and written to the log once when the app opens.
@@ -383,6 +425,10 @@ final class Session: ObservableObject {
     /// Push-to-talk: transcript streams into `draft`; releasing sends it as a task.
     func startListening() {
         guard !listening else { return }
+        guard !micBusy, !busy else {
+            if !busy { status = "TRISTAN IS RESPONDING" }
+            return
+        }
         listening = true
         draft = ""
         if !busy { status = "LISTENING" }
@@ -401,6 +447,9 @@ final class Session: ObservableObject {
         listening = false
         voice.stop()
         fx.play(.listenStop)
+        // The microphone stays shut from here until Tristan has answered.
+        micGrace?.cancel()
+        micBusy = true
         Task { [weak self] in
             // Give the recognizer a moment to deliver the final words.
             try? await Task.sleep(for: .milliseconds(700))
@@ -412,12 +461,31 @@ final class Session: ObservableObject {
             } else if self.phase == .idle {
                 self.status = "STANDING BY"
             }
+            self.refreshMic()
+        }
+    }
+
+    /// Keeps `micBusy` true while any session works or Tristan speaks, and for a moment after, which covers the gap
+    /// between a mission ending and its spoken answer starting.
+    private func refreshMic() {
+        if sessions.contains(where: \.busy) || speaking {
+            micGrace?.cancel()
+            micGrace = nil
+            if !micBusy { micBusy = true }
+        } else if micBusy, micGrace == nil, !listening {
+            micGrace = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(1200))
+                guard !Task.isCancelled, let self else { return }
+                self.micGrace = nil
+                self.micBusy = false
+                self.refreshWake()
+            }
         }
     }
 
     /// The wake listener only runs while the feature is on and nothing else needs the microphone.
     private func refreshWake() {
-        wake.setRunning(wakeOn && !active.busy && !listening)
+        wake.setRunning(wakeOn && !micBusy && !active.busy && !listening)
     }
 
     private func wakeStarted() {
@@ -429,10 +497,13 @@ final class Session: ObservableObject {
     }
 
     private func wakeSubmit(_ text: String) {
+        micGrace?.cancel()
+        micBusy = true
         music.setDuck("mic", active: false)
         fx.play(.listenStop)
         draft = ""
         submit(text, viaVoice: true)
+        refreshMic()
     }
 
     private func wakeCancelled() {

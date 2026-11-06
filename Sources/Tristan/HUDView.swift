@@ -22,8 +22,19 @@ struct HUDView: View {
             }
             .padding(18)
             .padding(.top, session.fullScreen ? session.fullScreenTopInset : 0)
+            if thinking, session.orbFillsScreen {
+                GeometryReader { geo in
+                    ReactorView(active: true, tint: Theme.tint(for: session.overallPhase), size: min(geo.size.width, geo.size.height) * 0.98,
+                                effects: session.orbEffects)
+                        .opacity(0.55)
+                        .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                }
+                .allowsHitTesting(false)
+                .transition(.opacity)
+            }
             if let request = session.pending { ApprovalOverlay(request: request) }
             if session.showSettings { SettingsOverlay() }
+            if let prompt = session.parentPrompt { ParentPINOverlay(prompt: prompt) }
             if session.showHistory { HistoryOverlay() }
         }
         .id(session.themeID)            // colors are read as views are built, so a new theme rebuilds the HUD
@@ -55,7 +66,8 @@ struct HUDView: View {
                     .foregroundStyle(Theme.cyan.opacity(0.55))
             }
             Spacer()
-            ReactorView(active: thinking, tint: Theme.tint(for: session.overallPhase), size: thinking ? 168 : 84)
+            ReactorView(active: thinking, tint: Theme.tint(for: session.overallPhase), size: orbSize, effects: session.orbEffects)
+                .opacity(thinking && session.orbFillsScreen ? 0 : 1)
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
                 Text(session.status)
@@ -71,8 +83,13 @@ struct HUDView: View {
             }
             .frame(minWidth: 200, alignment: .trailing)
         }
-        .frame(height: thinking ? 176 : 90)
+        .frame(height: orbSize + 8)
         .animation(.easeInOut(duration: 0.35), value: thinking)
+    }
+
+    private var orbSize: CGFloat {
+        let base: CGFloat = thinking ? (session.orbFillsScreen ? 90 : 240) : 100
+        return base * (thinking && session.orbFillsScreen ? 1 : CGFloat(session.orbScale))
     }
 
     /// Waiting for the model (or listening to you): the orb grows so it is easy to see from across the desk.
@@ -150,7 +167,7 @@ struct HUDView: View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
                 Text("▸").foregroundStyle(Theme.amber)
-                TextField(session.listening ? "Listening…" : "Give Tristan a task…", text: $session.draft)
+                TextField(session.listening ? "Listening…" : session.micBusy ? "Tristan is responding, microphone off…" : "Give Tristan a task…", text: $session.draft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 14, design: .monospaced))
                     .foregroundStyle(Theme.cyan)
@@ -177,7 +194,7 @@ struct HUDView: View {
                 }
                 .buttonStyle(.hud)
                 .help("Mission history")
-                Button { session.showSettings.toggle() } label: {
+                Button { session.openSettings() } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 18))
                         .foregroundStyle(Theme.amber)
@@ -185,13 +202,14 @@ struct HUDView: View {
                 .buttonStyle(.hud)
                 .help("Configuration")
                 Button { session.listening ? session.stopListening() : session.startListening() } label: {
-                    Image(systemName: session.listening ? "waveform.circle.fill" : "mic.circle")
+                    Image(systemName: session.listening ? "waveform.circle.fill" : session.micBusy ? "mic.slash.circle" : "mic.circle")
                         .font(.system(size: 22))
-                        .foregroundStyle(session.listening ? Theme.red : Theme.cyan)
+                        .foregroundStyle(session.listening ? Theme.red : session.micBusy ? Theme.amber.opacity(0.6) : Theme.cyan)
                         .shadow(color: session.listening ? Theme.red : .clear, radius: 6)
                 }
                 .buttonStyle(.hud)
-                .help("Click to talk, or hold ⌥⇧Space")
+                .disabled(session.micBusy && !session.listening)
+                .help(session.micBusy ? "Microphone is off while Tristan is working or speaking" : "Click to talk, or hold ⌥⇧Space")
                 if session.busy {
                     hudButton("ABORT", tint: Theme.red) { session.cancel() }
                 } else {
@@ -452,5 +470,40 @@ private struct ShortcutLayer: View {
             }
         }
         .opacity(0)
+    }
+}
+
+/// Asks the parent for their PIN before Settings open.
+struct ParentPINOverlay: View {
+    @EnvironmentObject var session: Session
+    let prompt: ParentPrompt
+    @State private var pin = ""
+    @State private var wrong = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.6)
+            VStack(alignment: .leading, spacing: 12) {
+                Text("PARENT UNLOCK")
+                    .font(.system(size: 11, design: .monospaced)).tracking(3).foregroundStyle(Theme.amber)
+                Text(prompt.reason).font(.system(size: 12, design: .monospaced)).foregroundStyle(Theme.cyan)
+                SecureField("PIN", text: $pin)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(submit)
+                if wrong { Text("Wrong PIN").font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.red) }
+                HStack(spacing: 12) {
+                    hudButton("CANCEL", tint: Theme.cyan) { session.cancelParentPrompt() }
+                    hudButton("UNLOCK", tint: Theme.green, action: submit)
+                }
+            }
+            .padding(24)
+            .frame(width: 340)
+            .background(Theme.deep, in: RoundedRectangle(cornerRadius: Theme.corner))
+            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.amber, lineWidth: 1.5))
+        }
+    }
+
+    private func submit() {
+        if !session.submitParentPIN(pin) { wrong = true; pin = "" }
     }
 }

@@ -50,19 +50,43 @@ struct GlowPanel<Content: View>: View {
     }
 }
 
-/// Spinning arc reactor. Spins faster and pulses harder while the agent is working.
+/// How much extra the orb does while it is busy.
+enum OrbEffects: String, CaseIterable, Identifiable {
+    case off = "OFF", subtle = "SUBTLE", full = "FULL"
+    var id: String { rawValue }
+}
+
+/// Spinning arc reactor. Spins faster and pulses harder while the agent is working, and with effects on it also sends
+/// out pulse rings, a breathing halo and orbiting sparks.
 struct ReactorView: View {
     var active: Bool
     var tint: Color = Theme.cyan
     var size: CGFloat = 90
     /// Seconds between frames; nil redraws at the display's rate. Small spots such as the notch use a slower one.
     var minimumInterval: Double?
+    var effects: OrbEffects = .off
 
     var body: some View {
         TimelineView(.animation(minimumInterval: minimumInterval)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             let speed = active ? 1.0 : 0.25
+            let fancy = active && effects != .off
             ZStack {
+                if fancy {
+                    // Halo that breathes behind everything.
+                    Circle()
+                        .fill(RadialGradient(colors: [tint.opacity(0.35), tint.opacity(0)], center: .center,
+                                             startRadius: size * 0.2, endRadius: size * 0.75))
+                        .frame(width: size * 1.5, height: size * 1.5)
+                        .scaleEffect(1 + 0.08 * sin(t * 2.2))
+                    // Rings that expand and fade, one after another.
+                    ForEach(0..<(effects == .full ? 4 : 2), id: \.self) { i in
+                        let phase = (t * 0.45 + Double(i) / (effects == .full ? 4 : 2)).truncatingRemainder(dividingBy: 1)
+                        Circle()
+                            .stroke(tint.opacity((1 - phase) * 0.55), lineWidth: 2)
+                            .frame(width: size * (0.6 + 0.9 * phase), height: size * (0.6 + 0.9 * phase))
+                    }
+                }
                 Circle()
                     .stroke(tint.opacity(0.9), style: StrokeStyle(lineWidth: 2, dash: [4, 6]))
                     .rotationEffect(.degrees(t * 60 * speed))
@@ -71,6 +95,23 @@ struct ReactorView: View {
                     .trim(from: 0, to: 0.75)
                     .stroke(tint.opacity(0.75), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(-t * 95 * speed))
+                if fancy, effects == .full {
+                    Circle()
+                        .inset(by: size * 0.2)
+                        .trim(from: 0.1, to: 0.35)
+                        .stroke(Color.white.opacity(0.8), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .rotationEffect(.degrees(t * 140))
+                    // Sparks on three orbits.
+                    ForEach(0..<9, id: \.self) { i in
+                        let orbit = 0.22 + 0.1 * Double(i % 3)
+                        let angle = t * (0.9 + 0.35 * Double(i % 3)) * (i % 2 == 0 ? 1 : -1) + Double(i) * 0.7
+                        Circle()
+                            .fill(i % 3 == 0 ? Color.white : tint)
+                            .frame(width: size * 0.035, height: size * 0.035)
+                            .shadow(color: tint, radius: 4)
+                            .offset(x: CGFloat(cos(angle) * orbit) * size * 1.6, y: CGFloat(sin(angle) * orbit) * size * 1.6)
+                    }
+                }
                 Circle()
                     .inset(by: size * 0.28)
                     .stroke(tint.opacity(0.6), lineWidth: 1)
@@ -78,7 +119,7 @@ struct ReactorView: View {
                     .fill(RadialGradient(colors: [.white, tint, tint.opacity(0)],
                                          center: .center, startRadius: 0, endRadius: size * 0.2))
                     .frame(width: size * 0.34, height: size * 0.34)
-                    .scaleEffect(1 + 0.1 * sin(t * (active ? 6 : 2)))
+                    .scaleEffect(1 + (fancy ? 0.18 : 0.1) * sin(t * (active ? 6 : 2)))
             }
             .frame(width: size, height: size)
             .shadow(color: tint.opacity(0.8), radius: 8)

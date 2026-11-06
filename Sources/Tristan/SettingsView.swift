@@ -5,6 +5,10 @@ import ServiceManagement
 struct SettingsOverlay: View {
     @EnvironmentObject var session: Session
     @State private var confirmingYolo = false
+    @State private var newPIN = ""
+    @State private var repeatPIN = ""
+    @State private var changingPIN = false
+    @State private var kidsMessage: String?
     @State private var loginEnabled = false
     @State private var loginMessage: String?
     @State private var recordMonitor: Any?
@@ -22,7 +26,7 @@ struct SettingsOverlay: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.55).onTapGesture { session.showSettings = false }
+            Color.black.opacity(0.55).onTapGesture { session.closeSettings() }
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
@@ -30,7 +34,9 @@ struct SettingsOverlay: View {
                             .font(.system(size: 11, design: .monospaced)).tracking(3)
                             .foregroundStyle(Theme.amber)
                         approvalSection
+                        kidsSection
                         themeSection
+                        orbSection
                         generalSection
                         voiceSection
                         musicSection
@@ -47,7 +53,7 @@ struct SettingsOverlay: View {
                             .foregroundStyle(Theme.cyan.opacity(0.5))
                     }
                     Spacer()
-                    hudButton("CLOSE", tint: Theme.cyan) { session.showSettings = false }
+                    hudButton("CLOSE", tint: Theme.cyan) { session.closeSettings() }
                 }
                 .padding(.horizontal, 24).padding(.vertical, 12)
             }
@@ -108,6 +114,94 @@ struct SettingsOverlay: View {
                 .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.red, lineWidth: 1))
             }
         }
+    }
+
+    private var kidsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            caption("KIDS SAFE MODE")
+            toggleButton("KIDS SAFE MODE", isOn: kidsBinding)
+            HStack(spacing: 8) {
+                ForEach(ParentAuth.allCases) { method in
+                    chip(method.rawValue, on: session.parentAuth == method) { chooseAuth(method) }
+                }
+            }
+            if session.parentAuth == .pin {
+                if !ParentPIN.isSet || changingPIN {
+                    HStack(spacing: 8) {
+                        SecureField("New PIN (4+ digits)", text: $newPIN).textFieldStyle(.roundedBorder).frame(maxWidth: 170)
+                        SecureField("Repeat PIN", text: $repeatPIN).textFieldStyle(.roundedBorder).frame(maxWidth: 170)
+                        hudButton("SAVE PIN", tint: Theme.green, action: savePIN)
+                    }
+                } else {
+                    hudButton("CHANGE PIN", tint: Theme.amber) { changingPIN = true }
+                }
+            }
+            if let kidsMessage {
+                Text(kidsMessage).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.red)
+            }
+            Text("While on, opening Settings needs a parent, and YOLO and AUTO are switched off. A parent unlocks with a PIN or with Touch ID / the Mac password, and it locks again when Settings close or after 5 minutes. Remote devices cannot change the mode.")
+                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.5))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var orbSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            caption("ORB WHILE WAITING")
+            HStack(spacing: 10) {
+                Text("SIZE").font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan.opacity(0.7))
+                Slider(value: $session.orbScale, in: 0.6...1.6)
+                    .disabled(session.orbFillsScreen)
+                Text(session.orbFillsScreen ? "FILL" : "\(Int(session.orbScale * 100))%")
+                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.cyan).frame(width: 40)
+            }
+            HStack(spacing: 8) {
+                ForEach(OrbEffects.allCases) { level in
+                    chip("EFFECTS \(level.rawValue)", on: session.orbEffects == level) { session.orbEffects = level }
+                }
+            }
+            toggleButton("ORB FILLS THE WHOLE SCREEN", isOn: $session.orbFillsScreen)
+        }
+    }
+
+    private var kidsBinding: Binding<Bool> {
+        Binding(get: { session.kidsMode }, set: { on in
+            kidsMessage = nil
+            if on {
+                if session.parentAuth == .pin, !ParentPIN.isSet { kidsMessage = "Set a PIN below first."; changingPIN = true; return }
+                session.kidsMode = true
+            } else {
+                session.kidsMode = false
+                session.parentUnlocked = false
+            }
+        })
+    }
+
+    private func chooseAuth(_ method: ParentAuth) {
+        kidsMessage = nil
+        session.parentAuth = method
+        if method == .pin, !ParentPIN.isSet { changingPIN = true }
+        if method == .system, session.kidsMode { session.parentAuth = .system }
+    }
+
+    private func savePIN() {
+        guard newPIN == repeatPIN else { kidsMessage = "The PINs do not match."; return }
+        guard ParentPIN.valid(newPIN) else { kidsMessage = "Use at least 4 digits."; return }
+        guard ParentPIN.set(newPIN) else { kidsMessage = "Could not store the PIN in the Keychain."; return }
+        newPIN = ""; repeatPIN = ""; changingPIN = false; kidsMessage = nil
+    }
+
+    private func chip(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: .monospaced)).tracking(1)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .background(on ? Theme.cyan.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: Theme.corner))
+                .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.cyan.opacity(on ? 1 : 0.4), lineWidth: 1))
+                .foregroundStyle(Theme.cyan.opacity(on ? 1 : 0.6))
+        }
+        .buttonStyle(.hud)
     }
 
     private var themeSection: some View {

@@ -1,0 +1,74 @@
+import XCTest
+@testable import Tristan
+
+@MainActor
+final class KidsModeTests: XCTestCase {
+    private var retained: [Session] = []
+
+    private func hub() -> Session {
+        let hub = Session(history: nil, music: SpotifyController(runner: FakeSpotify(), isRunning: { true }, releaseDelay: .zero))
+        retained.append(hub)
+        hub.soundsOn = false; hub.voiceOn = false; hub.notificationsOn = false
+        hub.kidsMode = false
+        hub.approvalMode = .ask
+        return hub
+    }
+
+    override func tearDown() async throws {
+        for hub in retained { hub.kidsMode = false }
+        retained.removeAll()
+        for key in ["kidsMode", "parentAuth", "approvalMode"] { UserDefaults.standard.removeObject(forKey: key) }
+    }
+
+    func testPINValidation() {
+        XCTAssertFalse(ParentPIN.valid("123"))
+        XCTAssertFalse(ParentPIN.valid("12a4"))
+        XCTAssertTrue(ParentPIN.valid("1234"))
+        XCTAssertNotEqual(ParentPIN.hash("1234"), ParentPIN.hash("1235"))
+        XCTAssertFalse(ParentPIN.hash("1234").contains("1234"))
+    }
+
+    func testKidsModeForcesAskAndLocks() {
+        let hub = hub()
+        hub.approvalMode = .yolo
+        hub.kidsMode = true
+        XCTAssertEqual(hub.approvalMode, .ask)
+        XCTAssertTrue(hub.kidsLocked)
+    }
+
+    func testLockingClosesSettingsAndDropsAuto() {
+        let hub = hub()
+        hub.kidsMode = true
+        hub.unlockParent()
+        XCTAssertFalse(hub.kidsLocked)
+        hub.showSettings = true
+        hub.approvalMode = .auto
+        hub.closeSettings()
+        XCTAssertTrue(hub.kidsLocked)
+        XCTAssertFalse(hub.showSettings)
+        XCTAssertEqual(hub.approvalMode, .ask)
+    }
+
+    func testOpeningSettingsWithoutKidsModeIsImmediate() {
+        let hub = hub()
+        hub.openSettings()
+        XCTAssertTrue(hub.showSettings)
+        hub.openSettings()
+        XCTAssertFalse(hub.showSettings)
+    }
+
+    func testMicStaysShutWhileWorkingAndForAMomentAfter() async throws {
+        let hub = hub()
+        hub.active.provider = .demo
+        XCTAssertFalse(hub.micBusy)
+        hub.submit("say hello")
+        XCTAssertTrue(hub.micBusy)
+        hub.startListening()
+        XCTAssertFalse(hub.listening, "push-to-talk must not start while Tristan is working")
+        hub.cancel()
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertTrue(hub.micBusy, "the mic stays shut briefly after the mission ends")
+        try await Task.sleep(for: .milliseconds(1500))
+        XCTAssertFalse(hub.micBusy)
+    }
+}
