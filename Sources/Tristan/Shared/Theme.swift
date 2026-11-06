@@ -76,15 +76,15 @@ struct ReactorView: View {
                     // Halo that breathes behind everything.
                     Circle()
                         .fill(RadialGradient(colors: [tint.opacity(0.35), tint.opacity(0)], center: .center,
-                                             startRadius: size * 0.2, endRadius: size * 0.75))
-                        .frame(width: size * 1.5, height: size * 1.5)
+                                             startRadius: size * 0.15, endRadius: size * 0.5))
+                        .frame(width: size, height: size)
                         .scaleEffect(1 + 0.08 * sin(t * 2.2))
                     // Rings that expand and fade, one after another.
                     ForEach(0..<(effects == .full ? 4 : 2), id: \.self) { i in
                         let phase = (t * 0.45 + Double(i) / (effects == .full ? 4 : 2)).truncatingRemainder(dividingBy: 1)
                         Circle()
                             .stroke(tint.opacity((1 - phase) * 0.55), lineWidth: 2)
-                            .frame(width: size * (0.6 + 0.9 * phase), height: size * (0.6 + 0.9 * phase))
+                            .frame(width: size * (0.4 + 0.6 * phase), height: size * (0.4 + 0.6 * phase))
                     }
                 }
                 Circle()
@@ -109,7 +109,7 @@ struct ReactorView: View {
                             .fill(i % 3 == 0 ? Color.white : tint)
                             .frame(width: size * 0.035, height: size * 0.035)
                             .shadow(color: tint, radius: 4)
-                            .offset(x: CGFloat(cos(angle) * orbit) * size * 1.6, y: CGFloat(sin(angle) * orbit) * size * 1.6)
+                            .offset(x: CGFloat(cos(angle) * orbit) * size * 1.2, y: CGFloat(sin(angle) * orbit) * size * 1.2)
                     }
                 }
                 Circle()

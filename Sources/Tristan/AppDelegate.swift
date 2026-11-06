@@ -12,7 +12,10 @@ final class HUDWindow: NSWindow {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let session = Session()
+    /// `Tristan --demo` (used by scripts/record-demo.sh): the DEMO provider in ASK mode with kids mode off, nothing saved
+    /// as open tabs or history, and a separate Keychain slot for the parent PIN so a demo PIN never replaces a real one.
+    private let demo = CommandLine.arguments.contains("--demo")
+    private lazy var session: Session = demo ? Session(history: nil) : Session()
     private var hud: HUDWindow!
     private var notch: NotchController!
     private var statusItem: NSStatusItem!
@@ -24,6 +27,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var bag = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if demo {
+            ParentPIN.account = "kids.pin.demo"
+            session.provider = .demo
+            session.approvalMode = .ask
+            session.kidsMode = false
+            session.wakeOn = false
+        }
         hud = HUDWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 660),
                         styleMask: [.borderless, .resizable], backing: .buffered, defer: false)
         hud.isOpaque = false
@@ -65,6 +75,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &bag)
         showHUD()
         session.greet()
+        if demo {
+            // The recording script crops the video to this rectangle (screen points, origin at the top left).
+            let screen = NotchGeometry.primaryScreen().frame
+            print("DEMO_WINDOW \(Int(hud.frame.minX - screen.minX)) \(Int(screen.maxY - hud.frame.maxY)) \(Int(hud.frame.width)) \(Int(hud.frame.height)) \(Int(screen.width)) \(Int(screen.height))")
+            fflush(stdout)
+        }
     }
 
     @objc private func toggleFullScreen() {

@@ -10,7 +10,7 @@ enum ParentAuth: String, CaseIterable, Identifiable {
 }
 
 enum ParentPIN {
-    static let account = "kids.pin"
+    nonisolated(unsafe) static var account = "kids.pin"
     static let minimumLength = 4
 
     static func hash(_ pin: String) -> String {

@@ -5,3 +5,5 @@ dist/
 .DS_Store
 ios/build/
 xcuserdata/
+# Recordings from scripts/record-demo.sh stay local until you choose to add one
+docs/demo/*.mov
