@@ -53,7 +53,9 @@ echo "Recording starts in 5 seconds and the demo plays by itself (about 65 secon
 fi
 for i in 5 4 3 2 1; do printf "%s " "$i"; sleep 1; done; echo "recording"
 
-screencapture -v -V "$SECS" "$RAW" &
+# A background job in a script ignores SIGINT, so reset it first or the early stop below would do nothing.
+python3 -c 'import os,signal,sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.execvp(sys.argv[1], sys.argv[1:])' \
+  screencapture -v -V "$SECS" "$RAW" &
 REC=$!
 if [ -z "${MANUAL:-}" ]; then
   # Stop as soon as the autopilot is done (a few seconds of tail), or at the time limit.
