@@ -34,7 +34,7 @@ You give T.R.I.S.T.A.N. a task ("add login to the API"). It works inside a proje
 
 > **Just for fun.** T.R.I.S.T.A.N. is a hobby project and a learning experiment that I build together with my kids. We pick the features, draw the themes, and try things to see what happens. That is why there is a Paw Patrol-style theme, a kids safe mode and a lot of sound effects. It is not a commercial product, and it comes with no promises beyond the [MIT license](LICENSE). Ideas, issues and pull requests are very welcome.
 
-> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 198 automated tests pass (181 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 206 automated tests pass (189 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
 
 ## Demo videos
 
@@ -117,11 +117,11 @@ Agent CLIs are powerful but plain. T.R.I.S.T.A.N. is a nicer front door for them
 - **Mission history.** Every finished, failed or aborted mission is saved (task, provider, mode, a short summary and the folder, never code or file contents) and can be searched, filtered by outcome and re-run in one click. The file is private to you (`0600`) in Application Support.
 - **Spotify (optional).** A now-playing strip with previous, play/pause, next and volume for the Spotify desktop app. Say or type short commands such as "play music", "pause", "next song", "volume 40", "what's playing" or "play my focus playlist" (set a playlist link in Configuration). These never start a coding mission and work while one is running. The music is turned down while T.R.I.S.T.A.N. talks or listens and restored afterwards. Works with free and Premium accounts, and needs no login or API keys (see [Spotify](#spotify)).
 - **Mac notifications** when approval is needed or a mission ends while T.R.I.S.T.A.N. is in the background. Clicking one brings the HUD forward.
-- **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` hides it. Pick a preset or record your own combination in Configuration; T.R.I.S.T.A.N. tells you if another app already owns it.
+- **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` stops a running mission first, then leaves full screen, then hides the HUD. Pick a preset or record your own combination in Configuration; T.R.I.S.T.A.N. tells you if another app already owns it.
 - **Launch at login** switch for the installed app.
 - **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
 - **Several sessions at the same time.** Run a Claude session and a Copilot session (or two Claude sessions in different folders) side by side. Each session is a tab with its own provider, folder, mission log, code stream and approvals, and a status light (pulsing cyan while working, amber while it needs you, green when done, red on failure). **+ NEW SESSION** (`⌘T`) opens another, `⌘1`…`⌘9` switch, `⌘W` closes (a running session asks first). A session that needs approval in the background raises an amber banner, a sound, a spoken "Session 2, authorization required" and a notification, and the notch shows and answers it. Up to 8 sessions; the open sessions (provider and folder) come back after a restart. Starting a session in a folder another session is already working in warns you that edits may collide. The approval mode and always-allow rules are shared by all sessions.
-- **Rounded buttons you can hit anywhere, and a big, configurable orb.** Every button is clickable over its whole area, not just on its text. While T.R.I.S.T.A.N. waits for the model (or listens to you) the orb grows and, with effects on, adds a breathing halo, pulse rings and orbiting sparks. **Configuration > ORB WHILE WAITING** sets the size (60 to 160%), the effects (off, subtle, full) and a switch that lets the orb fill the whole window.
+- **Rounded buttons you can hit anywhere, and a big, configurable orb.** Every button is clickable over its whole area, not just on its text. While T.R.I.S.T.A.N. waits for the model (or listens to you) the orb grows and, with effects on, adds a breathing halo, pulse rings and orbiting sparks. **Configuration > ORB WHILE WAITING** sets the size (60 to 160%), the effects (off, subtle, full) and **ORB FILLS THE WHOLE SCREEN**, which is **on by default**: while a mission runs the orb covers the window. A red **ABORT MISSION** button stays on top of the orb, and `Esc` stops the mission too (the ABORT button in the command bar still works).
 - **Kids safe mode.** **Configuration > KIDS SAFE MODE**. While on, questions are answered by a local Ollama model so they stay on the Mac (see [Local models](https://mariotristan.github.io/jarvis-tristan/local-models.html)), T.R.I.S.T.A.N. speaks in a brighter voice, opening Settings needs a parent, and YOLO and AUTO are switched off (the mode goes back to ASK whenever it locks). A parent unlocks with a PIN (4 or more digits, stored hashed in the Keychain) or with Touch ID / the Mac password, whichever you choose. It locks again when Settings close or after 5 minutes, and paired phones cannot change the mode.
 - **Session memory.** A finished mission stays in its session's context. Each session keeps the task, the actions taken and the result of its recent missions (the last 12; the newest three in detail, older ones as one line) and puts that briefing in front of the next task, so "now add tests for what you just wrote" works whichever provider runs it. Only missions from the same folder are included. The tab shows **REMEMBERS n**; click it (or open **+ NEW SESSION**, which starts empty) to forget. The memory survives a restart. On the iPhone and iPad standalone mode the same memory is kept, and **NEW CONVERSATION** in Settings clears it. The briefing is plain text in the prompt, so it costs a few thousand characters per mission at most; it is not the model's own hidden state, so details that never reached the log or the final reply are not remembered.
 - **Full screen.** The expand button in the command bar, `⌃⌘F`, or the menu bar item fills the whole screen, hides the Dock and menu bar completely (they do not slide in at the edges) and puts the window above everything else, starts below the camera notch and makes the text larger. `Esc` leaves it (and so does hiding the HUD, so the Dock never stays hidden).
@@ -130,6 +130,7 @@ Agent CLIs are powerful but plain. T.R.I.S.T.A.N. is a nicer front door for them
 - **Quitting.** Several ways, so you are never stuck, even in full screen: `⌘Q` (while the HUD is in front), the red power button in the command bar, the red **QUIT** button that appears when you hover the notch, typing or saying "quit", "exit" or "close Tristan", or **Quit Tristan** in the menu bar item. There is no confirmation, even if a mission is running.
 - **Themes.** Not everyone likes cyan on near-black. **Configuration > THEME** switches the whole HUD, the notch accents and the rendered markdown between 31 looks, each previewed in its own colors: Tristan (the original), Deep Blue, Graphite, Light and High contrast; pop culture (Tron, WarGames, The Simpsons, Futurama, Iron Man, Terminator, Power Rangers, Superman, Batman, Hackers, The Matrix, Peanuts, Dilbert, Garfield, Paw Patrol); dark classics (Dracula, Nord, Tokyo Night, Catppuccin, Gruvbox, Solarized Dark, Monokai, Rosé Pine); and light ones (GitHub Light, Solarized Light, Catppuccin Latte). **Match system** uses T.R.I.S.T.A.N. in dark mode and Light in light mode, and follows the switch live. The choice is remembered. A unit test checks that every palette keeps its text at 4.5:1 contrast or better on its backgrounds. Each theme also greets you in its own voice: an empty session (and the notch, when idle) shows one of a few welcome lines for the theme, such as "Wake up. The code is waiting." for The Matrix, and every session keeps its own line. The notch pill itself stays black so it blends with the camera notch.
 - **Remembered settings.** Provider, approval mode, default folder, shortcut, sound and voice settings and provider details survive restarts. Secrets live in the Keychain.
+- **A clean voice.** The spoken lines use the best installed British voice, so install an **Enhanced** one: the built-in compact voices are low quality and can crackle. `scripts/install-voices.sh` opens the right Settings pane, waits for the download and plays a sample, and Configuration shows an amber hint while only compact voices exist. Speech runs at a lower level than full volume so it never clips, sound effects wait for or sit under the voice instead of overlapping it, and the audio output is kept open so lines do not click at their start or end. The full story, with measurements, is the [audio crackle report](https://mariotristan.github.io/jarvis-tristan/audio-crackle.html).
 - **Offline fallback.** When the Mac has no internet, an amber **NO INTERNET · USING OLLAMA** note appears in the header and missions on Claude Code, Copilot, Bedrock or Azure OpenAI run on your local Ollama model instead. If Ollama is off, T.R.I.S.T.A.N. starts it for you (it runs `scripts/setup-ollama.sh --start-only`, which installs and downloads nothing) and the mission log says it is working on the fallback. If Ollama is not installed or has no model, it tells you what to run once you are online.
 - **Menu bar item** next to the clock to open T.R.I.S.T.A.N. or quit.
 - **Provider switcher** along the bottom of the HUD.
@@ -200,11 +201,14 @@ git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
 scripts/install.sh      # builds, copies Tristan.app into /Applications and launches it
 scripts/bundle.sh       # or just build Tristan.app here
-scripts/uninstall.sh    # remove installed copies (add --purge for settings, history and Keychain items, --dry-run to preview)
+scripts/uninstall.sh    # remove installed copies (add --purge for settings, history and Keychain items, --build for build output, --dry-run to preview)
+scripts/install-voices.sh   # get an Enhanced voice for clean speech (see the audio crackle report)
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build   # a quick debug build
 ```
 
 Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git push origin vX.Y.Z` publishes a release. See [docs/ci-and-release.md](docs/ci-and-release.md). T.R.I.S.T.A.N. has no Dock icon: look for the notch overlay, the menu bar icon, or press `⌥ Space`.
+
+**Uninstall (and removing test versions).** `scripts/uninstall.sh` quits the app and removes installed copies, including ones Spotlight finds elsewhere and mounted disk images. It lists everything and asks first. `--purge` also removes settings, history, caches, the pairing secret and API keys in the Keychain; `--build` removes build output in a checkout; `--dry-run` only lists. Ollama and its models are left alone.
 
 ## Using it
 
@@ -254,7 +258,8 @@ Sources/Tristan/
 ├── WakeWord.swift     "Hey Tristan" matcher, silence-timing state machine and on-device listener
 ├── SettingsView.swift Configuration and history overlays
 ├── AgentTools.swift   Sandboxed file and shell tools, safe-path resolution, tool policy per mode
-├── Audio.swift        Synthesised sound effects and spoken lines
+├── Audio.swift        Synthesised sound effects and spoken lines, kept clean: voice level, effect ordering, silent output loop
+├── Connectivity.swift Internet monitor and the Ollama starter behind the offline fallback
 ├── Voice.swift        Push-to-talk speech recognition
 ├── Snapshot.swift     Renders the README screenshots from the real views
 ├── HUDView.swift      The main HUD, command bar and approval overlay
@@ -262,12 +267,12 @@ Sources/Tristan/
 ├── Theme.swift        Colour roles, glow panel, arc reactor, animated backdrop
 ├── Themes.swift       The palettes, contrast maths and the theme picker's data
 └── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    181 tests: Ollama and kids-mode routing, multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
+Tests/TristanTests/    189 tests: Ollama and kids-mode routing, multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
 ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
-scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh (local models, see docs/ollama.md), record-demo.sh, ios-demo.sh, ios-icon.sh
+scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh (local models, see docs/ollama.md; `--start-only` just starts it), install-voices.sh (Enhanced voice), uninstall.sh (remove test versions), record-demo.sh with record-window.swift (films the window and the app's own sound), ios-demo.sh, ios-icon.sh
 VERSION                Version number used by the scripts
 docs/ci-and-release.md How CI and releases work
-.github/workflows/     CI: build, test and bundle on macOS
+.github/workflows/     CI: build, test and bundle on macOS; a gitleaks secret scan on every push, PR and week (it also gates releases)
 ```
 
 A provider turns a task into a stream of events:
@@ -354,7 +359,8 @@ Done:
 - [x] Sessions remember their finished missions, the notch no longer blinks and uses less CPU, and the app opens on the primary display
 - [x] Full-screen mode, rendered markdown in the code stream, several concurrent sessions (verified live with two Claude Code sessions and with two Copilot sessions)
 - [x] 30 themes with a picker and Match system, a welcome line per theme and session, a spoken greeting that follows the time and day, and easier ways to quit
-- [x] Automated tests (167)
+- [x] The orb fills the screen by default with an ABORT button and Esc to stop a mission, an offline fallback to Ollama, sound in the demo videos, a cleaner voice (see the [audio crackle report](https://mariotristan.github.io/jarvis-tristan/audio-crackle.html)), a secret scan in CI and an uninstall script
+- [x] Automated tests (206)
 
 Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 
@@ -382,6 +388,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build
 T.R.I.S.T.A.N. runs agents that can change files and run commands on your machine. Review what you approve.
 
 - Secrets (the Azure OpenAI key) are stored in the macOS Keychain, never in the repository or in preferences. Entra ID and AWS logins are borrowed from the Azure CLI and AWS CLI and are never stored by T.R.I.S.T.A.N. Because the app is only ad-hoc signed, macOS may ask for Keychain access again after you rebuild it.
+- Every push, pull request and week, the **Secret scan** workflow runs [gitleaks](https://github.com/gitleaks/gitleaks) over the whole git history, and a release cannot be published if it finds a leak. The badge at the top shows its status.
 - Mission history stores task text and short summaries, so treat it as private; it is `0600` and can be cleared in the app.
 - The wake word is off by default, runs on-device only, and the microphone is released while a mission runs.
 - Claude Code actions are gated per action in `ASK` mode, but Copilot's headless mode cannot be (see the [Providers guide](https://mariotristan.github.io/jarvis-tristan/providers.html)).

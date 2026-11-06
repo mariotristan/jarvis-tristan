@@ -98,6 +98,20 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
     <p>Maintainers: <code>scripts/make-dmg.sh</code> builds the disk image, and <code>git tag vX.Y.Z &amp;&amp; git push origin vX.Y.Z</code> publishes a release. See <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/ci-and-release.md">docs/ci-and-release.md</a>.</p>
   </div>
 </section>
+<section>
+  <div class="wrap">
+    <h2 id="uninstall">Uninstall, and removing test versions</h2>
+    <p>One script removes the app and it shows what it will remove before it does anything.</p>
+    <pre data-copy>scripts/uninstall.sh --dry-run            <span class="c"># only list what would be removed</span>
+scripts/uninstall.sh                      <span class="c"># quit and remove installed copies and mounted disk images</span>
+scripts/uninstall.sh --purge --build      <span class="c"># also settings, history, Keychain items and build output</span></pre>
+    <ul class="plain">
+      <li><b>Installed copies.</b> Applications, your own Applications folder and any other copy Spotlight finds, only when it really is this app. Settings and history are kept unless you add <code>--purge</code>.</li>
+      <li><b>Purge.</b> Removes preferences, history, caches, saved window state, the pairing secret and API keys in the Keychain, and leftovers from the test suite.</li>
+      <li><b>Not touched.</b> Ollama and its models, installed voices and the source checkout. If <b>Launch at login</b> was on, also remove it under System Settings &gt; General &gt; Login Items.</li>
+    </ul>
+  </div>
+</section>
 <section class="soft">
   <div class="wrap">
     <h2>The scripts</h2>
@@ -105,8 +119,10 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
 <tr><th scope="row"><code>scripts/install.sh</code></th><td>Builds from source, installs into Applications and launches.</td></tr>
 <tr><th scope="row"><code>scripts/bundle.sh</code></th><td>Builds a release binary and wraps it into <code>Tristan.app</code>.</td></tr>
 <tr><th scope="row"><code>scripts/make-dmg.sh</code></th><td>Builds <code>dist/Tristan-&lt;version&gt;.dmg</code> and a checksum next to it.</td></tr>
-<tr><th scope="row"><code>scripts/setup-ollama.sh</code></th><td>Installs and starts Ollama and pulls a model. See <a href="local-models.html">Local models</a>.</td></tr>
-<tr><th scope="row"><code>scripts/record-demo.sh</code></th><td>Films the built-in demo (<code>Tristan --demo</code>) for the videos.</td></tr>
+<tr><th scope="row"><code>scripts/setup-ollama.sh</code></th><td>Installs and starts Ollama and pulls a model. With <code>--start-only</code> it only starts an installed Ollama (the app runs this for the <a href="local-models.html#offline">offline fallback</a>). See <a href="local-models.html">Local models</a>.</td></tr>
+<tr><th scope="row"><code>scripts/install-voices.sh</code></th><td>Opens System Settings so you can download an Enhanced voice, waits for it and plays a sample. Fixes crackly speech. See the <a href="audio-crackle.html">crackle report</a>.</td></tr>
+<tr><th scope="row"><code>scripts/uninstall.sh</code></th><td>Quits the app and removes installed copies and mounted disk images. <code>--purge</code> also removes settings, history and Keychain items, <code>--build</code> removes build output, <code>--dry-run</code> only lists.</td></tr>
+<tr><th scope="row"><code>scripts/record-demo.sh</code></th><td>Films the built-in demo (<code>Tristan --demo</code>) for the videos: the window and the app’s own sound, via <code>scripts/record-window.swift</code>.</td></tr>
 <tr><th scope="row"><code>scripts/ios-demo.sh</code></th><td>Runs the iPhone or iPad app in the simulator against a demo Mac.</td></tr>
 <tr><th scope="row"><code>scripts/ios-icon.sh</code></th><td>Regenerates the iOS app icon.</td></tr>
 </tbody></table></div>
