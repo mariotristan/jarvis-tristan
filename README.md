@@ -16,6 +16,8 @@ You give Tristan a task ("add login to the API"). It works inside a project fold
 ![Azure OpenAI](https://img.shields.io/badge/Azure_OpenAI-supported-0078D4?logo=microsoftazure&logoColor=white)
 ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-6e40c9?logo=githubcopilot&logoColor=white)
 
+**Website:** <https://mariotristan.github.io/jarvis-tristan/> · **Download:** [latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest) · **Backlog:** [issue #21](https://github.com/mariotristan/jarvis-tristan/issues/21)
+
 **T.R.I.S.T.A.N.** = **T**actical **R**easoning **I**nterface for **S**upervising **T**asks, **A**gents and **N**etworks.
 
 > **Status: early experiment.** All four providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 160 automated tests pass (144 for the Mac app and 16 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code has been run against the real service end to end**. Bedrock, Azure OpenAI, Copilot, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
@@ -384,7 +386,6 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **Markdown:** the renderer covers what agents produce (no images, HTML, footnotes or nested quotes, and no syntax highlighting). It is covered by parser tests, a fuzz test and an every-prefix streaming test.
 - **iOS standalone mode has never called a real Azure OpenAI or Bedrock endpoint**: the model is scripted in the tests and in the simulator demo. The Files folder picker and Keychain-stored AWS keys are only tested through unit tests.
 - **The iOS app has only run in the simulator** (see [iPhone and iPad](#iphone-and-ipad)): no physical device, no real Wi-Fi, no camera, microphone or haptics. The secure link and the remote commands are tested end to end on loopback, and the remote design rules (no remote YOLO, folder allow-list, replay for late joiners, wrong secret refused) have automated tests.
-- **The release workflow has not run yet** (it needs a first tag), and the CI workflow's Xcode 16.2 pin follows `catch-a-break` but is untested for this project.
 - **The app is not notarized** (see [Install](#install)); there is no auto-update.
 - The notch overlay has only been tested on a notched MacBook, and the visuals have not had a design pass on other displays.
 - Sound and voice quality depend on the voices installed on your Mac (a British English voice is preferred).
@@ -409,7 +410,7 @@ Done:
 - [x] Full-screen mode, rendered markdown in the code stream, several concurrent sessions (verified live with two Claude Code sessions and with two Copilot sessions)
 - [x] Automated tests (160)
 
-Next:
+Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 
 - [ ] Live validation of Bedrock, Azure OpenAI, Copilot, wake word, notifications and the iOS app on a real device (needs real credentials and a human in front of the hardware)
 - [ ] iOS: Bonjour discovery of the Mac, per-device pairing keys, Live Activities for approvals

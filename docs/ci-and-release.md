@@ -1,6 +1,6 @@
 # CI and releases
 
-Two GitHub Actions workflows, following the same pattern as the `catch-a-break` project.
+Two GitHub Actions workflows.
 
 | Workflow | File | Trigger | What it does |
 |----------|------|---------|--------------|
@@ -42,5 +42,5 @@ VERSION=2.0.0 scripts/make-dmg.sh   # override the version
 ## Key constraints
 
 - **Not notarized.** The app is only ad-hoc signed, because notarization needs a paid Apple Developer account. Downloaded copies are quarantined by macOS, so first launch needs the steps in the README. Adding a Developer ID certificate and notarization later would remove them.
-- **Xcode is required to build**, even though the project is a Swift package, because SwiftUI's macros are not in the command line tools. The workflows pin Xcode 16.2 on the `macos-15` runner, the same as `catch-a-break`.
+- **Xcode is required to build**, even though the project is a Swift package, because SwiftUI's macros are not in the command line tools. The Mac job pins Xcode 16.2 on the `macos-15` runner; the iOS job uses the newest Xcode 16.x (see above).
 - **macOS 14 or later** is required to run it.
