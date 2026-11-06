@@ -314,8 +314,20 @@ final class SpotifyController: ObservableObject {
         await refresh()
         guard let playing = nowPlaying ?? (ducker.isDucked ? NowPlaying(state: "paused", track: "", artist: "", volume: 0) : nil) else { return }
         if let target = ducker.set(reason, active: active, currentVolume: playing.volume, playing: playing.isPlaying) {
-            _ = try? await runner.run(SpotifyScripts.setVolume(target))
+            await ramp(from: playing.volume, to: target)
             await refresh()
+        }
+    }
+
+    /// Moves the volume in a few small steps. An instant jump from loud to quiet (and back) is audible as a click or
+    /// crackle in the music right when the voice starts and ends.
+    private func ramp(from start: Int, to end: Int) async {
+        let steps = min(4, abs(end - start))
+        guard steps > 1 else { _ = try? await runner.run(SpotifyScripts.setVolume(end)); return }
+        for step in 1...steps {
+            let value = start + (end - start) * step / steps
+            _ = try? await runner.run(SpotifyScripts.setVolume(value))
+            if step < steps { try? await Task.sleep(for: .milliseconds(40)) }
         }
     }
 

@@ -264,6 +264,15 @@ struct SettingsOverlay: View {
                 toggleButton("VOICE FEEDBACK", isOn: $session.voiceOn)
                 toggleButton("NOTIFICATIONS", isOn: $session.notificationsOn)
             }
+            if session.voiceOn, SoundFX.voiceIsCompact {
+                HStack(spacing: 8) {
+                    Text("Only a basic voice is installed, so speech can crackle. Download an Enhanced voice (Daniel, English UK) for a clean sound.")
+                        .font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.amber)
+                    chip("OPEN SETTINGS", on: false) {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension") { NSWorkspace.shared.open(url) }
+                    }
+                }
+            }
             if Bundle.main.bundleURL.pathExtension == "app" {
                 toggleButton("LAUNCH AT LOGIN", isOn: Binding(get: { loginEnabled }, set: { setLaunchAtLogin($0) }))
                 if let loginMessage {

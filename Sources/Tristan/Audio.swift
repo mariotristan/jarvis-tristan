@@ -113,7 +113,8 @@ final class SoundFX {
     /// Speaks a line in a British English voice (Jarvis-style) when available, or a cheerful one in kids mode.
     func say(_ text: String, interrupt: Bool = true) {
         guard voiceOn, !text.isEmpty else { return }
-        if interrupt { speaker.stopSpeaking(at: .immediate) }
+        // Stopping at the end of the word, not mid-sample, avoids a click when one line cuts off another.
+        if interrupt, speaker.isSpeaking { speaker.stopSpeaking(at: .word) }
         let utterance = AVSpeechUtterance(string: text)
         if kidsVoice {
             utterance.voice = Self.kidsPreferredVoice
@@ -128,6 +129,10 @@ final class SoundFX {
     }
 
     func stopSpeaking() { speaker.stopSpeaking(at: .immediate) }
+
+    /// True when the voice used for speech is a compact one (the lowest quality). Those render at 22 kHz and tend to
+    /// sound rough or crackly; an Enhanced or Premium voice from System Settings fixes it.
+    static var voiceIsCompact: Bool { (preferredVoice?.quality.rawValue ?? 0) < AVSpeechSynthesisVoiceQuality.enhanced.rawValue }
 
     private static let preferredVoice: AVSpeechSynthesisVoice? = {
         let british = AVSpeechSynthesisVoice.speechVoices().filter { $0.language == "en-GB" }
