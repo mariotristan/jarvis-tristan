@@ -44,9 +44,22 @@ package struct OllamaConfig {
 }
 
 package enum OllamaStatus {
+    #if !canImport(Darwin)
+    private static let statusSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 2
+        return URLSession(configuration: configuration)
+    }()
+    #endif
+
     /// The installed model names, or nil when the Ollama server cannot be reached.
     package static func installedModels(_ config: OllamaConfig = .load(), session: URLSession = .shared) async -> [String]? {
         guard let url = try? config.endpoint("/api/tags") else { return nil }
+        #if !canImport(Darwin)
+        // swift-corelibs-foundation does not apply a request's timeoutInterval (the session's 60 s default wins), so a
+        // check against a port nothing listens on took a minute on Windows. The quick check gets its own session there.
+        let session = session === URLSession.shared ? statusSession : session
+        #endif
         var request = URLRequest(url: url, timeoutInterval: 2)
         request.httpMethod = "GET"
         guard let (data, response) = try? await session.data(for: request),
