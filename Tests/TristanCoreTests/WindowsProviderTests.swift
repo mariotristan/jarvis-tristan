@@ -1,5 +1,6 @@
 #if os(Windows)
 import XCTest
+import WinSDK
 @testable import TristanCore
 
 /// Plan Tasks 13–16 on a real Windows machine: each provider's command-line tool is found and started through
@@ -148,6 +149,16 @@ final class WindowsProviderTests: XCTestCase {
         // A throwaway test value; a real key should never be typed on a command line.
         XCTAssertEqual(try cmdkey(["/generic:\(target)", "/user:tristan", "/pass:abc-123-XYZ"]), 0)
         defer { _ = try? cmdkey(["/delete:\(target)"]) }
+        // What cmdkey wrote: 11 characters as UTF-16 are 22 bytes.
+        var credential: PCREDENTIALW? = nil
+        if target.withCString(encodedAs: UTF16.self, { CredReadW($0, DWORD(1), 0, &credential) }), let credential {
+            let size = Int(credential.pointee.CredentialBlobSize)
+            CredFree(UnsafeMutableRawPointer(credential))
+            print("cmdkey stored a \(size)-byte blob for an 11-character password")
+            XCTAssertEqual(size, 22, "cmdkey stores UTF-16")
+        } else {
+            XCTFail("cmdkey's credential was not found")
+        }
         XCTAssertEqual(KeychainStore.get(account), "abc-123-XYZ")
         // What tristan writes itself (UTF-8) still reads back unchanged.
         XCTAssertTrue(KeychainStore.set("utf8-value", account: account))
@@ -231,7 +242,8 @@ final class WindowsProviderTests: XCTestCase {
         let (status, message) = try converse(ours)
         print("aws converse with \(ours): exit \(status): \(message)")
         XCTAssertNotEqual(status, 0)
-        XCTAssertTrue(message.contains("Could not connect to the endpoint URL"), "the file must be read before connecting: \(message)")
+        // "Could not connect to the endpoint URL" or "Connect timeout on endpoint URL": either way the file was read.
+        XCTAssertTrue(message.contains("endpoint URL: \"http://127.0.0.1:9/model/"), "the file must be read before connecting: \(message)")
         XCTAssertFalse(message.contains("paramfile"), message)
         // Recorded for the spike notes, not asserted: the other spellings.
         for other in ["file://" + native, "file:///" + native.replacingOccurrences(of: "\\", with: "/")] {
