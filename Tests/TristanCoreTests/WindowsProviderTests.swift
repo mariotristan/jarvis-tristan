@@ -267,7 +267,8 @@ final class WindowsProviderTests: XCTestCase {
         XCTAssertEqual(call.argv[0...1], ["-p", trickyTask])
         let logDir = try XCTUnwrap(call.argv.firstIndex(of: "--log-dir").map { call.argv[$0 + 1] })
         XCTAssertTrue(logDir.contains("\\tristan-copilot-logs-"), logDir)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: logDir), "the log folder is removed after the run")
+        // Removed when the provider's task ends, just after the stream finishes.
+        XCTAssertTrue(FakeCLIs.eventually(5) { !FileManager.default.fileExists(atPath: logDir) }, "the log folder is removed after the run")
     }
 
     func testCopilotAskModeApprovalGatesTheRun() async {
