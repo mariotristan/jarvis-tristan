@@ -1,7 +1,8 @@
 # Builds tristan.exe (release) and packages it for Windows:
 #   dist\Tristan-<version>-windows-x64.zip   tristan.exe, the DLLs it needs that Windows does not have, LICENSE, README.txt
 #   dist\Tristan-<version>-windows-x64.zip.sha256   "<sha256>  <zip name>", like the Mac DMG's
-# The version (for example 1.2.3, from the tag v1.2.3) is stamped into Sources\TristanCLICore\BuildVersion.swift for the
+# The version (for example 1.2.3, from the tag v1.2.3; release.yml turns any tag into letters, digits, dots and dashes) is
+# stamped into Sources\TristanCLICore\BuildVersion.swift for the
 # build, so `tristan --version` prints it; the file is restored afterwards.
 # Usage: pwsh -File scripts\package-windows.ps1 -Version 1.2.3 [-OutDir dist]
 param(
@@ -9,8 +10,10 @@ param(
     [string]$OutDir = 'dist'
 )
 $ErrorActionPreference = 'Stop'
-if ($Version -notmatch '\A[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?\z') {
-    throw "Version '$Version' is not like 1.2.3 or 1.2.3-beta.1"
+# The version goes into a Swift string literal and a file name: letters, digits, dots and dashes only, starting with a
+# letter or digit (no quotes, backslashes, `$`, slashes or spaces).
+if ($Version -notmatch '\A[0-9A-Za-z][0-9A-Za-z.-]*\z') {
+    throw "Version '$Version' may only contain letters, digits, dots and dashes, and must start with a letter or digit"
 }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -19,6 +22,8 @@ $name = "Tristan-$Version-windows-x64"
 $OutDir = [System.IO.Path]::GetFullPath((Join-Path $root $OutDir))
 $stage = Join-Path $OutDir $name
 $zip = Join-Path $OutDir "$name.zip"
+# A zip or checksum left from an earlier run must never be mistaken for this one.
+foreach ($stale in $zip, "$zip.sha256") { if (Test-Path $stale) { Remove-Item $stale -Force } }
 
 # 1. Stamp the version and build. Not -static-stdlib: the Windows SDK of Swift 6.4.2 has no static curl.lib for
 #    FoundationNetworking, so that link fails. The Swift runtime DLLs are shipped next to the exe instead (step 2).
@@ -87,7 +92,6 @@ Write-Host "Shipped next to tristan.exe: $(if ($ship.Count) { $ship.Keys -join '
 
 # 3. Stage, zip and hash.
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-if (Test-Path $zip) { Remove-Item $zip -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item $exe $stage
 foreach ($entry in $ship.GetEnumerator()) { Copy-Item $entry.Value (Join-Path $stage $entry.Key) }

@@ -94,6 +94,7 @@ jobs:
       # Plan Task 12: the built tristan.exe against scripts/ci/mock-ollama.ps1 (127.0.0.1 only, two streamed chunks
       # 700 ms apart), configured only through `tristan config`.
       - name: tristan.exe against a mocked Ollama
+        timeout-minutes: 5
         run: |
           $ErrorActionPreference = 'Continue'   # tristan writes status lines to stderr; exit codes are checked below
           $exe = Join-Path (swift build --show-bin-path) 'tristan.exe'
@@ -192,21 +193,29 @@ jobs:
           if ($failures -gt 0) { exit 1 }
           exit 0
 
-      # release.yml's Windows job derives the version from the tag with exactly these lines (there the tag is
-      # $env:GITHUB_REF_NAME); a made-up tag proves the derivation, the stamping and the zip name.
-      - name: Package as a release would (tag v9.9.9-test)
+      # release.yml's Windows job turns the tag into a version with exactly these lines (there $ref is
+      # $env:GITHUB_REF_NAME); made-up tags prove the derivation, the stamping, the zip name and the checks.
+      - name: Package as a release would (tags v9.9.9-test, v1.2, v1.2.3_rc1)
         run: |
-          $tag = 'v9.9.9-test'
-          if ($tag -notmatch '\Av[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?\z') { throw "The tag '$tag' is not like v1.2.3" }
-          $version = $tag.Substring(1)
-          pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $clean = Join-Path $env:RUNNER_TEMP "release-$(Get-Random)"
-          Expand-Archive dist\Tristan-9.9.9-test-windows-x64.zip -DestinationPath $clean
-          $printed = (& (Join-Path $clean 'tristan.exe') --version | Out-String).Trim()
-          Write-Host "tristan --version: $printed"
-          if ($printed -ne '9.9.9-test') { throw "expected 9.9.9-test, got '$printed'" }
-          Get-Content dist\Tristan-9.9.9-test-windows-x64.zip.sha256
+          foreach ($case in @(@{ Tag = 'v9.9.9-test'; Want = '9.9.9-test' }, @{ Tag = 'v1.2'; Want = '1.2' },
+                              @{ Tag = 'v1.2.3_rc1'; Want = '1.2.3-rc1' })) {
+            $ref = $case.Tag
+            $version = ($ref -replace '^v', '') -replace '[^0-9A-Za-z.-]', '-'
+            if (-not $version) { $version = '0.0.0' }
+            pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            # The extracted exe reports the version and the checksum matches.
+            $zip = "dist/Tristan-$version-windows-x64.zip"
+            $clean = Join-Path $env:RUNNER_TEMP "release-check-$version"
+            Expand-Archive $zip -DestinationPath $clean
+            $printed = (& (Join-Path $clean 'tristan.exe') --version | Out-String).Trim()
+            if ($printed -ne $version) { throw "tristan --version printed '$printed', expected '$version'" }
+            $expected = ((Get-Content "$zip.sha256" -Raw) -split '\s+')[0]
+            if ((Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant() -ne $expected) { throw "The sha256 of $zip does not match" }
+            if ($version -ne $case.Want) { throw "$ref gave version '$version', expected '$($case.Want)'" }
+            if (-not (Test-Path "dist/Tristan-$($case.Want)-windows-x64.zip")) { throw "No dist/Tristan-$($case.Want)-windows-x64.zip" }
+            Write-Host "PASS: $ref -> $version, $zip, tristan --version $printed, sha256 $expected"
+          }
 
   # Plan Task 0 (spike): facts about this runner that later tasks rely on. Diagnostic only, so every check may fail
   # without failing the run; read the log. Notes: docs/superpowers/specs/2026-11-06-windows-spike-notes.md
@@ -305,4 +314,33 @@ jobs:
           Start-Sleep -Seconds 1
           foreach ($id in @($root.Id) + @($children.ProcessId)) {
             if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Write-Host "STILL RUNNING: $id" } else { Write-Host "gone: $id" }
+          }
+
+      - name: (f) Third-party code in the shipped Swift DLLs, and the toolchain's licence files
+        continue-on-error: true
+        run: |
+          $swift = Join-Path $env:LOCALAPPDATA 'Programs\Swift'
+          Write-Host "== licence-like files under $swift"
+          $files = Get-ChildItem $swift -Recurse -File | Where-Object { $_.Name -match '(?i)licen[cs]e|notice|copying|copyright|third.?party|acknowledg' }
+          $files | ForEach-Object { Write-Host ("{0,10}  {1}" -f $_.Length, $_.FullName) }
+          foreach ($file in $files | Where-Object { $_.Length -lt 200000 -and $_.Extension -notin '.dll', '.exe', '.lib', '.swiftmodule' }) {
+            Write-Host "===== BEGIN $($file.FullName)"
+            Get-Content $file.FullName | ForEach-Object { Write-Host "| $_" }
+            Write-Host "===== END $($file.FullName)"
+          }
+          $patterns = 'libcurl[/ ][0-9][0-9A-Za-z.\-]*', 'curl [0-9]+\.[0-9]+\.[0-9]+', 'nghttp2[/ ]?[0-9.]*', 'zlib[/ ]?[0-9.]*',
+            '(de|in)flate [0-9.]+ Copyright[^\x00]{0,80}', 'libssh2?[/ ]?[0-9.]*', 'brotli[/ ]?[0-9.]*', 'zstd[/ ]?[0-9.]*', 'OpenSSL[^\x00]{0,40}',
+            'BoringSSL', 'Schannel', 'WinSSL', 'libidn2?[/ ]?[0-9.]*', 'libpsl', 'icudt[0-9]+[a-z]?', 'ICU [0-9][0-9.]*', 'libxml2?', 'expat'
+          $runtime = Get-ChildItem $swift -Recurse -Filter FoundationNetworking.dll | Where-Object { $_.FullName -match '\\usr\\bin\\' } | Select-Object -First 1
+          $bin = $runtime.DirectoryName
+          Write-Host "== runtime folder: $bin"
+          foreach ($name in 'FoundationNetworking.dll', '_FoundationICU.dll', 'Foundation.dll', 'FoundationEssentials.dll', 'FoundationInternationalization.dll', 'swiftCore.dll', 'dispatch.dll') {
+            $path = Join-Path $bin $name
+            if (-not (Test-Path $path)) { Write-Host "== $name not found"; continue }
+            $text = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($path))
+            Write-Host "== $name ($((Get-Item $path).Length) bytes)"
+            foreach ($pattern in $patterns) {
+              $found = [regex]::Matches($text, $pattern) | ForEach-Object { $_.Value } | Sort-Object -Unique | Select-Object -First 8
+              if ($found) { Write-Host "   /$pattern/: $($found -join ' | ')" }
+            }
           }
