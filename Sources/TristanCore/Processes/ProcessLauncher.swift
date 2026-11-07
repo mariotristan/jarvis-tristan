@@ -111,13 +111,19 @@ package enum ProcessLauncher {
 
     /// A configured process that has not been started. Callers attach pipes and call `run()`.
     /// Throws `ToolNotFound` or (Windows only) `UnsafeArguments`.
-    package static func prepare(_ tool: String, _ arguments: [String], directory: URL?, extraEnvironment: [String: String]) throws -> Process {
+    /// `addToolPaths: false` leaves the environment inherited exactly as the parent has it (extra variables still apply).
+    package static func prepare(_ tool: String, _ arguments: [String], directory: URL?, extraEnvironment: [String: String],
+                                addToolPaths: Bool = true) throws -> Process {
         let plan = try plan(tool, arguments, environment: ProcessInfo.processInfo.environment, windows: isWindows,
                             isFile: isLaunchable, readFile: readText)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: plan.executable)
         process.arguments = plan.arguments
-        process.environment = plan.environment.merging(extraEnvironment) { _, extra in extra }
+        if addToolPaths {
+            process.environment = plan.environment.merging(extraEnvironment) { _, extra in extra }
+        } else if !extraEnvironment.isEmpty {
+            process.environment = ProcessInfo.processInfo.environment.merging(extraEnvironment) { _, extra in extra }
+        }
         if let directory { process.currentDirectoryURL = directory }
         return process
     }

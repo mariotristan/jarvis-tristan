@@ -49,23 +49,43 @@ package struct AgentLoop {
     let backend: ChatBackend
     var maxTurns = 25
 
-    #if os(macOS)
-    static let systemPrompt = """
-    You are Tristan, a coding agent working in a single project folder on the user's Mac. \
-    Use the tools to read, list and write files and to run shell commands. All paths are relative to the working folder. \
-    Look before you change things, keep edits small, and run tests when they exist. \
-    If a tool call is denied, do not try to work around the denial; explain what you could not do. \
-    When finished, reply with a short summary of what you changed.
-    """
-    #else
-    static let systemPrompt = """
-    You are Tristan, a coding assistant working in a single folder on the user's iPhone or iPad. \
-    Use the tools to read, list and write files. You cannot run commands or tests on this device, so say so if the task needs them. \
-    All paths are relative to the working folder. Look before you change things and keep edits small. \
-    If a tool call is denied, do not try to work around the denial; explain what you could not do. \
-    When finished, reply with a short summary of what you changed.
-    """
-    #endif
+    /// `nil` means the device has no shell (iOS).
+    static func systemPrompt(for shell: ShellFlavor?) -> String {
+        switch shell {
+        case .posix:
+            return """
+            You are Tristan, a coding agent working in a single project folder on the user's Mac. \
+            Use the tools to read, list and write files and to run shell commands. All paths are relative to the working folder. \
+            Look before you change things, keep edits small, and run tests when they exist. \
+            If a tool call is denied, do not try to work around the denial; explain what you could not do. \
+            When finished, reply with a short summary of what you changed.
+            """
+        case .powershell:
+            return """
+            You are Tristan, a coding agent working in a single project folder on the user's Windows PC. \
+            Use the tools to read, list and write files and to run PowerShell commands, which run in the working folder. All paths are relative to the working folder. \
+            Look before you change things, keep edits small, and run tests when they exist. \
+            If a tool call is denied, do not try to work around the denial; explain what you could not do. \
+            When finished, reply with a short summary of what you changed.
+            """
+        case nil:
+            return """
+            You are Tristan, a coding assistant working in a single folder on the user's iPhone or iPad. \
+            Use the tools to read, list and write files. You cannot run commands or tests on this device, so say so if the task needs them. \
+            All paths are relative to the working folder. Look before you change things and keep edits small. \
+            If a tool call is denied, do not try to work around the denial; explain what you could not do. \
+            When finished, reply with a short summary of what you changed.
+            """
+        }
+    }
+
+    static var systemPrompt: String {
+        #if os(iOS)
+        return systemPrompt(for: nil)
+        #else
+        return systemPrompt(for: .current)
+        #endif
+    }
 
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in

@@ -126,7 +126,7 @@ package struct ToolSandbox {
         await withCheckedContinuation { continuation in
             let shell = ShellRunner.command(for: command, flavor: .current)
             let process: Process
-            do { process = try ProcessLauncher.prepare(shell.tool, shell.arguments, directory: root, extraEnvironment: [:]) } catch {
+            do { process = try ProcessLauncher.prepare(shell.tool, shell.arguments, directory: root, extraEnvironment: [:], addToolPaths: false) } catch {
                 continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
                 return
             }
