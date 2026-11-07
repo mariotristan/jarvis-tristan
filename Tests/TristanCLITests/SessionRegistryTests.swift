@@ -52,4 +52,17 @@ final class SessionRegistryTests: XCTestCase {
     func testMissingDirectoryIsEmpty() {
         XCTAssertTrue(SessionRegistry(directory: dir, isAlive: { _ in true }).active().isEmpty)
     }
+
+    func testFileWhoseNameDoesNotMatchItsPidIsRemoved() throws {
+        let registry = SessionRegistry(directory: dir, isAlive: { _ in true })
+        registry.register(pid: 10, task: "t", provider: "ollama", folder: "/f")
+        try FileManager.default.moveItem(at: dir.appendingPathComponent("10.json"), to: dir.appendingPathComponent("11.json"))
+        XCTAssertTrue(registry.active().isEmpty)
+        XCTAssertEqual(files(), [])
+    }
+
+    func testProcessIsAlive() {
+        XCTAssertTrue(SessionRegistry.processIsAlive(ProcessInfo.processInfo.processIdentifier))
+        XCTAssertFalse(SessionRegistry.processIsAlive(Int32.max))
+    }
 }

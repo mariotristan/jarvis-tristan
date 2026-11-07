@@ -181,16 +181,54 @@ final class HistoryCommandTests: XCTestCase {
         XCTAssertEqual(store.load().count, 3)
     }
 
-    func testRerunFallsBackToCurrentFolderAndDefaultProvider() async throws {
+    func testRerunWithMissingFolderRefusesAndNeverStartsProvider() async throws {
+        let seen = Seen()
+        store.save([record("task", provider: "claude", folder: "/does/not/exist")])
+        let (code, _) = try await exec(["history", "--rerun", "1"], env { p, m in seen.add(p, m); return Scripted(events: [.done("ok")]) })
+        XCTAssertEqual(code, .usage)
+        XCTAssertTrue(seen.value.isEmpty)
+        XCTAssertEqual(store.load().count, 1)
+        XCTAssertTrue(registry.active().isEmpty)
+    }
+
+    func testRerunWithMissingFolderRunsInExplicitFolder() async throws {
         let seen = Seen()
         store.save([record("task", provider: "weird", folder: "/does/not/exist")])
         let ran = Sink()
         let provider = RecordingProvider(sink: ran)
-        let (code, _) = try await exec(["history", "--rerun", "1"], env { p, m in seen.add(p, m); return provider })
+        let (code, _) = try await exec(["history", "--rerun", "1", "--folder", scratch.path], env { p, m in seen.add(p, m); return provider })
         XCTAssertEqual(code, .ok)
         XCTAssertEqual(seen.value.first?.0, .ollama)
-        let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true).standardizedFileURL.path
-        XCTAssertEqual(ran.value, "task@\(cwd)")
+        XCTAssertEqual(ran.value, "task@\(URL(fileURLWithPath: scratch.path).standardizedFileURL.path)")
+    }
+
+    func testRerunWithNonexistentExplicitFolderIsUsage() async throws {
+        let seen = Seen()
+        store.save([record("task", folder: scratch.path)])
+        let (code, _) = try await exec(["history", "--rerun", "1", "--folder", "/also/not/there"], env { p, m in seen.add(p, m); return Scripted(events: []) })
+        XCTAssertEqual(code, .usage)
+        XCTAssertTrue(seen.value.isEmpty)
+    }
+
+    func testFolderWithoutRerunIsUsage() throws {
+        XCTAssertThrowsError(try TristanCommand.parseAsRoot(["history", "--folder", scratch.path]))
+    }
+
+    func testRerunIsRefusedInKidsModeForCloudProvider() async throws {
+        Settings.set(true, forKey: "kidsMode")
+        let seen = Seen()
+        store.save([record("task", provider: "claude", folder: scratch.path)])
+        let (code, _) = try await exec(["history", "--rerun", "1"], env { p, m in seen.add(p, m); return Scripted(events: [.done("ok")]) })
+        XCTAssertEqual(code, .usage)
+        XCTAssertTrue(seen.value.isEmpty)
+        XCTAssertEqual(store.load().count, 1)
+    }
+
+    func testHistoryStatusAndProviderFieldsAreSanitised() async throws {
+        store.save([record("t", status: "do\u{1B}[2Kne", provider: "pro\u{1B}[2Kv")])
+        let (_, out) = try await exec(["history"], env())
+        XCTAssertFalse(out.contains("\u{1B}"), out)
+        XCTAssertTrue(out.contains("do"))
     }
 }
 
@@ -213,5 +251,22 @@ final class SessionsCommandTests: XCTestCase {
         let code2 = await command.execute(environment: env); XCTAssertEqual(code2, .ok)
         XCTAssertTrue(out2.value.contains("42") && out2.value.contains("claude") && out2.value.contains("/w"), out2.value)
         XCTAssertFalse(out2.value.contains("\u{1B}"))
+    }
+
+    func testSessionsProviderFieldIsSanitised() async throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("s-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let registry = SessionRegistry(directory: dir, isAlive: { _ in true })
+        registry.register(pid: 5, task: "t", provider: "cla\u{1B}[2Kude", folder: "/w")
+        let env = CLIEnvironment(interactive: false, readPIN: { _ in nil }, makeProvider: { _, _ in Scripted(events: []) },
+                                 installInterrupt: false, historyURL: dir.appendingPathComponent("h.json"), sessions: registry)
+        let out = Sink()
+        Terminal.capture = { out.add($0) }
+        defer { Terminal.capture = nil }
+        let command = try XCTUnwrap(TristanCommand.parseAsRoot(["sessions"]) as? CLICommand)
+        let code = await command.execute(environment: env)
+        XCTAssertEqual(code, .ok)
+        XCTAssertFalse(out.value.contains("\u{1B}"), out.value)
+        XCTAssertTrue(out.value.contains("cla"))
     }
 }

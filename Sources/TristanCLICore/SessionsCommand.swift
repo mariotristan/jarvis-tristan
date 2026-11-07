@@ -14,7 +14,7 @@ struct SessionsCommand: ParsableCommand, CLICommand {
             return .ok
         }
         for info in active {
-            Terminal.writeOutput("\(info.pid)  \(info.provider)  \(oneLine(info.folder, 60))  \(oneLine(info.task, 100))\n")
+            Terminal.writeOutput("\(info.pid)  \(oneLine(info.provider, 20))  \(oneLine(info.folder, 60))  \(oneLine(info.task, 100))\n")
         }
         return .ok
     }
