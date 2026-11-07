@@ -24,10 +24,15 @@ package enum AgentToolSpec {
                                     "content": ["type": "string", "description": "Full file contents"]], required: ["path", "content"]),
     ] + shellTools
 
-    /// Running commands needs a shell, which only exists on the Mac. On iOS the model is simply never offered the tool.
+    static func shellDescription(for flavor: ShellFlavor) -> String {
+        let shell = flavor == .powershell ? "PowerShell" : "zsh"
+        return "Run a shell command (\(shell)) in the working folder. 60 second timeout."
+    }
+
+    /// Running commands needs a shell, which exists on the Mac and Windows. On iOS the model is simply never offered the tool.
     private static var shellTools: [ToolDefinition] {
-        #if os(macOS)
-        return [ToolDefinition(name: "run_command", description: "Run a shell command (zsh) in the working folder. 60 second timeout.",
+        #if !os(iOS)
+        return [ToolDefinition(name: "run_command", description: shellDescription(for: .current),
                                properties: ["command": ["type": "string", "description": "The command to run"]], required: ["command"])]
         #else
         return []
@@ -116,13 +121,15 @@ package struct ToolSandbox {
         }
     }
 
-    #if os(macOS)
+    #if !os(iOS)
     func run(_ command: String, timeout: TimeInterval = 60) async -> ToolCallResult {
         await withCheckedContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-            process.arguments = ["-c", command]
-            process.currentDirectoryURL = root
+            let shell = ShellRunner.command(for: command, flavor: .current)
+            let process: Process
+            do { process = try ProcessLauncher.prepare(shell.tool, shell.arguments, directory: root, extraEnvironment: [:]) } catch {
+                continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
+                return
+            }
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = pipe

@@ -157,11 +157,11 @@ package struct AgentLoop {
             }
         case "run_command":
             let command = input["command"] as? String ?? ""
-            let rule = ApprovalRule.make(tool: "Bash", input: ["command": command], workingDirectory: sandbox.root)
+            let rule = ApprovalRule.make(tool: ShellFlavor.current.ruleToolName, input: ["command": command], workingDirectory: sandbox.root)
             let allowed = policy.needsApproval(tool: call.name, rule: rule)
                 ? await approve(ApprovalRequest(summary: "Allow Bash?", detail: command, rule: rule))
                 : true
-            #if os(macOS)
+            #if !os(iOS)
             if allowed {
                 c.yield(.status("EXECUTING")); c.yield(.log("run_command: \(command.prefix(60))"))
                 result = await sandbox.run(command)
