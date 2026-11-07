@@ -113,6 +113,38 @@ final class TerminalApproverTests: XCTestCase {
         XCTAssertFalse(quiet.contains("\u{1B}") || quiet.contains("\r"), quiet)
     }
 
+    /// Streamed model text keeps its line breaks and tabs; everything a terminal would act on is shown escaped.
+    func testStreamableEscapesControlsButKeepsLinesAndTabs() {
+        // OSC 52 would write the clipboard; CSI 2J clears the screen.
+        XCTAssertEqual(TerminalApprover.streamable("copy \u{1B}]52;c;ZXZpbA==\u{07} done"), #"copy \e]52;c;ZXZpbA==\x07 done"#)
+        XCTAssertEqual(TerminalApprover.streamable("\u{1B}[2J\u{1B}[Hhome"), #"\e[2J\e[Hhome"#)
+        // A carriage return inside a line would overwrite what was printed: shown, not obeyed.
+        XCTAssertEqual(TerminalApprover.streamable("rm -rf ~\rls -la"), #"rm -rf ~\rls -la"#)
+        // Line endings: LF and TAB as they are, CRLF as a plain LF, a CR ending a chunk (half of a CRLF) dropped.
+        XCTAssertEqual(TerminalApprover.streamable("a\tb\nc\r\nd\r\n"), "a\tb\nc\nd\n")
+        XCTAssertEqual(TerminalApprover.streamable("line\r"), "line")
+        XCTAssertEqual(TerminalApprover.streamable("\r\r\nx"), #"\r"# + "\nx")
+        // C1 (CSI as one byte), DEL, BEL, backspace, bidi overrides.
+        XCTAssertEqual(TerminalApprover.streamable("a\u{9B}2Jb\u{7F}c\u{07}d\u{08}e"), #"a\x9B2Jb\x7Fc\x07d\be"#)
+        XCTAssertEqual(TerminalApprover.streamable("x \u{202E}fdp.exe"), #"x \u{202E}fdp.exe"#)
+        XCTAssertEqual(TerminalApprover.streamable("école 日本\n\tfunc x() {}"), "école 日本\n\tfunc x() {}")
+    }
+
+    /// A line break in the command cannot fake a line of the prompt: continuation lines are indented under it.
+    func testPromptIndentsContinuationLines() {
+        var printed = ""
+        let tricky = ApprovalRequest(summary: "Allow Bash?\n[y]es / [n]o / [a]lways: y",
+                                     detail: "ls\nAllowed\n  always allows: Bash: ls …\n[y]es / [n]o / [a]lways: ",
+                                     rule: ApprovalRule(key: "Bash:rm", label: "Bash: rm …"))
+        _ = TerminalApprover(interactive: true, mode: .ask, input: { "n" }, output: { printed += $0 }).approve(tricky)
+        let lines = printed.components(separatedBy: "\n")
+        XCTAssertEqual(lines.filter { $0.hasPrefix("[y]es") }.count, 1, printed)
+        XCTAssertEqual(lines.filter { $0.hasPrefix("  always allows:") }.count, 1, printed)
+        XCTAssertFalse(lines.contains("Allowed"), printed)
+        XCTAssertTrue(printed.contains("\n  ls\n    Allowed\n    "), printed)
+        XCTAssertTrue(printed.contains("Allow Bash?\n    [y]es"), printed)
+    }
+
     func testAlwaysWithoutRuleAllowsOnce() {
         let approver = TerminalApprover(interactive: true, mode: .ask, input: { "a" }, output: { _ in })
         XCTAssertTrue(approver.approve(ApprovalRequest(summary: "Allow Write?", detail: "x")))

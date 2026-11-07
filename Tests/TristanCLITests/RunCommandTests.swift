@@ -96,6 +96,27 @@ final class RunCommandTests: XCTestCase {
         XCTAssertNil(render(.failed("Broken")).stdout)
     }
 
+    /// Every event's text comes from the model or a provider: none of it may reach the terminal as a control sequence.
+    func testRenderEscapesTerminalControlSequences() {
+        let osc = "x\u{1B}]52;c;ZXZpbA==\u{07}\u{1B}[2J\ry"
+        let escaped = #"x\e]52;c;ZXZpbA==\x07\e[2J\ry"#
+        XCTAssertEqual(render(.code(osc + "\r\n")).stdout, escaped + "\n")
+        XCTAssertEqual(render(.log(osc)).stdout, "> \(escaped)\n")
+        XCTAssertEqual(render(.done(osc)).stdout, "Done: \(escaped)\n")
+        XCTAssertEqual(render(.failed(osc)).stderr, "Failed: \(escaped)\n")
+        XCTAssertEqual(render(.status(osc)).stderr, "[\(escaped)]\n")
+        XCTAssertEqual(render(.code("\tlet x = 1\n}\n")).stdout, "\tlet x = 1\n}\n")
+    }
+
+    func testStreamedCodeReachesStdoutEscaped() async {
+        let provider = FakeProvider(events: [.code("part one\u{1B}]52;c;aGk=\u{07}\r"), .code("\nrest\u{9B}2J\n")],
+                                    final: .done("ok"))
+        let (code, out, _) = await run(provider)
+        XCTAssertEqual(code, .ok)
+        XCTAssertFalse(out.unicodeScalars.contains { $0.value == 0x1B || $0.value == 0x07 || $0.value == 0x9B || $0.value == 0x0D }, out)
+        XCTAssertTrue(out.contains(#"part one\e]52;c;aGk=\x07"# + "\nrest" + #"\x9B2J"#), out)
+    }
+
     func testYesRoutineAndYoloAreExclusive() throws {
         XCTAssertThrowsError(try TristanCommand.parseAsRoot(["run", "--yes-routine", "--yolo", "do it"])) { error in
             XCTAssertEqual(CLI.exitCode(for: error), .usage)

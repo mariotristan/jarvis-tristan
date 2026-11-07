@@ -25,8 +25,9 @@ final class TerminalApprover: @unchecked Sendable {
         // YOLO was asked for explicitly with --yolo; providers in that mode normally do not ask at all.
         if mode == .yolo { return true }
         // Everything shown comes from the model or the tool: control characters are made visible so the text
-        // cannot rewrite the prompt (for example a carriage return and an erase-line hiding the real command).
-        let summary = Self.visible(request.summary), detail = Self.visible(request.detail)
+        // cannot rewrite the prompt (for example a carriage return and an erase-line hiding the real command), and
+        // continuation lines are indented so a line break cannot fake a line of the prompt.
+        let summary = Self.indented(Self.visible(request.summary)), detail = Self.indented(Self.visible(request.detail))
         let label = request.rule.map { Self.visible($0.label) }
         // With no terminal, saved rules approve nothing: an unattended run never acts without a person present.
         guard interactive else {
@@ -80,6 +81,30 @@ final class TerminalApprover: @unchecked Sendable {
             }
         }
         return result
+    }
+
+    /// Streamed model text (answers, code, log lines) for the terminal: like `visible`, but tabs stay tabs and line
+    /// endings stay line breaks. A CR before an LF (CRLF) and a CR ending the text (the first half of a CRLF split
+    /// between two chunks) are dropped; any other CR would overwrite the line, so it is shown as `\r`. Escape
+    /// sequences (OSC 52 clipboard writes, CSI screen clearing and cursor moves), C1 controls, DEL and bidi overrides
+    /// are shown escaped, never obeyed.
+    static func streamable(_ text: String) -> String {
+        let scalars = Array(text.unicodeScalars)
+        var result = ""
+        for (index, scalar) in scalars.enumerated() {
+            switch scalar.value {
+            case 0x09: result.unicodeScalars.append(scalar)
+            case 0x0D where index + 1 == scalars.count || scalars[index + 1] == "\n": continue
+            default: result += visible(String(scalar))
+            }
+        }
+        return result
+    }
+
+    /// `text` for one block of the prompt: continuation lines are indented by four spaces, so a line break in model
+    /// text can never start a line that looks like part of the prompt (`[y]es / [n]o`, `always allows:`).
+    static func indented(_ text: String) -> String {
+        text.replacingOccurrences(of: "\n", with: "\n    ")
     }
 
     /// The same `allowRules` value the Mac app keeps: JSON data of `[ApprovalRule]`.

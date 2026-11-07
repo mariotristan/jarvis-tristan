@@ -12,14 +12,16 @@ enum ExitCode: Int32 {
     case denied = 3
 }
 
-/// What one event prints: log lines as `> text`, code as is, status lines and failures on stderr.
+/// What one event prints: log lines as `> text`, code as is, status lines and failures on stderr. All of it comes from
+/// the model or a provider, so terminal control sequences in it are shown escaped (`TerminalApprover.streamable`).
 func render(_ event: AgentEvent) -> (stdout: String?, stderr: String?) {
+    let safe = TerminalApprover.streamable
     switch event {
-    case .status(let text): return (nil, "[\(text)]\n")
-    case .log(let text): return ("> \(text)\n", nil)
-    case .code(let text): return (text, nil)
-    case .done(let text): return ("Done: \(text)\n", nil)
-    case .failed(let text): return (nil, "Failed: \(text)\n")
+    case .status(let text): return (nil, "[\(safe(text))]\n")
+    case .log(let text): return ("> \(safe(text))\n", nil)
+    case .code(let text): return (safe(text), nil)
+    case .done(let text): return ("Done: \(safe(text))\n", nil)
+    case .failed(let text): return (nil, "Failed: \(safe(text))\n")
     }
 }
 
