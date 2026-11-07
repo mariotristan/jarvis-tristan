@@ -51,6 +51,46 @@ jobs:
       - name: Test TristanCLI
         run: swift test --filter TristanCLITests
 
+      # Plan Tasks 13-16: the built tristan.exe against the fake provider CLIs in scripts/ci/fakes (node scripts behind
+      # .cmd shims). No terminal is attached here, so `ask` must deny: for Claude Code that answer comes back through
+      # this same exe started as the MCP approval shim. Nothing here uses a real account or secret.
+      - name: tristan.exe against fake provider CLIs
+        run: |
+          $ErrorActionPreference = 'Continue'   # tristan writes status lines to stderr; exit codes are checked below
+          $fakes = (Resolve-Path scripts\ci\fakes).Path
+          $env:Path = "$fakes;$env:Path"
+          $exe = Join-Path (swift build --show-bin-path) 'tristan.exe'
+          $failures = 0
+          function Check($label, $ok) {
+            if ($ok) { Write-Host "PASS: $label" } else { Write-Host "FAIL: $label"; $script:failures++ }
+          }
+          function Run-Tristan($folder, [string[]]$arguments) {
+            $output = $null | & $exe run --folder $folder @arguments 2>&1 | Out-String
+            Write-Host $output
+            return @{ Code = $LASTEXITCODE; Text = $output }
+          }
+          & $exe providers
+          foreach ($case in @(
+              @{ Provider = 'claude'; Mode = @(); Code = 3; File = $false; Text = 'Denied by the operator in Tristan' },
+              @{ Provider = 'claude'; Mode = @('--yes-routine'); Code = 0; File = $true; Text = 'created hello.txt' },
+              @{ Provider = 'copilot'; Mode = @(); Code = 3; File = $false; Text = 'Denied (no terminal to ask in)' },
+              @{ Provider = 'copilot'; Mode = @('--yes-routine'); Code = 0; File = $false; Text = 'TASK<create hello.txt with hi & 100%>' })) {
+            $folder = Join-Path $env:RUNNER_TEMP "fake-$($case.Provider)-$(Get-Random)"
+            New-Item -ItemType Directory $folder | Out-Null
+            $label = "$($case.Provider) $($case.Mode -join ' ')".Trim()
+            $result = Run-Tristan $folder (@('--provider', $case.Provider) + $case.Mode + @('create hello.txt with hi & 100%'))
+            Check "$label exits $($case.Code) (got $($result.Code))" ($result.Code -eq $case.Code)
+            Check "$label output mentions '$($case.Text)'" ($result.Text.Contains($case.Text))
+            if ($case.Provider -eq 'claude') {
+              Check "$label hello.txt exists: $($case.File)" ((Test-Path (Join-Path $folder 'hello.txt')) -eq $case.File)
+            }
+          }
+          $left = @(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('ci\fakes') -or $_.Name -eq 'tristan.exe' })
+          $left | ForEach-Object { Write-Host "left running: $($_.ProcessId) $($_.Name) $($_.CommandLine)" }
+          Check 'no fake CLI or tristan.exe left running' ($left.Count -eq 0)
+          if ($failures -gt 0) { exit 1 }
+          exit 0
+
   # Plan Task 0 (spike): facts about this runner that later tasks rely on. Diagnostic only, so every check may fail
   # without failing the run; read the log. Notes: docs/superpowers/specs/2026-11-06-windows-spike-notes.md
   windows-spike:
