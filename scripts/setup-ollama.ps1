@@ -101,7 +101,16 @@ try {
 } catch {
     Fail "The model did not answer: $($_.Exception.Message)"
 }
-Write-Host "    $(([string]$reply.choices[0].message.content).Trim())"
+# A reply that is not the chat-completions JSON (a proxy's HTML page, a stream, another server on this port) has no
+# choices[0].message.content; under strict mode reading it throws, so it is read here and refused with a clear message.
+$answer = $null
+try { $answer = ([string]$reply.choices[0].message.content).Trim() } catch { $answer = $null }
+if (-not $answer) {
+    $shown = ([string]$reply) -replace '\s+', ' '
+    if ($shown.Length -gt 200) { $shown = $shown.Substring(0, 200) + '...' }
+    Fail "The reply from $BaseUrl was not an Ollama chat answer (expected JSON with choices[0].message.content). Got: $shown"
+}
+Write-Host "    $answer"
 
 Say 'Checking tool support (tristan needs it to edit files and run commands)'
 $tool = @{

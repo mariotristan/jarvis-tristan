@@ -73,6 +73,39 @@ jobs:
           } finally {
             $env:Path = $savedPath; $env:LOCALAPPDATA = $savedLocal
           }
+          # A server on Ollama's port that answers the chat request with something other than chat-completions JSON
+          # (here the mock's event stream) must give a clear failure (exit 1), not a strict-mode error. A fake ollama.cmd
+          # that does nothing stands in for Ollama, so nothing is downloaded.
+          $fakeDir = Join-Path $env:RUNNER_TEMP "fake-ollama-$(Get-Random)"
+          New-Item -ItemType Directory $fakeDir | Out-Null
+          Set-Content -Path (Join-Path $fakeDir 'ollama.cmd') -Value "@echo off`r`nexit /b 0" -Encoding ascii
+          $mockLog = Join-Path $env:RUNNER_TEMP 'mock-ollama-setup.log'
+          $mock = Start-Process $shells[0] -ArgumentList '-NoProfile', '-File', 'scripts/ci/mock-ollama.ps1', '-Port', '11434', '-Seconds', '120' -PassThru -RedirectStandardOutput $mockLog
+          try {
+            $up = $false
+            foreach ($i in 1..60) {
+              try { $client = [System.Net.Sockets.TcpClient]::new('127.0.0.1', 11434); $client.Close(); $up = $true; break } catch { Start-Sleep -Milliseconds 500 }
+            }
+            Check 'mock listens on 127.0.0.1:11434' $up
+            $env:Path = "$fakeDir;$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+            $env:LOCALAPPDATA = $empty
+            $out = & $shells[0] -NoProfile -File $target -NoPin 2>&1 | Out-String
+            $code = $LASTEXITCODE
+            Write-Host $out
+            Check "a non-JSON chat reply exits 1 (got $code)" ($code -eq 1)
+            Check 'a non-JSON chat reply is explained' ($out.Contains('was not an Ollama chat answer'))
+          } finally {
+            $env:Path = $savedPath; $env:LOCALAPPDATA = $savedLocal
+            Stop-Process -Id $mock.Id -Force -ErrorAction SilentlyContinue
+          }
+          # The uninstall command the Windows page gives for the parent PIN (`cmdkey /delete:com.tristan.app/kids.pin`),
+          # proven on a made-up generic credential with the same kind of target name. The real PIN entry is never touched.
+          $testTarget = 'com.tristan.app/ci-cmdkey-delete-check'
+          cmdkey "/generic:$testTarget" /user:tristan-ci /pass:made-up-value | Out-Host
+          Check 'cmdkey lists the made-up credential' (@(cmdkey "/list:$testTarget" | Select-String 'Target:').Count -eq 1)
+          cmdkey "/delete:$testTarget" | Out-Host
+          Check "cmdkey /delete:$testTarget exits 0 (got $LASTEXITCODE)" ($LASTEXITCODE -eq 0)
+          Check 'the made-up credential is gone' (@(cmdkey "/list:$testTarget" | Select-String 'Target:').Count -eq 0)
           if ($failures -gt 0) { exit 1 }
           exit 0
 
