@@ -1,6 +1,7 @@
 import XCTest
 import AVFoundation
 @testable import Tristan
+@testable import TristanCore
 
 @MainActor
 final class AudioTests: XCTestCase {

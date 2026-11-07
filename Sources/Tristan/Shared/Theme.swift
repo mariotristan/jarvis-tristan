@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(TristanCore)
+import TristanCore
+#endif
 
 enum Theme {
     /// Corner radius for buttons, fields and panels.

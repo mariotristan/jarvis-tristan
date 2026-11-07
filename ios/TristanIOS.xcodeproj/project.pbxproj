@@ -7,35 +7,42 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00F5F3D13B7A6BC99B49AB47 /* AsyncBytesCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FEBE8BD267E1F14C7FDDCEC /* AsyncBytesCompat.swift */; };
+		09257289D982D402BCC99E5D /* RemoteProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB108F14913907B7644A627A /* RemoteProtocol.swift */; };
 		124D72E17424B1C595E70919 /* TristanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5303058B158C20341045EF49 /* TristanApp.swift */; };
-		169CB8E668CE594205A35500 /* BedrockStreaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2736BCEDC306BB9EEB70AB48 /* BedrockStreaming.swift */; };
-		18BBD21778D4B950269E946B /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C175C84AD85850AD34F102A8 /* Keychain.swift */; };
+		2097661231B27F846F546E79 /* BedrockBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A74C896707EE5F174F963132 /* BedrockBackend.swift */; };
 		20DED3BBD3990DAC2FE167C5 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70BB0B4FDE5E312096C12D12 /* HistoryView.swift */; };
 		249C31F6B97C104C9FDC0D70 /* IOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED142FB3E6694CFDECD5929 /* IOSTests.swift */; };
 		255B48752F57E5B1874DE73B /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2358E1BED87A69C1E5E5276D /* PairingView.swift */; };
 		301DF401FC2E460F5A3E81EE /* MissionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943A82DE37C611050052F675 /* MissionModel.swift */; };
 		3143B4EEEFF0A69FBA4CE36E /* QRScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E77CAFD902B771DC60188F85 /* QRScanner.swift */; };
-		3B32D02597FFAAAD375843DA /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A266463B17A0768B5B540741 /* OllamaProvider.swift */; };
+		3BA2B66056533562E9976142 /* AgentTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 270F32A5F6FF124812936051 /* AgentTools.swift */; };
+		3CFE0E3221DAFFB55174FAA1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE01EE8CD0ED0621E30F0CCF /* Theme.swift */; };
+		4183B1B8CB8AC310824D63F4 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6240DC60C87D5020A954A3E /* ConversationMemory.swift */; };
 		47E8CAEF14D987AB54C4E6A6 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B61094493503C66802916F8 /* Components.swift */; };
-		5E6E33FE1CD150833954200A /* AgentLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B8D1EC3E49414F1A2B2B49C /* AgentLoop.swift */; };
-		610967ED0A04853D91AF21A6 /* AgentTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDC35BE1C055E74D3571D66 /* AgentTypes.swift */; };
-		611C2B92505D903FE74AA872 /* Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368CD61449ABAC3A0DE8D0F2 /* Themes.swift */; };
-		62662F28B1EE0D254DDFD021 /* Markdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8572765E7D2BF0DAA33080D6 /* Markdown.swift */; };
+		4801B51F8890C22F3A6F8A07 /* RemoteTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C337467126136D11EA96EE /* RemoteTransport.swift */; };
+		4D1B005E0C63185865DF93C5 /* Markdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97FF85DC416D1EF79BFB4134 /* Markdown.swift */; };
+		4F365C45898DE9E8E2D8EC48 /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B8CFDBA542F6D76611EDE57 /* OllamaProvider.swift */; };
+		52CD140D998CEB8F3792F6AE /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B748305A5244A83C292FE69 /* Models.swift */; };
+		560A61C258F2EA035010311A /* Themes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B1AA031985D649FAB05834 /* Themes.swift */; };
+		56B56E16B2FF121DAB889337 /* KidsRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC34365FBED77B74D341BA4 /* KidsRouting.swift */; };
+		570A49A3B4AF221C217BB156 /* AgentLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6374B2183C1D6B7D42020890 /* AgentLoop.swift */; };
+		59CE38F1E0C319D1EA753119 /* ParentPIN.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DA7315B782F9AA23AD95CA /* ParentPIN.swift */; };
 		65201C183783F268B6553BF4 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5B1314F02BA919CCFAF0625 /* Dictation.swift */; };
-		6B01037E78102C12A35025C0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEB059C803AB34696FDFDB48 /* Theme.swift */; };
-		8B24CD34BCA962AB9464584C /* RemoteTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99DC7A3440B99EAE26FF0F7C /* RemoteTransport.swift */; };
-		8C7832E755582CDB6BCCEBF9 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9CD3A2BC3B1CAD2B811C696 /* Models.swift */; };
+		72106B77D041D9CA7B291507 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A36896FD24E9406C9AEE3E /* Settings.swift */; };
 		8F927C3D9AEA61BFAC5055E4 /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46CABAA59D874D19970805E3 /* SettingsSheet.swift */; };
+		91BA14F05F3B485A6721884D /* AgentTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32E15D59A7AEF8C959A40CD1 /* AgentTypes.swift */; };
 		92B203E77F84EA1A15AB19E7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABB6E1B822751C53A844985 /* AppModel.swift */; };
-		99B409B3D874D686A6F1E596 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BE028D92A8EF6B55AEF51C /* HistoryStore.swift */; };
-		9A75DD998260032B34E0EF31 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 869F206B80637E1B9D839BAE /* ConversationMemory.swift */; };
 		A19B700ADEA3CB9591BA687B /* StandaloneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47C7983C898B6C47CE876A6 /* StandaloneTests.swift */; };
-		A6373EB2E6438F5D350EAAB2 /* AzureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC4E3081D8BD44DAB27FA4DF /* AzureProvider.swift */; };
+		A284375382842CFDED793B75 /* AzureProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED870EB703F40DC9502723FB /* AzureProvider.swift */; };
+		ABD74BCA486553E4B2D15718 /* PathContainment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4672F5E97C767DCCEC37D822 /* PathContainment.swift */; };
+		B2D83FC23B1D242F1EFBAA23 /* RemoteClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EBAC21D086D0B894F5EA995 /* RemoteClient.swift */; };
+		B2EC82F74110ECBEB16A970D /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE3841BBB8159D7852A82760 /* Keychain.swift */; };
 		BF162DC78072904A96537AD2 /* StandaloneEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42438C4AD49093F053BD01E9 /* StandaloneEngine.swift */; };
-		CDF21C420DA7E3AEC2CE5C60 /* BedrockBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB77947CDC63F31D534A05B1 /* BedrockBackend.swift */; };
-		CFBA5640F6ACB6F04D323DC7 /* RemoteClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9864EF85521C526BB491A459 /* RemoteClient.swift */; };
-		D44F8AE955BA42C5201E4A88 /* RemoteProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E4331B8AA36EDC5966ED265 /* RemoteProtocol.swift */; };
-		E82132BA769BCC67E7945340 /* AgentTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C446BB0A07277A7964BDA7C /* AgentTools.swift */; };
+		C2DE51D655F146D3E5C74717 /* BedrockStreaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7628773E748A8160043654EF /* BedrockStreaming.swift */; };
+		C578342821ACED9218718838 /* ShellFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC556917AA514529E212055 /* ShellFlavor.swift */; };
+		DD42FD035401839DC8E474F8 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03DB9C51A8A5D598306E6ACE /* HistoryStore.swift */; };
+		E30CB8B60C8D61F029593744 /* CodeFence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D437DE32002393E406B7C752 /* CodeFence.swift */; };
 		EC11247224FD21E4E2B53071 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7F61E43490C414AC948D2435 /* Assets.xcassets */; };
 		FBC6EE80A7C682C40711D5B4 /* MissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27B7A4F26154899E4A5C0B7 /* MissionView.swift */; };
 /* End PBXBuildFile section */
@@ -51,40 +58,47 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		03DB9C51A8A5D598306E6ACE /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		0ED142FB3E6694CFDECD5929 /* IOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSTests.swift; sourceTree = "<group>"; };
-		1C446BB0A07277A7964BDA7C /* AgentTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTools.swift; sourceTree = "<group>"; };
-		1E4331B8AA36EDC5966ED265 /* RemoteProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteProtocol.swift; sourceTree = "<group>"; };
+		17B1AA031985D649FAB05834 /* Themes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Themes.swift; sourceTree = "<group>"; };
 		2358E1BED87A69C1E5E5276D /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
-		2736BCEDC306BB9EEB70AB48 /* BedrockStreaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockStreaming.swift; sourceTree = "<group>"; };
+		270F32A5F6FF124812936051 /* AgentTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTools.swift; sourceTree = "<group>"; };
 		27BEB0233CB545868A2547A6 /* TristanIOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TristanIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		368CD61449ABAC3A0DE8D0F2 /* Themes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Themes.swift; sourceTree = "<group>"; };
-		3DDC35BE1C055E74D3571D66 /* AgentTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTypes.swift; sourceTree = "<group>"; };
+		2FC34365FBED77B74D341BA4 /* KidsRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KidsRouting.swift; sourceTree = "<group>"; };
+		32E15D59A7AEF8C959A40CD1 /* AgentTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTypes.swift; sourceTree = "<group>"; };
 		42438C4AD49093F053BD01E9 /* StandaloneEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandaloneEngine.swift; sourceTree = "<group>"; };
+		4672F5E97C767DCCEC37D822 /* PathContainment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathContainment.swift; sourceTree = "<group>"; };
 		46CABAA59D874D19970805E3 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsSheet.swift; sourceTree = "<group>"; };
+		47C337467126136D11EA96EE /* RemoteTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteTransport.swift; sourceTree = "<group>"; };
 		5303058B158C20341045EF49 /* TristanApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TristanApp.swift; sourceTree = "<group>"; };
+		6374B2183C1D6B7D42020890 /* AgentLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentLoop.swift; sourceTree = "<group>"; };
 		70BB0B4FDE5E312096C12D12 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		7628773E748A8160043654EF /* BedrockStreaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockStreaming.swift; sourceTree = "<group>"; };
 		7B61094493503C66802916F8 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
-		7B8D1EC3E49414F1A2B2B49C /* AgentLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentLoop.swift; sourceTree = "<group>"; };
+		7B748305A5244A83C292FE69 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		7F61E43490C414AC948D2435 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		8572765E7D2BF0DAA33080D6 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
-		869F206B80637E1B9D839BAE /* ConversationMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMemory.swift; sourceTree = "<group>"; };
+		84DA7315B782F9AA23AD95CA /* ParentPIN.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParentPIN.swift; sourceTree = "<group>"; };
+		8EBAC21D086D0B894F5EA995 /* RemoteClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteClient.swift; sourceTree = "<group>"; };
 		8FDD872A8A0DBD454591605F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8FEBE8BD267E1F14C7FDDCEC /* AsyncBytesCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncBytesCompat.swift; sourceTree = "<group>"; };
 		943A82DE37C611050052F675 /* MissionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionModel.swift; sourceTree = "<group>"; };
-		9864EF85521C526BB491A459 /* RemoteClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteClient.swift; sourceTree = "<group>"; };
-		99DC7A3440B99EAE26FF0F7C /* RemoteTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteTransport.swift; sourceTree = "<group>"; };
-		A266463B17A0768B5B540741 /* OllamaProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaProvider.swift; sourceTree = "<group>"; };
-		A9CD3A2BC3B1CAD2B811C696 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		97FF85DC416D1EF79BFB4134 /* Markdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Markdown.swift; sourceTree = "<group>"; };
+		9B8CFDBA542F6D76611EDE57 /* OllamaProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaProvider.swift; sourceTree = "<group>"; };
+		9BC556917AA514529E212055 /* ShellFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellFlavor.swift; sourceTree = "<group>"; };
+		A74C896707EE5F174F963132 /* BedrockBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBackend.swift; sourceTree = "<group>"; };
 		B5B1314F02BA919CCFAF0625 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
+		B7A36896FD24E9406C9AEE3E /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		BA739799B0FAB592131BBD0C /* TristanIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TristanIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BB77947CDC63F31D534A05B1 /* BedrockBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBackend.swift; sourceTree = "<group>"; };
-		C175C84AD85850AD34F102A8 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		C27B7A4F26154899E4A5C0B7 /* MissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionView.swift; sourceTree = "<group>"; };
+		C6240DC60C87D5020A954A3E /* ConversationMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMemory.swift; sourceTree = "<group>"; };
 		CABB6E1B822751C53A844985 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		CB108F14913907B7644A627A /* RemoteProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteProtocol.swift; sourceTree = "<group>"; };
+		CE3841BBB8159D7852A82760 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		D437DE32002393E406B7C752 /* CodeFence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeFence.swift; sourceTree = "<group>"; };
 		D47C7983C898B6C47CE876A6 /* StandaloneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StandaloneTests.swift; sourceTree = "<group>"; };
-		DEB059C803AB34696FDFDB48 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E77CAFD902B771DC60188F85 /* QRScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanner.swift; sourceTree = "<group>"; };
-		EC4E3081D8BD44DAB27FA4DF /* AzureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureProvider.swift; sourceTree = "<group>"; };
-		F0BE028D92A8EF6B55AEF51C /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
+		ED870EB703F40DC9502723FB /* AzureProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureProvider.swift; sourceTree = "<group>"; };
+		EE01EE8CD0ED0621E30F0CCF /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -97,14 +111,6 @@
 			path = Tests;
 			sourceTree = "<group>";
 		};
-		0BEF322FCD4E17923501FB90 /* Tristan */ = {
-			isa = PBXGroup;
-			children = (
-				E36D35774CA3903845C0F5CF /* Shared */,
-			);
-			path = Tristan;
-			sourceTree = "<group>";
-		};
 		1489A0EAD7CF45E01740529E /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -112,6 +118,46 @@
 				27BEB0233CB545868A2547A6 /* TristanIOSTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		251DC89545915FAF7D0168BF /* TristanCore */ = {
+			isa = PBXGroup;
+			children = (
+				6374B2183C1D6B7D42020890 /* AgentLoop.swift */,
+				270F32A5F6FF124812936051 /* AgentTools.swift */,
+				32E15D59A7AEF8C959A40CD1 /* AgentTypes.swift */,
+				8FEBE8BD267E1F14C7FDDCEC /* AsyncBytesCompat.swift */,
+				ED870EB703F40DC9502723FB /* AzureProvider.swift */,
+				A74C896707EE5F174F963132 /* BedrockBackend.swift */,
+				7628773E748A8160043654EF /* BedrockStreaming.swift */,
+				D437DE32002393E406B7C752 /* CodeFence.swift */,
+				C6240DC60C87D5020A954A3E /* ConversationMemory.swift */,
+				03DB9C51A8A5D598306E6ACE /* HistoryStore.swift */,
+				CE3841BBB8159D7852A82760 /* Keychain.swift */,
+				2FC34365FBED77B74D341BA4 /* KidsRouting.swift */,
+				7B748305A5244A83C292FE69 /* Models.swift */,
+				9B8CFDBA542F6D76611EDE57 /* OllamaProvider.swift */,
+				84DA7315B782F9AA23AD95CA /* ParentPIN.swift */,
+				4672F5E97C767DCCEC37D822 /* PathContainment.swift */,
+				B7A36896FD24E9406C9AEE3E /* Settings.swift */,
+				9BC556917AA514529E212055 /* ShellFlavor.swift */,
+			);
+			name = TristanCore;
+			path = ../Sources/TristanCore;
+			sourceTree = "<group>";
+		};
+		A2ACEA9068C3D814D4C20675 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				97FF85DC416D1EF79BFB4134 /* Markdown.swift */,
+				8EBAC21D086D0B894F5EA995 /* RemoteClient.swift */,
+				CB108F14913907B7644A627A /* RemoteProtocol.swift */,
+				47C337467126136D11EA96EE /* RemoteTransport.swift */,
+				EE01EE8CD0ED0621E30F0CCF /* Theme.swift */,
+				17B1AA031985D649FAB05834 /* Themes.swift */,
+			);
+			name = Shared;
+			path = ../Sources/Tristan/Shared;
 			sourceTree = "<group>";
 		};
 		A3D942081FE4766551A63306 /* App */ = {
@@ -134,54 +180,13 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		B99248BD2A99F5893129DBCF /* Sources */ = {
-			isa = PBXGroup;
-			children = (
-				0BEF322FCD4E17923501FB90 /* Tristan */,
-			);
-			path = Sources;
-			sourceTree = "<group>";
-		};
-		CB2C28C6B0BC03A67ACDC3F2 /* tristan-jarvis */ = {
-			isa = PBXGroup;
-			children = (
-				B99248BD2A99F5893129DBCF /* Sources */,
-			);
-			name = "tristan-jarvis";
-			path = ..;
-			sourceTree = "<group>";
-		};
-		E36D35774CA3903845C0F5CF /* Shared */ = {
-			isa = PBXGroup;
-			children = (
-				7B8D1EC3E49414F1A2B2B49C /* AgentLoop.swift */,
-				1C446BB0A07277A7964BDA7C /* AgentTools.swift */,
-				3DDC35BE1C055E74D3571D66 /* AgentTypes.swift */,
-				EC4E3081D8BD44DAB27FA4DF /* AzureProvider.swift */,
-				BB77947CDC63F31D534A05B1 /* BedrockBackend.swift */,
-				2736BCEDC306BB9EEB70AB48 /* BedrockStreaming.swift */,
-				869F206B80637E1B9D839BAE /* ConversationMemory.swift */,
-				F0BE028D92A8EF6B55AEF51C /* HistoryStore.swift */,
-				C175C84AD85850AD34F102A8 /* Keychain.swift */,
-				8572765E7D2BF0DAA33080D6 /* Markdown.swift */,
-				A9CD3A2BC3B1CAD2B811C696 /* Models.swift */,
-				A266463B17A0768B5B540741 /* OllamaProvider.swift */,
-				9864EF85521C526BB491A459 /* RemoteClient.swift */,
-				1E4331B8AA36EDC5966ED265 /* RemoteProtocol.swift */,
-				99DC7A3440B99EAE26FF0F7C /* RemoteTransport.swift */,
-				DEB059C803AB34696FDFDB48 /* Theme.swift */,
-				368CD61449ABAC3A0DE8D0F2 /* Themes.swift */,
-			);
-			name = Shared;
-			path = Shared;
-			sourceTree = "<group>";
-		};
 		E98BB0030E2B9E9205040371 = {
 			isa = PBXGroup;
 			children = (
 				A3D942081FE4766551A63306 /* App */,
+				A2ACEA9068C3D814D4C20675 /* Shared */,
 				02E91731A71DBD69C8572BAC /* Tests */,
-				CB2C28C6B0BC03A67ACDC3F2 /* tristan-jarvis */,
+				251DC89545915FAF7D0168BF /* TristanCore */,
 				1489A0EAD7CF45E01740529E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -278,33 +283,40 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5E6E33FE1CD150833954200A /* AgentLoop.swift in Sources */,
-				E82132BA769BCC67E7945340 /* AgentTools.swift in Sources */,
-				610967ED0A04853D91AF21A6 /* AgentTypes.swift in Sources */,
+				570A49A3B4AF221C217BB156 /* AgentLoop.swift in Sources */,
+				3BA2B66056533562E9976142 /* AgentTools.swift in Sources */,
+				91BA14F05F3B485A6721884D /* AgentTypes.swift in Sources */,
 				92B203E77F84EA1A15AB19E7 /* AppModel.swift in Sources */,
-				A6373EB2E6438F5D350EAAB2 /* AzureProvider.swift in Sources */,
-				CDF21C420DA7E3AEC2CE5C60 /* BedrockBackend.swift in Sources */,
-				169CB8E668CE594205A35500 /* BedrockStreaming.swift in Sources */,
+				00F5F3D13B7A6BC99B49AB47 /* AsyncBytesCompat.swift in Sources */,
+				A284375382842CFDED793B75 /* AzureProvider.swift in Sources */,
+				2097661231B27F846F546E79 /* BedrockBackend.swift in Sources */,
+				C2DE51D655F146D3E5C74717 /* BedrockStreaming.swift in Sources */,
+				E30CB8B60C8D61F029593744 /* CodeFence.swift in Sources */,
 				47E8CAEF14D987AB54C4E6A6 /* Components.swift in Sources */,
-				9A75DD998260032B34E0EF31 /* ConversationMemory.swift in Sources */,
+				4183B1B8CB8AC310824D63F4 /* ConversationMemory.swift in Sources */,
 				65201C183783F268B6553BF4 /* Dictation.swift in Sources */,
-				99B409B3D874D686A6F1E596 /* HistoryStore.swift in Sources */,
+				DD42FD035401839DC8E474F8 /* HistoryStore.swift in Sources */,
 				20DED3BBD3990DAC2FE167C5 /* HistoryView.swift in Sources */,
-				18BBD21778D4B950269E946B /* Keychain.swift in Sources */,
-				62662F28B1EE0D254DDFD021 /* Markdown.swift in Sources */,
+				B2EC82F74110ECBEB16A970D /* Keychain.swift in Sources */,
+				56B56E16B2FF121DAB889337 /* KidsRouting.swift in Sources */,
+				4D1B005E0C63185865DF93C5 /* Markdown.swift in Sources */,
 				301DF401FC2E460F5A3E81EE /* MissionModel.swift in Sources */,
 				FBC6EE80A7C682C40711D5B4 /* MissionView.swift in Sources */,
-				8C7832E755582CDB6BCCEBF9 /* Models.swift in Sources */,
-				3B32D02597FFAAAD375843DA /* OllamaProvider.swift in Sources */,
+				52CD140D998CEB8F3792F6AE /* Models.swift in Sources */,
+				4F365C45898DE9E8E2D8EC48 /* OllamaProvider.swift in Sources */,
 				255B48752F57E5B1874DE73B /* PairingView.swift in Sources */,
+				59CE38F1E0C319D1EA753119 /* ParentPIN.swift in Sources */,
+				ABD74BCA486553E4B2D15718 /* PathContainment.swift in Sources */,
 				3143B4EEEFF0A69FBA4CE36E /* QRScanner.swift in Sources */,
-				CFBA5640F6ACB6F04D323DC7 /* RemoteClient.swift in Sources */,
-				D44F8AE955BA42C5201E4A88 /* RemoteProtocol.swift in Sources */,
-				8B24CD34BCA962AB9464584C /* RemoteTransport.swift in Sources */,
+				B2D83FC23B1D242F1EFBAA23 /* RemoteClient.swift in Sources */,
+				09257289D982D402BCC99E5D /* RemoteProtocol.swift in Sources */,
+				4801B51F8890C22F3A6F8A07 /* RemoteTransport.swift in Sources */,
+				72106B77D041D9CA7B291507 /* Settings.swift in Sources */,
 				8F927C3D9AEA61BFAC5055E4 /* SettingsSheet.swift in Sources */,
+				C578342821ACED9218718838 /* ShellFlavor.swift in Sources */,
 				BF162DC78072904A96537AD2 /* StandaloneEngine.swift in Sources */,
-				6B01037E78102C12A35025C0 /* Theme.swift in Sources */,
-				611C2B92505D903FE74AA872 /* Themes.swift in Sources */,
+				3CFE0E3221DAFFB55174FAA1 /* Theme.swift in Sources */,
+				560A61C258F2EA035010311A /* Themes.swift in Sources */,
 				124D72E17424B1C595E70919 /* TristanApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -392,6 +404,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_PACKAGE_NAME = TristanIOS;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -487,6 +500,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_PACKAGE_NAME = TristanIOS;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

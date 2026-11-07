@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import TristanCore
 
 /// `Tristan --snapshot <dir>` renders the real views with sample data to PNGs (used for README screenshots).
 @MainActor

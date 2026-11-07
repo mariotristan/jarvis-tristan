@@ -31,6 +31,7 @@
         <a href="kids-mode.html">Kids safe mode</a>
         <a href="iphone-ipad.html" aria-current="page">iPhone and iPad</a>
         <a href="install.html">Install</a>
+        <a href="windows.html">Windows</a>
       </nav>
     </div>
     <div class="titlebox">
@@ -111,7 +112,7 @@
     <pre data-copy>scripts/ios-demo.sh                          <span class="c"># iPhone simulator against a demo Mac, no accounts needed</span>
 SIM="iPad Pro 11-inch (M4)" scripts/ios-demo.sh   <span class="c"># the iPad layout</span>
 MODE=standalone scripts/ios-demo.sh          <span class="c"># the on-device mode with a scripted model</span></pre>
-    <p>The iOS project is generated from <code>ios/project.yml</code> with XcodeGen (<code>cd ios &amp;&amp; xcodegen generate</code>). It compiles the shared code straight from <code>Sources/Tristan/Shared</code>, so a new shared file needs the project regenerated.</p>
+    <p>The iOS project is generated from <code>ios/project.yml</code> with XcodeGen (<code>cd ios &amp;&amp; xcodegen generate</code>). It compiles the shared code straight from <code>Sources/Tristan/Shared</code> and the portable core from <code>Sources/TristanCore</code>, so adding or removing a file in either needs the project regenerated (CI fails if the committed project is out of date). The project is generated without intermediate groups so the output does not depend on the checkout folder's name.</p>
   </div>
 </section>
   <div class="wrap"><div class="pager"><a href="kids-mode.html">← Kids safe mode</a><a href="install.html">Install →</a></div></div>
@@ -127,6 +128,7 @@ MODE=standalone scripts/ios-demo.sh          <span class="c"># the on-device mod
       <a href="kids-mode.html">Kids safe mode</a>
       <a href="iphone-ipad.html">iPhone and iPad</a>
       <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>

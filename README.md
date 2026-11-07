@@ -34,7 +34,7 @@ You give T.R.I.S.T.A.N. a task ("add login to the API"). It works inside a proje
 
 > **Just for fun.** T.R.I.S.T.A.N. is a hobby project and a learning experiment that I build together with my kids. We pick the features, draw the themes, and try things to see what happens. That is why there is a Paw Patrol-style theme, a kids safe mode and a lot of sound effects. It is not a commercial product, and it comes with no promises beyond the [MIT license](LICENSE). Ideas, issues and pull requests are very welcome.
 
-> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 207 automated tests pass (190 for the Mac app and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified.
+> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 441 automated tests pass (424 Swift package tests on the Mac: 124 for the app, 205 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is built and tested on a Windows machine in CI on the `windows-cli` branch, but it is not released yet and has not run against any live provider on Windows: see [Windows](#windows).
 
 ## Demo videos
 
@@ -180,11 +180,17 @@ The iOS app is a **remote for the Mac**: the Mac does the real work with every p
 
 The link is TLS with a pre-shared key held in the Keychain on both sides; it is off by default, a phone cannot turn on `YOLO`, and **NEW SECRET** locks out every paired device. Approvals only reach the phone while the app is open in front, and it has been run in the **iOS simulator only**, not on a physical device.
 
-The full guide (pairing, security, limits, standalone mode, running the simulator) is [iPhone and iPad](https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html). The design is in [docs/superpowers/specs](docs/superpowers/specs/2026-11-06-ios-remote-design.md). Run it in the simulator with `scripts/ios-demo.sh`; the iOS project is generated with `cd ios && xcodegen generate` (needed whenever a file is added to `Sources/Tristan/Shared`).
+The full guide (pairing, security, limits, standalone mode, running the simulator) is [iPhone and iPad](https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html). The design is in [docs/superpowers/specs](docs/superpowers/specs/2026-11-06-ios-remote-design.md). Run it in the simulator with `scripts/ios-demo.sh`; the iOS project is generated with `cd ios && xcodegen generate` (needed whenever a file is added to or removed from `Sources/Tristan/Shared` or `Sources/TristanCore`; CI fails if the committed project is out of date).
 
 ## Install
 
-You need an **Apple Silicon** Mac on macOS 14 or later. The full guide, with every script and troubleshooting, is [Install](https://mariotristan.github.io/jarvis-tristan/install.html).
+### Requirements
+
+- **The app:** an **Apple Silicon** Mac on macOS 14 or later. Building from source needs the full Xcode.
+- **The `tristan` command on Windows:** the target is Windows 10 or 11, x64; so far CI has run it only on Windows Server 2025. Not released yet; build it from source with Swift 6.4.2 (see [Windows](#windows)).
+- **Providers:** the CLI or account for each provider you use (Claude Code, the Copilot CLI, the AWS CLI, an Azure OpenAI deployment, or Ollama). Nothing is needed for the `DEMO` provider in the app.
+
+The full guide, with every script and troubleshooting, is [Install](https://mariotristan.github.io/jarvis-tristan/install.html).
 
 **From a release (no Xcode needed).** Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then:
 
@@ -214,6 +220,23 @@ Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git pus
 
 **Uninstall (and removing test versions).** `scripts/uninstall.sh` quits the app and removes installed copies, including ones Spotlight finds elsewhere and mounted disk images. It lists everything and asks first. `--purge` also removes settings, history, caches, the pairing secret and API keys in the Keychain; `--build` removes build output in a checkout; `--dry-run` only lists. Ollama and its models are left alone.
 
+## Windows
+
+On Windows, T.R.I.S.T.A.N. is a terminal command, `tristan`, not a window. It runs the same core as the Mac app (the agent loop, all five providers and the approval rules) and asks about each action in Windows Terminal, PowerShell or cmd. **It is not released yet.** The work is on the `windows-cli` branch, built and tested on GitHub Actions `windows-latest` against fake provider CLIs and a mocked Ollama. No provider has run against a live account on Windows.
+
+```powershell
+swift build --product tristan                          # Swift 6.4.2 with Visual Studio's C++ tools and a Windows SDK
+swift test --filter TristanCoreTests                   # 230 tests on the Windows runner
+swift test --filter TristanCLITests                    # 109 tests on the Windows runner
+pwsh -File scripts\package-windows.ps1 -Version 1.2.3  # dist\Tristan-1.2.3-windows-x64.zip and .sha256
+tristan providers                                      # which providers are ready
+tristan config set ollama.model llama3.1               # provider settings (no Configuration window on Windows)
+tristan secret set azure-openai-key                    # typed at a hidden prompt, kept in Credential Manager
+tristan run --provider claude "fix the failing test"   # approve with [y]es / [n]o / [a]lways in the terminal
+```
+
+Exit status: 0 done, 1 failed, 2 usage error, 3 something was denied, 130 cancelled. With no terminal attached, every action that needs approval is denied unless `--yes-routine` or `--yolo` is given. `tristan kids on|off|set-pin|status`, `tristan history` and `tristan sessions` work as on the Mac. `scripts/setup-ollama.ps1` sets up Ollama. The full guide, with the support matrix, the roadmap and how the port was built, is [Windows](https://mariotristan.github.io/jarvis-tristan/windows.html).
+
 ## Using it
 
 1. Pick a provider along the bottom. Start with `DEMO` to see everything move.
@@ -236,47 +259,51 @@ Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git pus
 ## How it works
 
 ```
-Sources/Tristan/
-├── main.swift         App entry point (accessory app, no Dock icon)
-├── AppDelegate.swift  HUD window, menu bar item, global hotkey, notch setup
-├── Session.swift      The hub: shared settings and services, the open sessions, sound/notification/history callbacks
-├── MissionSession.swift  One session: provider, folder, log, code, approvals and the task that runs it
-├── Shared/ConversationMemory.swift  A session's memory of finished missions, rendered as a briefing before the next task
-├── FullScreen.swift   Full-screen mode for the borderless window
-├── Providers.swift    AgentProvider protocol, approval modes, Demo and Claude Code providers, stream parser
-├── PermissionBridge.swift  Unix-socket server in the app plus the MCP stdio shim Claude Code calls
-├── AgentLoop.swift    The shared agent loop and provider-neutral transcript types
-├── BedrockProvider.swift   Bedrock backend and the AWS CLI client
-├── AzureProvider.swift     Azure OpenAI backend, streaming HTTP client, SSE assembler, config validation
-├── CopilotProvider.swift   Copilot CLI driver and its permission mapping
-├── OllamaProvider.swift    Ollama (local) client, model discovery and provider
-├── Keychain.swift     Keychain storage for provider credentials
-├── History.swift      Mission history records and their private JSON store
-├── BedrockStreaming.swift  SigV4 signer, event-stream decoder, ConverseStream client with CLI fallback
-├── Spotify.swift      Spotify control via AppleScript, music commands, ducking
-├── Shortcut.swift     Shortcut model and presets for the global hotkey
-├── RemoteServer.swift Mac side of the iPhone/iPad remote (listener, commands, live updates)
-├── QRCode.swift       The pairing QR code
-├── Shared/            Compiled by both the Mac and iOS apps: the markdown parser and views, the agent loop and tools, Azure and Bedrock backends (SigV4, streaming), remote protocol and client, theme, models
-├── Notifier.swift     Mac notifications
-├── WakeWord.swift     "Hey Tristan" matcher, silence-timing state machine and on-device listener
-├── SettingsView.swift Configuration and history overlays
-├── AgentTools.swift   Sandboxed file and shell tools, safe-path resolution, tool policy per mode
-├── Audio.swift        Synthesised sound effects and spoken lines, kept clean: voice level, effect ordering, silent output loop
-├── Connectivity.swift Internet monitor and the Ollama starter behind the offline fallback
-├── Voice.swift        Push-to-talk speech recognition
-├── Snapshot.swift     Renders the README screenshots from the real views
-├── HUDView.swift      The main HUD, command bar and approval overlay
-├── Notch.swift        Notch geometry, overlay panel and its expand/collapse logic
-├── Theme.swift        Colour roles, glow panel, arc reactor, animated backdrop
-├── Themes.swift       The palettes, contrast maths and the theme picker's data
-└── HotKey.swift       Global hotkey through Carbon (no accessibility permission needed)
-Tests/TristanTests/    190 tests: Ollama and kids-mode routing, multiple sessions, session memory, markdown parser and renderer safety, full screen, agent loop per provider, sandbox, rules, SSE, SigV4 and event-stream, remote protocol and end-to-end remote sessions, Copilot flags, wake word, history, Spotify, shortcuts, audio, theme contrast and welcomes, greetings
-ios/                   The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
-scripts/               bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh (local models, see docs/ollama.md; `--start-only` just starts it), install-voices.sh (Enhanced voice), uninstall.sh (remove test versions), record-demo.sh with record-window.swift (films the window and the app's own sound), ios-demo.sh, ios-icon.sh
-VERSION                Version number used by the scripts
-docs/ci-and-release.md How CI and releases work
-.github/workflows/     CI: build, test and bundle on macOS; a gitleaks secret scan on every push, PR and week (it also gates releases)
+Sources/TristanCore/          The portable core, used by the Mac app, the iOS app (by path) and the tristan command
+├── AgentLoop.swift           The shared agent loop and provider-neutral transcript types
+├── AgentTools.swift          Sandboxed file and shell tools, safe-path resolution, tool policy per mode
+├── AgentTypes.swift          Events, approval requests and the narrow always-allow rules
+├── ShellFlavor.swift         zsh or PowerShell, and the approval policy for each (never-generalise lists, operators)
+├── PathContainment.swift     Folder containment for POSIX and Windows paths
+├── Settings.swift            UserDefaults on Apple platforms, %APPDATA%\Tristan\settings.json on Windows
+├── Keychain.swift            Keychain on Apple platforms, Credential Manager on Windows
+├── AzureProvider.swift       Azure OpenAI backend, streaming HTTP client, SSE assembler, config validation
+├── BedrockBackend.swift, BedrockStreaming.swift   Bedrock: Converse format, SigV4 signer, event-stream decoder
+├── OllamaProvider.swift      Ollama (local) client, model discovery and provider
+├── AsyncBytesCompat.swift    URLSession and FileHandle byte streams where Apple's Foundation is not available
+├── ConversationMemory.swift, HistoryStore.swift, CodeFence.swift, KidsRouting.swift, ParentPIN.swift, Models.swift
+└── Processes/                Everything that starts a process or opens a socket (not compiled into the iOS app)
+    ├── ClaudeCodeProvider.swift, CopilotProvider.swift, BedrockProvider.swift   The CLI-driven providers
+    ├── ProcessLauncher.swift   Finds tools on PATH (PATHEXT and npm shims on Windows) and starts them
+    ├── ProcessTree.swift, PipeDrain.swift   Stopping a whole process tree; waiting without waitUntilExit
+    ├── ShellRunner.swift       zsh -c on the Mac, PowerShell on Windows
+    ├── ApprovalTransport.swift, PermissionBridge.swift   The Claude Code approval channel (Unix socket, or loopback TCP with tokens)
+    └── WindowsCredentialStore.swift   Credential Manager through WinSDK
+Sources/TristanCLICore/       The tristan command: run, providers, config, secret, kids, history, sessions, terminal approvals
+Sources/TristanCLI/           Its entry point (tristan on Windows and Linux, tristan-cli on the Mac)
+Sources/Tristan/              The Mac app (macOS only)
+├── main.swift                App entry point (accessory app, no Dock icon)
+├── AppDelegate.swift         HUD window, menu bar item, global hotkey, notch setup
+├── Session.swift             The hub: shared settings and services, the open sessions, sound/notification/history callbacks
+├── MissionSession.swift      One session: provider, folder, log, code, approvals and the task that runs it
+├── Providers.swift           The DEMO provider
+├── KidsMode.swift            Kids mode: the parent lock (PIN, Touch ID or password) and its questions
+├── Connectivity.swift        Internet monitor and the Ollama starter behind the offline fallback
+├── HUDView.swift, SettingsView.swift, FullScreen.swift, Notch.swift   The window, Configuration, full screen and the notch
+├── Audio.swift, Voice.swift, WakeWord.swift, Greeting.swift   Sound, push-to-talk, "Hey Tristan" and the spoken greeting
+├── Spotify.swift, Notifier.swift, Shortcut.swift, HotKey.swift   Spotify, notifications and the global shortcut
+├── RemoteServer.swift, QRCode.swift   Mac side of the iPhone/iPad remote and its pairing code
+├── Snapshot.swift, DemoAutopilot.swift   README screenshots and the recorded demo
+└── Shared/                   Compiled by the Mac and iOS apps: themes, the markdown parser and views, the remote protocol and client
+Tests/TristanTests/           124 tests for the Mac app (macOS only)
+Tests/TristanCoreTests/       206 tests on the Mac, 230 on Windows (files whose names start with Windows run only there)
+Tests/TristanCLITests/        95 tests on the Mac, 109 on Windows
+ios/                          The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
+scripts/                      bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh and setup-ollama.ps1 (local models; `--start-only` / `-StartOnly` just starts it), package-windows.ps1 (Windows zip), install-voices.sh (Enhanced voice), uninstall.sh (remove test versions), record-demo.sh with record-window.swift (films the window and the app's own sound), ios-demo.sh, ios-icon.sh, ci/ (Windows CI fakes, the Ollama mock and the spike tools)
+VERSION                       Version number used by the scripts
+docs/ci-and-release.md        How CI and releases work
+docs/superpowers/             Design specs, plans and the Windows spike notes
+.github/workflows/            CI on macOS, Windows CI, a gitleaks secret scan on every push, PR and week (it also gates releases), and the release
 ```
 
 A provider turns a task into a stream of events:
@@ -293,15 +320,17 @@ enum AgentEvent { case status(String), log(String), code(String), done(String), 
 
 ### How approvals work
 
-In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool that points at **its own binary** (`Tristan --mcp-permission <socket>`). Claude Code calls it, the helper forwards the request over a private Unix socket (a `0700` temp folder) to the running app, the app shows it in the HUD or notch, and your answer goes back as allow or deny. `AUTO` and `YOLO` skip the bridge.
+In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool that points at **its own binary** (`Tristan --mcp-permission <socket>`). Claude Code calls it, the helper forwards the request over a private Unix socket (a `0700` temp folder) to the running app, the app shows it in the HUD or notch, and your answer goes back as allow or deny. `AUTO` and `YOLO` skip the bridge. On Windows the same shim talks to the host over loopback TCP on `127.0.0.1` instead. Two random tokens, one for each side, reach it through the MCP config's `env` block, and the per-run folder's access list has a single entry, for the current user (administrators and SYSTEM can still reach it).
 
 **Always allow rules are deliberately narrow.** They are offered only for file edits inside the working folder and for plain program names (for example `npm`), never for chained or redirected shell commands or risky programs such as `rm`, `sudo`, `curl` or `ssh`. The full explanation, with the table of what each rule remembers, is in the [Approvals guide](https://mariotristan.github.io/jarvis-tristan/approvals.html).
 
 ### Running the tests
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 425 tests: TristanTests, TristanCoreTests, TristanCLITests
 ```
+
+On Windows: `swift test --filter TristanCoreTests` and `swift test --filter TristanCLITests` (the Mac app and its tests are only declared on macOS).
 
 The Bedrock agent loop is tested end to end with a scripted fake model: approvals in every mode, denied actions reaching the model, sandbox and symlink escapes, the turn limit and error handling.
 
@@ -315,11 +344,13 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 
 ### Adding a provider
 
-1. Create a type conforming to `AgentProvider` in `Providers.swift` (or its own file).
+1. Create a type conforming to `AgentProvider` in its own file in `Sources/TristanCore` (in `Sources/TristanCore/Processes` if it starts a process, so the iOS app does not compile it).
 2. Emit `AgentEvent`s as work happens. Call `approve(...)` before anything with side effects.
-3. Add a case to `ProviderKind` and return your provider from `makeProvider()`.
+3. Add a case to `ProviderKind` (`Sources/Tristan/Providers.swift`) and return your provider from `makeProvider()`. For the `tristan` command, also add it to `CLIProvider` (`Sources/TristanCLICore/ProviderFactory.swift`).
 
 ## Known limitations
+
+**On Windows**, nothing has been verified live yet: the `tristan` command is proven only on a CI runner, with fake provider CLIs and a mocked Ollama. The [Windows guide](https://mariotristan.github.io/jarvis-tristan/windows.html#support) has the full matrix.
 
 **What has actually been verified live:** the Claude Code provider (all modes, including per-action approvals), the Azure OpenAI provider on the Mac (streaming and tool calls against a real deployment, with an API key), the HUD and the packaged app launching. **Everything below is built and tested with fakes but not yet run against the real thing:**
 
@@ -366,7 +397,7 @@ Done:
 - [x] 30 themes with a picker and Match system, a welcome line per theme and session, a spoken greeting that follows the time and day, and easier ways to quit
 - [x] The orb fills the screen by default with an ABORT button and Esc to stop a mission, an offline fallback to Ollama, sound in the demo videos, a cleaner voice (see the [audio crackle report](https://mariotristan.github.io/jarvis-tristan/audio-crackle.html)), a secret scan in CI and an uninstall script
 - [x] A rainbow Pride theme (32 themes now)
-- [x] Automated tests (207)
+- [x] Automated tests (442: 425 on the Mac and 17 for iOS; 339 also run on Windows)
 
 Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 
@@ -380,7 +411,9 @@ Next (every item is a GitHub issue; start from the [backlog overview](https://gi
 - [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
 - [ ] Track title in the notch, and Apple Music support
 - [ ] Individual user profiles ([#25](https://github.com/mariotristan/jarvis-tristan/issues/25)) and extra kids mode configuration through markdown files ([#26](https://github.com/mariotristan/jarvis-tristan/issues/26))
-- [ ] A command-line version ([#24](https://github.com/mariotristan/jarvis-tristan/issues/24)), then Linux starting with Omarchy ([#22](https://github.com/mariotristan/jarvis-tristan/issues/22)) and Windows ([#23](https://github.com/mariotristan/jarvis-tristan/issues/23)); all three start by splitting the portable core into its own package
+- [x] The portable core split into `TristanCore`, and a command-line version, `tristan` ([#24](https://github.com/mariotristan/jarvis-tristan/issues/24)), built and tested on Windows in CI ([#23](https://github.com/mariotristan/jarvis-tristan/issues/23)); on the `windows-cli` branch, not released yet
+- [ ] Windows: live checks of each provider on a real PC, the first release with the zip, then an installer, signing and a Windows HUD (see [What is next](https://mariotristan.github.io/jarvis-tristan/windows.html#next))
+- [ ] Linux starting with Omarchy ([#22](https://github.com/mariotristan/jarvis-tristan/issues/22)), on the same `tristan` command
 
 ## Regenerating the screenshots
 
@@ -393,7 +426,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build
 
 T.R.I.S.T.A.N. runs agents that can change files and run commands on your machine. Review what you approve.
 
-- Secrets (the Azure OpenAI key) are stored in the macOS Keychain, never in the repository or in preferences. Entra ID and AWS logins are borrowed from the Azure CLI and AWS CLI and are never stored by T.R.I.S.T.A.N. Because the app is only ad-hoc signed, macOS may ask for Keychain access again after you rebuild it.
+- Secrets (the Azure OpenAI key) are stored in the macOS Keychain (Windows Credential Manager for the `tristan` command), never in the repository or in preferences. Entra ID and AWS logins are borrowed from the Azure CLI and AWS CLI and are never stored by T.R.I.S.T.A.N. Because the app is only ad-hoc signed, macOS may ask for Keychain access again after you rebuild it.
 - Every push, pull request and week, the **Secret scan** workflow runs [gitleaks](https://github.com/gitleaks/gitleaks) over the whole git history, and a release cannot be published if it finds a leak. The badge at the top shows its status.
 - Mission history stores task text and short summaries, so treat it as private; it is `0600` and can be cleared in the app.
 - The wake word is off by default, runs on-device only, and the microphone is released while a mission runs.

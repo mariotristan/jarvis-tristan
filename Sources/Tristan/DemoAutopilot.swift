@@ -1,4 +1,5 @@
 import Foundation
+import TristanCore
 
 /// `Tristan --demo` plays this scenario by itself so a screen recording needs no hands: a task with the big orb and its
 /// effects, the microphone refusing to start while Tristan answers, the orb filling the screen, then kids safe mode with

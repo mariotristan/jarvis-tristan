@@ -1,4 +1,5 @@
 import SwiftUI
+import TristanCore
 
 /// One session: its own provider, folder, mission log, code stream and approvals, plus the task that runs it.
 /// `Session` (the hub) owns several, so a Claude session and a Copilot session can work at the same time.
@@ -51,7 +52,7 @@ final class MissionSession: ObservableObject, Identifiable {
     /// With no internet a cloud provider cannot work, so the mission falls back to Ollama (`fallback` is true then).
     private func route(_ hub: Session) -> (kind: ProviderKind, local: Bool, fallback: Bool) {
         // The scripted DEMO provider never leaves the Mac, so it is already as local as Ollama.
-        if hub.kidsMode, !cloudOnce, provider != .demo { return (.ollama, true, false) }
+        if KidsRouting.mustStayLocal(kidsMode: hub.kidsMode, cloudOnce: cloudOnce), provider != .demo { return (.ollama, true, false) }
         if hub.offline, Self.cloudKinds.contains(provider) { return (.ollama, true, true) }
         return (provider, provider == .ollama, false)
     }
@@ -101,7 +102,7 @@ final class MissionSession: ObservableObject, Identifiable {
         let directory = workingDirectory
         let briefed = memory.compose(task: prompt, folder: directory.path)
         if briefed != prompt { add("Remembering \(memory.exchanges.filter { $0.folder == directory.path }.count) earlier mission(s) from this session", .info) }
-        let kidsLocal = hub.kidsMode && !cloudApproved
+        let kidsLocal = KidsRouting.mustStayLocal(kidsMode: hub.kidsMode, cloudOnce: cloudApproved)
         let localReady = hub.localModelReady
         let startLocal = hub.startLocalModel
         runner = Task { [weak self] in

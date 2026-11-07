@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(TristanCore)
+import TristanCore
+#endif
 
 // Wire protocol between the Mac app (server) and the iPhone/iPad app (client). Version 1.
 // Messages are JSON, sent as a 4-byte big-endian length followed by the body (see `Frame`).

@@ -51,6 +51,18 @@ jobs:
           xcodebuild -version
           xcrun simctl list runtimes | grep -i "iOS 18" || true
 
+      # The committed project lists every source file by name, so a file added under Sources/TristanCore or
+      # Sources/Tristan/Shared without regenerating leaves the iOS app unable to compile. Fail early and say why.
+      - name: Check the committed Xcode project matches ios/project.yml
+        run: |
+          brew install xcodegen
+          (cd ios && xcodegen generate)
+          if ! git diff --exit-code -- ios/TristanIOS.xcodeproj || [ -n "$(git status --porcelain -- ios/TristanIOS.xcodeproj)" ]; then
+            echo "::error::ios/TristanIOS.xcodeproj is out of date. Run 'cd ios && xcodegen generate' and commit the result (needed after editing ios/project.yml or adding or removing a file under Sources/TristanCore or Sources/Tristan/Shared)."
+            git status --short -- ios/TristanIOS.xcodeproj
+            exit 1
+          fi
+
       - name: Build and test the iOS app (iPhone simulator)
         run: |
           DEST_ID=$(xcrun simctl list devices available | awk '/^-- iOS 18/{f=1;next} /^-- /{f=0} f && /iPhone/ {print; exit}' | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')

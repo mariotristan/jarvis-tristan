@@ -1,5 +1,6 @@
 import XCTest
 @testable import Tristan
+@testable import TristanCore
 
 final class ThemeTests: XCTestCase {
     func testEveryPaletteIsReadable() {

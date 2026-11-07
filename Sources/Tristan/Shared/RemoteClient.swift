@@ -1,5 +1,8 @@
 import Foundation
 import Network
+#if canImport(TristanCore)
+import TristanCore
+#endif
 
 struct RemoteLogLine: Identifiable, Equatable {
     let id = UUID()

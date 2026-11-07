@@ -1,16 +1,28 @@
 # CI and releases
 
-Three GitHub Actions workflows.
+Four GitHub Actions workflows.
 
 | Workflow | File | Trigger | What it does |
 |----------|------|---------|--------------|
 | CI | `.github/workflows/ci.yml` | Push to `main`, pull requests | Runs the tests, builds the app and a DMG, checks the signature, uploads the DMG as an artifact |
 | Secret scan | `.github/workflows/secret-scan.yml` | Push to `main`, pull requests, every Monday, and called by Release | Runs gitleaks over the full git history and fails on any leaked credential |
-| Release | `.github/workflows/release.yml` | Push a tag `v*` | Runs the secret scan first, then the tests, builds `Tristan-<version>.dmg`, publishes a GitHub Release with generated notes, the DMG and its SHA-256 |
+| Windows | `.github/workflows/windows.yml` | Push to `main` or `windows-cli`, pull requests, manual | Checks `scripts/setup-ollama.ps1`, builds and tests the core and the `tristan` command on `windows-latest`, runs `tristan.exe` against fake provider CLIs and a mocked Ollama, packages and uploads the Windows zip |
+| Release | `.github/workflows/release.yml` | Push a tag `v*` | Runs the secret scan first; then the Windows job (tests, `Tristan-<version>-windows-x64.zip`) and the Mac job (tests, `Tristan-<version>.dmg`); publishes one GitHub Release with generated notes, the DMG, the zip and a SHA-256 for each |
 
-CI has two jobs. `build-and-test` is the Mac app (above). `ios` builds the iPhone and iPad app in `ios/` and runs its tests on an iPhone simulator. The iOS job uses the **newest Xcode 16.x** on the runner rather than 16.2: the `macos-15` image has no simulator runtime matching Xcode 16.2 (it reports "iOS 18.2 is not installed"), while Xcode 16.4 has the iOS 18.5 runtime. The generated `ios/TristanIOS.xcodeproj` is committed, so CI does not need XcodeGen; regenerate it with `cd ios && xcodegen generate` after editing `ios/project.yml`.
+CI has two jobs. `build-and-test` is the Mac app (above). `ios` builds the iPhone and iPad app in `ios/` and runs its tests on an iPhone simulator. The iOS job uses the **newest Xcode 16.x** on the runner rather than 16.2: the `macos-15` image has no simulator runtime matching Xcode 16.2 (it reports "iOS 18.2 is not installed"), while Xcode 16.4 has the iOS 18.5 runtime. The generated `ios/TristanIOS.xcodeproj` is committed; regenerate it with `cd ios && xcodegen generate` after editing `ios/project.yml` or adding or removing a file under `Sources/TristanCore` or `Sources/Tristan/Shared`. Before building, the `ios` job installs XcodeGen, regenerates the project and fails if the result differs from the committed one, with a message saying to regenerate. The project is generated without intermediate groups (`createIntermediateGroups: false`) so the output does not depend on the name of the checkout folder.
 
 Every CI run leaves a `Tristan-dmg` artifact on the run page, so any build can be installed for testing without a release.
+
+## Windows
+
+The `windows` job of `.github/workflows/windows.yml` runs on `windows-latest` with Swift 6.4.2 (`compnerd/gha-setup-swift`, pinned by commit). Its first step checks `scripts/setup-ollama.ps1` without installing anything: the PowerShell parser finds no errors, and in both `pwsh` and Windows PowerShell 5.1, with no Ollama on `PATH`, `-StartOnly` says Ollama is not installed and exits 0, a full run exits 2 naming `winget install -e --id Ollama.Ollama`, and an unknown parameter or a bad model name fails with a clear message (`setup-ollama.sh --start-only` exits 2 without Ollama; the PowerShell script exits 0). With a do-nothing `ollama.cmd` and the Ollama mock answering on port 11434, a chat reply that is not JSON fails with exit 1 and a clear message. The step also checks `cmdkey /delete` on a made-up `com.tristan.app/...` credential. It then builds `TristanCore` and `tristan`. `swift test --filter` succeeds when the filter matches nothing, so the test steps go through `scripts/ci/check-test-count.ps1`: it keeps the exit code of the tests, adds up the XCTest summary lines of each test executable, prints the count and fails below 200 core or 100 CLI tests. Its self-test (`scripts/ci/check-test-count.tests.ps1`, run just before) feeds it made-up logs with zero tests, too few tests and no summary, and checks each is rejected. The job runs `swift test --filter TristanCoreTests` and `--filter TristanCLITests` through `scripts/ci/check-test-count.ps1`, then drives the built `tristan.exe`:
+
+- against the fake `claude` and `copilot` CLIs in `scripts/ci/fakes` (no real account or secret; the `aws` and `az` fakes there are used by the test suites);
+- against `scripts/ci/mock-ollama.ps1`, a stand-in for Ollama on `127.0.0.1` that streams a two-chunk answer. The exe is pointed at it only with `tristan config set ollama.host` and `ollama.model`, `tristan providers` must report Ollama ready, and `tristan run --provider ollama "hello"` must exit 0 with the mock's answer.
+
+`scripts/package-windows.ps1 -Version <version>` then builds `tristan.exe` in release, stamps the version into `Sources/TristanCLICore/BuildVersion.swift` for the build (so `tristan --version` prints it; development builds print `0.0.0-dev`), ships next to it every DLL it needs that Windows does not have (found with `dumpbin /dependents`: the Swift runtime and Foundation DLLs, about 60 MB with ICU, and the Visual C++ runtime; a `-static-stdlib` link fails because the Swift 6.4.2 Windows SDK has no static `curl.lib`), and writes `dist/Tristan-<version>-windows-x64.zip` (`tristan.exe`, those DLLs, `LICENSE.txt`, `THIRD-PARTY-NOTICES.txt`, `README.txt`) and `dist/Tristan-<version>-windows-x64.zip.sha256`. `THIRD-PARTY-NOTICES.txt` is the committed `scripts/THIRD-PARTY-NOTICES.windows.txt`: the licences of the Swift runtime and Foundation, ICU 76, curl 8.9.1, zlib 1.3.1 and Brotli 1.2.0 (linked into `FoundationNetworking.dll`), Swift Crypto with BoringSSL and Swift Argument Parser, each copied verbatim with its source and version. Update it when the Swift toolchain or a package version changes; the packaging script refuses to build without it and CI checks the zip carries it. CI packages version `0.0.0-ci` and uploads both files as the `tristan-windows` artifact, then extracts the zip into an empty folder and runs `tristan --version` and `tristan providers` with only the Windows system folders on `PATH`, and checks the SHA-256. A last step packages with made-up tags (`v9.9.9-test`, `v1.2`, `v1.2.3_rc1` and `v1.2.3-` followed by the Kelvin sign U+212A, which must become `1.2.3--`) using the same lines the release uses to turn a tag into a version, checks each zip name, `tristan --version`, checksum and notices file, and checks that the packaging script refuses a version containing that non-ASCII letter.
+
+In `release.yml` the `windows` job (read-only token) runs the same tests through the same count check and the packaging script with the version from the tag, extracts the zip and checks `tristan --version` and the SHA-256, and uploads the zip as an artifact. The Mac `release` job waits for it (`needs: [secret-scan, windows]`), downloads the zip and attaches it with its `.sha256` in the same `gh release create` as the DMG, so one release carries both and a failed Windows build stops the release. Any `v*` tag works, as for the DMG: the leading `v` is dropped and every character other than a letter, digit, dot or dash becomes a dash (`v1.2.3` gives `1.2.3`, `v1.2` gives `1.2`, `v1.2.3_rc1` gives `1.2.3-rc1`, a bare `v` gives `0.0.0`). Only a version that still does not start with a letter or digit (for example the tag `v-1`) stops the Windows job, and with it the release. No tag has been pushed since the Windows job was added, so `release.yml` with it has not run yet; its Windows steps are proven only by the identical steps in `windows.yml`.
 
 ## Publishing a release
 
@@ -21,7 +33,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-The release appears under **Releases** in about three minutes. Also bump the `VERSION` file when you cut a release so local builds report the same number.
+The release appears under **Releases** once both the Mac and the Windows jobs have finished (the Windows build and tests take longer than the Mac ones). Also bump the `VERSION` file when you cut a release so local builds report the same number.
 
 ## Building locally
 
@@ -33,6 +45,8 @@ scripts/uninstall.sh    # quit and remove installed copies; --purge adds setting
 scripts/install-voices.sh # not part of releases: opens Settings to download an Enhanced voice (the built-in compact ones can crackle)
 scripts/setup-ollama.sh # not part of releases: sets up Ollama for local models (see docs/ollama.md)
 scripts/setup-ollama.sh --start-only   # only starts Ollama if installed; the app bundles and runs this for the offline fallback
+pwsh -File scripts\setup-ollama.ps1    # Windows: checks for Ollama (prints the winget command if missing), starts it, pulls a model, sets it for tristan
+pwsh -File scripts\package-windows.ps1 -Version 1.2.3   # Windows: dist\Tristan-1.2.3-windows-x64.zip and its .sha256 (see "Windows" above)
 VERSION=2.0.0 scripts/make-dmg.sh   # override the version
 ```
 
