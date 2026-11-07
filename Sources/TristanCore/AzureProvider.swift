@@ -25,17 +25,27 @@ package struct AzureConfig {
                            apiVersion: value("azure.apiVersion").isEmpty ? defaultAPIVersion : value("azure.apiVersion"))
     }
 
+    /// True for an https URL on an Azure OpenAI host, the only place the API key may be sent.
+    package static func isAllowedEndpoint(_ text: String) -> Bool {
+        guard let components = URLComponents(string: text), components.scheme == "https", components.user == nil,
+              let host = components.host?.lowercased() else { return false }
+        return allowedHostSuffixes.contains(where: { host == $0 || host.hasSuffix("." + $0) })
+    }
+
+    /// Letters, digits, dots, dashes and underscores only: the name becomes part of the URL path.
+    package static func isValidDeployment(_ name: String) -> Bool {
+        name.range(of: #"\A[A-Za-z0-9._-]+\z"#, options: .regularExpression) != nil
+    }
+
     func requestURL() throws -> URL {
         let text = endpoint.trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { throw AzureError(message: "Set the Azure OpenAI endpoint in Configuration (for example https://my-resource.openai.azure.com).") }
-        guard var components = URLComponents(string: text), components.scheme == "https", components.user == nil,
-              let host = components.host?.lowercased(),
-              Self.allowedHostSuffixes.contains(where: { host == $0 || host.hasSuffix("." + $0) }) else {
+        guard Self.isAllowedEndpoint(text), var components = URLComponents(string: text) else {
             throw AzureError(message: "The endpoint must be an https Azure OpenAI URL, like https://my-resource.openai.azure.com.")
         }
         let name = deployment.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw AzureError(message: "Set the Azure OpenAI deployment name in Configuration.") }
-        guard name.range(of: #"\A[A-Za-z0-9._-]+\z"#, options: .regularExpression) != nil else {
+        guard Self.isValidDeployment(name) else {
             throw AzureError(message: "The deployment name may only contain letters, digits, dots, dashes and underscores.")
         }
         components.path = "/openai/deployments/\(name)/chat/completions"
@@ -77,7 +87,7 @@ package final class AzureAuth: @unchecked Sendable {
     /// What to say when there is no API key and `az` cannot be started.
     static func cliNotFoundMessage(windows: Bool) -> String {
         windows
-            ? "No API key is set and the Azure CLI was not found. Store an API key in Windows Credential Manager (a generic credential named `com.tristan.app/azure-openai-key`) or install the Azure CLI with `winget install -e --id Microsoft.AzureCLI`, then open a new terminal."
+            ? "No API key is set and the Azure CLI was not found. Store an API key with `tristan secret set azure-openai-key` (kept in Windows Credential Manager) or install the Azure CLI with `winget install -e --id Microsoft.AzureCLI`, then open a new terminal."
             : "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `brew install azure-cli`."
     }
 

@@ -21,6 +21,8 @@ struct CLIEnvironment {
     var sessions: SessionRegistry
     /// Reads one answer to an approval prompt (a line from stdin); tests script the answers.
     var readAnswer: () -> String? = { readLine() }
+    /// Reads a secret without echo after showing `prompt` (`tristan secret set`); nil when nothing could be read.
+    var readSecret: (String) -> String? = { PINPrompt.read($0) }
 
     static var live: CLIEnvironment {
         CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: PINPrompt.read,
@@ -93,6 +95,14 @@ enum Kids {
             return refuse("No PIN was entered. Nothing was changed.", .failed)
         }
         return ParentPIN.matches(entered) ? nil : refuse("Wrong PIN. Nothing was changed.", .failed)
+    }
+
+    /// Settings and secrets may only change with the parent PIN while kids mode is on, exactly like `kids off`.
+    /// Nil to go ahead, else the exit code to stop with (nothing has been changed).
+    static func guardChange(_ environment: CLIEnvironment, purpose: String) -> ExitCode? {
+        guard isOn else { return nil }
+        guard ParentPIN.isSet else { return refuse(noPINMessage) }
+        return askParentPIN(environment, purpose: purpose)
     }
 }
 

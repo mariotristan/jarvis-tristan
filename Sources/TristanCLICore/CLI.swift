@@ -12,7 +12,7 @@ struct TristanCommand: ParsableCommand {
         commandName: "tristan",
         abstract: "Run coding-agent missions from the terminal and approve their actions here.",
         subcommands: [RunCommand.self, ProvidersCommand.self, KidsCommand.self,
-                      HistoryCommand.self, SessionsCommand.self])
+                      HistoryCommand.self, SessionsCommand.self, ConfigCommand.self, SecretCommand.self])
 }
 
 package enum CLI {
@@ -86,7 +86,12 @@ enum Terminal {
         if let capture { capture(text); return }
         FileHandle.standardOutput.write(Data(text.utf8))
     }
-    static func writeError(_ text: String) { FileHandle.standardError.write(Data(text.utf8)) }
+    /// Test hook: when set, standard error goes here instead of the terminal.
+    nonisolated(unsafe) static var captureError: ((String) -> Void)?
+    static func writeError(_ text: String) {
+        if let captureError { captureError(text); return }
+        FileHandle.standardError.write(Data(text.utf8))
+    }
 
     /// True when a person can answer prompts: stdin is a terminal (not a pipe, file or /dev/null).
     static var inputIsTerminal: Bool {

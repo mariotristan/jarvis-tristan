@@ -12,7 +12,7 @@ package struct OllamaConfig {
     var host: String
     var model: String
 
-    static let defaultHost = "http://localhost:11434"
+    package static let defaultHost = "http://localhost:11434"
     /// Only this machine may be used, so a typo can never send a prompt to another computer.
     static let loopbackHosts: Set<String> = ["localhost", "127.0.0.1", "::1"]
 
@@ -20,6 +20,9 @@ package struct OllamaConfig {
         func value(_ key: String) -> String { (Settings.string(key) ?? "").trimmingCharacters(in: .whitespaces) }
         return OllamaConfig(host: value("ollama.host").isEmpty ? defaultHost : value("ollama.host"), model: value("ollama.model"))
     }
+
+    /// True when `host` is a URL that `baseURL` accepts: plain http on this machine.
+    package static func isAllowedHost(_ host: String) -> Bool { (try? OllamaConfig(host: host, model: "").baseURL()) != nil }
 
     func baseURL() throws -> URL {
         guard let components = URLComponents(string: host), components.scheme == "http", components.user == nil,

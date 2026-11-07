@@ -6,11 +6,12 @@ package struct BedrockConfig {
     var profile: String
 
     package static let defaultModel = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    package static let defaultRegion = "us-east-1"
 
     static func load() -> BedrockConfig {
         func value(_ key: String) -> String { (Settings.string(key) ?? "").trimmingCharacters(in: .whitespaces) }
         return BedrockConfig(model: value("bedrock.model").isEmpty ? defaultModel : value("bedrock.model"),
-                             region: value("bedrock.region").isEmpty ? "us-east-1" : value("bedrock.region"),
+                             region: value("bedrock.region").isEmpty ? defaultRegion : value("bedrock.region"),
                              profile: value("bedrock.profile"))
     }
 }
