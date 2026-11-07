@@ -1,6 +1,13 @@
 import XCTest
 @testable import TristanCore
 
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func add() { lock.lock(); count += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+}
+
 final class CopilotTests: XCTestCase {
     /// `script` runs in /bin/sh; on Windows `windows` runs in Windows PowerShell instead.
     private func run(mode: ApprovalMode, script: String, windows: String? = nil, allow: Bool = true) async -> (events: [AgentEvent], prompts: [ApprovalRequest]) {
@@ -62,6 +69,50 @@ final class CopilotTests: XCTestCase {
 
     func testANSIIsStripped() {
         XCTAssertEqual(CopilotArguments.stripANSI("\u{001B}[32mgreen\u{001B}[0m text"), "green text")
+    }
+
+    // MARK: Windows (plan Task 15)
+
+    func testStripANSIHandlesCRLF() {
+        XCTAssertEqual(CopilotArguments.stripANSI("\u{001B}[32mok\u{001B}[0m\r\n"), "ok")
+        XCTAssertEqual(CopilotArguments.stripANSI("line one\r\nline two\r\n"), "line one\nline two")
+        XCTAssertEqual(CopilotArguments.stripANSI("progress\rdone"), "progressdone")
+        XCTAssertEqual(CopilotArguments.stripANSI("no carriage return\n"), "no carriage return\n", "unchanged without a CR")
+    }
+
+    func testUnsafeTaskOnCmdShimIsRefusedWithMessage() async {
+        var provider = CopilotProvider(mode: .yolo, model: "")
+        let launched = Counter()
+        provider.prepare = { tool, _, _, _ in
+            launched.add()
+            throw UnsafeArguments(tool: tool)
+        }
+        var events: [AgentEvent] = []
+        for await event in provider.run(task: "fix a & b", workingDirectory: FileManager.default.temporaryDirectory, approve: { _ in true }) {
+            events.append(event)
+        }
+        XCTAssertEqual(launched.value, 1)
+        XCTAssertFalse(events.contains { if case .status("ONLINE") = $0 { return true } else { return false } }, "nothing may start")
+        guard case .failed(let message)? = events.last else { return XCTFail("expected a failure, got \(events)") }
+        XCTAssertEqual(message, "Could not launch the Copilot CLI safely: refusing to pass text containing % ^ & | < > \" or a line break "
+                       + "to copilot through cmd.exe. Remove those characters from the task and retry.")
+    }
+
+    func testNotFoundMessageOnWindows() {
+        let windows = CopilotProvider.launchFailure(ToolNotFound(name: "copilot"), windows: true)
+        XCTAssertTrue(windows.contains("npm install -g @github/copilot"), windows)
+        XCTAssertTrue(windows.contains("Node.js"), windows)
+        XCTAssertEqual(CopilotProvider.launchFailure(ToolNotFound(name: "copilot"), windows: false),
+                       "Could not launch the Copilot CLI: copilot was not found on PATH. Install it with `npm install -g @github/copilot`.")
+    }
+
+    func testLogFolderCreationDoesNotNeedPosixPermissions() throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-logs-test-\(UUID().uuidString.prefix(8))")
+        defer { try? FileManager.default.removeItem(at: base) }
+        try ProcessLauncher.createPrivateFolder(base, windows: true)
+        var isDirectory: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: base.path, isDirectory: &isDirectory) && isDirectory.boolValue)
+        XCTAssertTrue(FileManager.default.createFile(atPath: base.appendingPathComponent("session.log").path, contents: Data("x".utf8)))
     }
 
     // MARK: process handling

@@ -37,9 +37,15 @@ package enum CopilotArguments {
         deniedShell.flatMap { ["--deny-tool", "shell(\($0):*)"] }
     }
 
-    /// The CLI colours output even when asked not to in some versions, so strip escape codes defensively.
+    /// The CLI colours output even when asked not to in some versions, so strip escape codes defensively. Carriage
+    /// returns go too (Windows ends lines with CR LF), with any line break left at the end.
     static func stripANSI(_ text: String) -> String {
-        text.replacingOccurrences(of: "\u{001B}\\[[0-9;?]*[ -/]*[@-~]", with: "", options: .regularExpression)
+        var plain = text.replacingOccurrences(of: "\u{001B}\\[[0-9;?]*[ -/]*[@-~]", with: "", options: .regularExpression)
+        guard plain.unicodeScalars.contains("\r") else { return plain }
+        // By scalar: "\r\n" is one Character in Swift, so a Character-based replace could miss it.
+        plain = String(String.UnicodeScalarView(plain.unicodeScalars.filter { $0 != "\r" }))
+        while plain.hasSuffix("\n") { plain.removeLast() }
+        return plain
     }
 }
 
@@ -49,6 +55,10 @@ package struct CopilotProvider: AgentProvider {
     var model: String = Settings.string("copilot.model") ?? ""
     /// Tests replace the launch command so no real CLI is needed.
     var launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))?
+    /// Builds the process; tests replace it to see how launch errors are reported.
+    var prepare: @Sendable (_ tool: String, _ arguments: [String], _ directory: URL, _ environment: [String: String]) throws -> Process = {
+        try ProcessLauncher.prepare($0, $1, directory: $2, extraEnvironment: $3)
+    }
 
     package init(mode: ApprovalMode = .ask, model: String = Settings.string("copilot.model") ?? "",
                  launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))? = nil) {
@@ -72,17 +82,17 @@ package struct CopilotProvider: AgentProvider {
                 }
 
                 let logDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-logs-\(UUID().uuidString.prefix(8))")
-                try? FileManager.default.createDirectory(at: logDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+                try? ProcessLauncher.createPrivateFolder(logDirectory)
                 defer { try? FileManager.default.removeItem(at: logDirectory) }
-                let arguments = CopilotArguments.make(task: task, mode: mode, model: model, logDirectory: logDirectory.path)
+                let arguments = CopilotArguments.make(task: task, mode: mode, model: model,
+                                                      logDirectory: ProcessLauncher.nativePath(logDirectory))
                 let process: Process
                 do {
                     if let override = launchOverride {
                         let launch = override(arguments)
-                        process = try ProcessLauncher.prepare(launch.executable.path, launch.arguments, directory: workingDirectory,
-                                                              extraEnvironment: ["NO_COLOR": "1"])
+                        process = try prepare(ProcessLauncher.nativePath(launch.executable), launch.arguments, workingDirectory, ["NO_COLOR": "1"])
                     } else {
-                        process = try ProcessLauncher.prepare("copilot", arguments, directory: workingDirectory, extraEnvironment: ["NO_COLOR": "1"])
+                        process = try prepare("copilot", arguments, workingDirectory, ["NO_COLOR": "1"])
                     }
                 } catch {
                     c.yield(.failed(Self.launchFailure(error)))
@@ -134,9 +144,12 @@ package struct CopilotProvider: AgentProvider {
         }
     }
 
-    static func launchFailure(_ error: Error) -> String {
+    static func launchFailure(_ error: Error, windows: Bool = ProcessLauncher.isWindows) -> String {
         if error is UnsafeArguments {
             return "Could not launch the Copilot CLI safely: \(error.localizedDescription). Remove those characters from the task and retry."
+        }
+        if windows, error is ToolNotFound {
+            return "Could not launch the Copilot CLI: \(error.localizedDescription). Install it with `npm install -g @github/copilot` (it needs Node.js 22 or later), then open a new terminal."
         }
         return "Could not launch the Copilot CLI: \(error.localizedDescription). Install it with `npm install -g @github/copilot`."
     }
