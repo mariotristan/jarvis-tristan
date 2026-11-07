@@ -29,7 +29,14 @@ enum Mission {
     /// any failure). Approvals run off the concurrency pool because answering blocks on the terminal.
     static func run(provider: AgentProvider, task: String, folder: URL, approver: TerminalApprover,
                     stdout: (String) -> Void, stderr: (String) -> Void) async -> ExitCode {
+        await runReporting(provider: provider, task: task, folder: folder, approver: approver, stdout: stdout, stderr: stderr).code
+    }
+
+    /// Like `run`, and also returns the final done/failed event's text (nil when the stream ended without one).
+    static func runReporting(provider: AgentProvider, task: String, folder: URL, approver: TerminalApprover,
+                             stdout: (String) -> Void, stderr: (String) -> Void) async -> (code: ExitCode, final: (status: String, text: String)?) {
         var outcome: ExitCode?
+        var final: (status: String, text: String)?
         var lastStatus: String?
         var atLineStart = true
         let events = provider.run(task: task, workingDirectory: folder) { request in
@@ -44,8 +51,8 @@ enum Mission {
                 if text == lastStatus { continue }   // Copilot repeats RESPONDING for every line
                 lastStatus = text
             case .code: isCode = true
-            case .done: outcome = .ok
-            case .failed: outcome = .failed
+            case .done(let text): outcome = .ok; final = ("done", text)
+            case .failed(let text): outcome = .failed; final = ("failed", text)
             case .log: break
             }
             let (out, err) = render(event)
@@ -61,7 +68,7 @@ enum Mission {
             if let err { stderr(err) }
         }
         if !atLineStart { stdout("\n") }
-        guard let outcome else { return .failed }
-        return approver.denials > 0 ? .denied : outcome
+        guard let outcome else { return (.failed, final) }
+        return (approver.denials > 0 ? .denied : outcome, final)
     }
 }

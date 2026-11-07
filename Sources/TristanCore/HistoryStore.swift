@@ -5,15 +5,18 @@ package final class HistoryStore {
     let url: URL
     let limit: Int
 
-    init(url: URL, limit: Int = 100) {
+    package init(url: URL, limit: Int = 100) {
         self.url = url
         self.limit = limit
     }
 
-    package static let standard: HistoryStore = {
+    /// The Mac app's history file; the CLI uses the same one on macOS so the two share history.
+    package static var defaultURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return HistoryStore(url: base.appendingPathComponent("Tristan/history.json"))
-    }()
+        return base.appendingPathComponent("Tristan/history.json")
+    }
+
+    package static let standard = HistoryStore(url: defaultURL)
 
     package func load() -> [MissionRecord] {
         guard let data = try? Data(contentsOf: url) else { return [] }

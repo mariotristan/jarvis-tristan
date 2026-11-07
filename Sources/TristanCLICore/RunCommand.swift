@@ -64,16 +64,29 @@ struct RunCommand: ParsableCommand, CLICommand {
         if let refusal = kidsRefusal(environment) { return refusal }
         let approver = TerminalApprover(interactive: environment.interactive, mode: mode,
                                         input: { readLine() }, output: Terminal.writeError)
-        let agent = environment.makeProvider(provider, mode)
         let task = taskText, folder = folderURL
+        let pid = ProcessInfo.processInfo.processIdentifier
+        environment.sessions.register(pid: pid, task: task, provider: provider.rawValue, folder: folder.path)
+        let agent = environment.makeProvider(provider, mode)
         Terminal.writeError("tristan: \(provider.rawValue) in \(folder.path) (approvals: \(mode.rawValue.lowercased()))\n")
         let work = Task {
-            await Mission.run(provider: agent, task: task, folder: folder, approver: approver,
-                              stdout: Terminal.writeOutput, stderr: Terminal.writeError)
+            await Mission.runReporting(provider: agent, task: task, folder: folder, approver: approver,
+                                       stdout: Terminal.writeOutput, stderr: Terminal.writeError)
         }
         if environment.installInterrupt { Interrupt.install { work.cancel() } }
-        let code = await work.value
+        let result = await withTaskCancellationHandler { await work.value } onCancel: { work.cancel() }
+        // Record before reporting the end: Ctrl+C handling waits for `missionEnded` and then exits the process.
+        // Same as the Mac: what the run said at the end, or "aborted" when it was stopped before it said anything.
+        // Only the task and a short summary are kept, never the streamed code.
+        let finished = result.final.map { (status: $0.status, summary: $0.text) }
+            ?? (work.isCancelled ? (status: "aborted", summary: "Aborted by operator") : nil)
+        if let finished {
+            let store = HistoryStore(url: environment.historyURL)
+            store.save([MissionRecord(task: task, provider: provider.rawValue, mode: mode.rawValue, status: finished.status,
+                                      summary: String(finished.summary.prefix(240)), folder: folder.path)] + store.load())
+        }
+        environment.sessions.unregister(pid: pid)
         if environment.installInterrupt { Interrupt.missionEnded() }
-        return code
+        return result.code
     }
 }

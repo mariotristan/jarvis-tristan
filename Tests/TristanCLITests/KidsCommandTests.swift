@@ -29,6 +29,7 @@ private final class Calls: @unchecked Sendable {
 final class KidsCommandTests: XCTestCase {
     private var saved: SettingsBackend!
     private var savedMemory = false
+    private let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("kids-\(UUID().uuidString)")
 
     override func setUp() {
         saved = Settings.backend
@@ -46,7 +47,9 @@ final class KidsCommandTests: XCTestCase {
     private func exec(_ arguments: [String], _ calls: Calls, interactive: Bool = true) async throws -> ExitCode {
         let command = try XCTUnwrap(TristanCommand.parseAsRoot(arguments) as? CLICommand)
         let env = CLIEnvironment(interactive: interactive, readPIN: { calls.next($0) },
-                                 makeProvider: { p, m in calls.make(p, m); return Quiet() }, installInterrupt: false)
+                                 makeProvider: { p, m in calls.make(p, m); return Quiet() }, installInterrupt: false,
+                                 historyURL: scratch.appendingPathComponent("history.json"),
+                                 sessions: SessionRegistry(directory: scratch.appendingPathComponent("sessions"), isAlive: { _ in true }))
         return await command.execute(environment: env)
     }
 

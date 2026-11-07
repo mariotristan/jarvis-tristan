@@ -15,10 +15,28 @@ struct CLIEnvironment {
     var makeProvider: (CLIProvider, ApprovalMode) -> AgentProvider
     /// Whether Ctrl+C handling is installed (off in tests).
     var installInterrupt: Bool
+    /// The history file (`HistoryStore`), shared with the Mac app on macOS.
+    var historyURL: URL
+    /// The running-missions registry behind `tristan sessions`.
+    var sessions: SessionRegistry
 
     static var live: CLIEnvironment {
         CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: PINPrompt.read,
-                       makeProvider: { $0.make(mode: $1) }, installInterrupt: true)
+                       makeProvider: { $0.make(mode: $1) }, installInterrupt: true,
+                       historyURL: CLIPaths.historyURL, sessions: .live)
+    }
+}
+
+enum CLIPaths {
+    /// `%APPDATA%\Tristan\history.json` on Windows, the Mac app's own file on macOS, else `~/.config/tristan/history.json`.
+    static var historyURL: URL {
+        #if os(Windows)
+        return WindowsAppData.directory.appendingPathComponent("history.json")
+        #elseif os(macOS)
+        return HistoryStore.defaultURL
+        #else
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/tristan/history.json")
+        #endif
     }
 }
 

@@ -51,20 +51,27 @@ package final class JSONFileBackend: SettingsBackend, @unchecked Sendable {
     }
 }
 
+#if os(Windows)
+/// `%APPDATA%\Tristan`, the folder every Windows file of the app lives in (settings, history, sessions).
+package enum WindowsAppData {
+    package static var directory: URL {
+        let base: URL
+        if let appData = ProcessInfo.processInfo.environment["APPDATA"], !appData.isEmpty {
+            base = URL(fileURLWithPath: appData, isDirectory: true)
+        } else {
+            base = FileManager.default.homeDirectoryForCurrentUser
+        }
+        return base.appendingPathComponent("Tristan", isDirectory: true)
+    }
+}
+#endif
+
 package enum Settings {
     package nonisolated(unsafe) static var backend: SettingsBackend = makeDefaultBackend()
 
     private static func makeDefaultBackend() -> SettingsBackend {
         #if os(Windows)
-        let env = ProcessInfo.processInfo.environment
-        let base: URL
-        if let appData = env["APPDATA"], !appData.isEmpty {
-            base = URL(fileURLWithPath: appData, isDirectory: true)
-        } else {
-            base = FileManager.default.homeDirectoryForCurrentUser
-        }
-        return JSONFileBackend(url: base.appendingPathComponent("Tristan", isDirectory: true)
-            .appendingPathComponent("settings.json"))
+        return JSONFileBackend(url: WindowsAppData.directory.appendingPathComponent("settings.json"))
         #else
         return UserDefaultsBackend()
         #endif
