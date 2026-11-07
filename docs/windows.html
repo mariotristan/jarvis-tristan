@@ -37,7 +37,7 @@
     <div class="titlebox">
       <span class="eyebrow">Guide · Windows</span>
       <h1>T.R.I.S.T.A.N. in a Windows terminal.</h1>
-      <p class="lead">A <code>tristan</code> command whose target is Windows 10 and 11 (x64); so far CI has run it only on Windows Server 2025. It is released as a zip in 0.6.0. Run a mission on any of the five providers and approve each action in Windows Terminal, PowerShell or cmd. This page covers how to use it, how we ported it, what is proven and what is not, what comes next, and how we built it.</p>
+      <p class="lead">A <code>tristan</code> command whose target is Windows 10 and 11 (x64); so far CI has run it only on Windows Server 2025. It is released in 0.6.1 as an installer and a portable zip. Run a mission on any of the five providers and approve each action in Windows Terminal, PowerShell or cmd. This page covers how to use it, how we ported it, what is proven and what is not, what comes next, and how we built it.</p>
     </div>
   </div>
 </header>
@@ -45,7 +45,7 @@
 <main id="main" class="doc">
 <section>
   <div class="wrap">
-    <p class="note"><b>Released as 0.6.0, as a zip.</b> <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">Release v0.6.0</a> (7 November 2026) carries <code>Tristan-0.6.0-windows-x64.zip</code> and its <code>.sha256</code> next to the Mac DMG. It is a zip, not an installer. <code>tristan.exe</code> is not code-signed, so Windows SmartScreen may warn the first time you run it; that has not been checked on a real Windows desktop. Running the extracted exe on a pristine Windows 10 or 11 install, and every provider against a live account, are still unverified: see <a href="#support">What is supported</a>. <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a>, or <a href="#build-from-source">build from source</a>.</p>
+    <p class="note"><b>Released as 0.6.1, with an installer.</b> <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">Release v0.6.1</a> (7 November 2026) carries <code>Tristan-0.6.1-windows-x64-setup.exe</code> (21,201,665 bytes), the portable zip <code>Tristan-0.6.1-windows-x64.zip</code>, the Mac DMG, and a <code>.sha256</code> file for each. The installer is the recommended download; the zip stays for people who want no install. Neither is code-signed, so Windows SmartScreen may warn when you run it; that has not been checked on a real Windows desktop. Only silent installs ran in CI, and nobody has clicked through the wizard screens. Running either on a Windows 10 or 11 desktop, and every provider against a live account, are still unverified: see <a href="#support">What is supported</a>. <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a>, or <a href="#build-from-source">build from source</a>.</p>
 
     <nav class="toc" aria-labelledby="toc-title">
       <h2 id="toc-title" class="toc-title">On this page</h2>
@@ -95,10 +95,25 @@
     <p>The Windows version is a terminal program, not a window. It runs the same agent loop, providers and approval rules as the Mac app, and asks you about each action in the terminal.</p>
 
     <h3 id="download">Download and verify</h3>
-    <p>Get <code>Tristan-0.6.0-windows-x64.zip</code> (30,224,547 bytes) and <code>Tristan-0.6.0-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>. The zip holds 23 files, about 80 MB unpacked: <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs (<code>MSVCP140</code>, <code>VCRUNTIME140</code>, <code>VCRUNTIME140_1</code>), <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. Keep all the files in one folder. Both checksum files were downloaded and checked with <code>shasum -a 256 -c</code> on a Mac; that is the same hash you compare below.</p>
-    <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to. 0.6.0 is the first release: use the version you downloaded.</span>
-$version = '0.6.0'
-$zip = "Tristan-$version-windows-x64.zip"
+    <p>Get <code>Tristan-0.6.1-windows-x64-setup.exe</code> (21,201,665 bytes) and <code>Tristan-0.6.1-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>. It is an Inno Setup 6.7.3 <code>setup.exe</code>. It installs per user by default, into <code>%LocalAppData%\Programs\Tristan</code>, without administrator rights. It installs for all users when you choose that in the dialog or pass <code>/ALLUSERS</code>. It offers a task, <b>Add Tristan to my PATH</b>, ticked by default and removed again when you uninstall. It installs exactly the files that are in the zip: <code>tristan.exe</code>, the Swift runtime DLLs, <code>LICENSE.txt</code>, <code>README.txt</code> and <code>THIRD-PARTY-NOTICES.txt</code>. The checksum files were downloaded and checked with <code>shasum -a 256 -c</code> on a Mac; that is the same hash you compare below (upper or lower case does not matter).</p>
+    <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to. Use the version you downloaded.</span>
+$setup = 'Tristan-0.6.1-windows-x64-setup.exe'
+
+<span class="c"># 1. Check the download: the two hashes must be the same</span>
+(Get-FileHash -Algorithm SHA256 $setup).Hash
+Get-Content "$setup.sha256"
+
+<span class="c"># 2. Run it. Leave "Add Tristan to my PATH" ticked, then open a new terminal</span>
+.\$setup</pre>
+    <p class="note">The setup is not code-signed, so Windows SmartScreen or your antivirus may warn about it. We have not seen what a real Windows desktop shows, so we cannot tell you which button to press; if you trust the download (the checksum matched), choose to run it anyway. Signing is on the <a href="#next">roadmap</a>.</p>
+    <p><b>Silent install</b>, for scripts. The switches are <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</code>, <code>/CURRENTUSER</code> or <code>/ALLUSERS</code>, <code>/DIR="..."</code>, <code>/TASKS="addtopath"</code> and <code>/LOG="..."</code>:</p>
+    <pre data-copy>.\Tristan-0.6.1-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
+    <p>This is the path CI exercises: silent installs only, on Windows Server 2025. The wizard screens have not been clicked through.</p>
+
+    <h3 id="portable">Portable, no install: the zip</h3>
+    <p>Get <code>Tristan-0.6.1-windows-x64.zip</code> (30,224,547 bytes) and <code>Tristan-0.6.1-windows-x64.zip.sha256</code> from the same release. The zip holds 23 files, about 80 MB unpacked: <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs (<code>MSVCP140</code>, <code>VCRUNTIME140</code>, <code>VCRUNTIME140_1</code>), <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. Keep all the files in one folder.</p>
+    <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to</span>
+$zip = 'Tristan-0.6.1-windows-x64.zip'
 
 <span class="c"># 1. Check the download: the two hashes must be the same</span>
 (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
@@ -110,10 +125,9 @@ Expand-Archive $zip -DestinationPath $dir
 
 <span class="c"># 3. Put it on your PATH (your user only), then open a new terminal</span>
 [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ";$dir", 'User')</pre>
-    <p class="note">The exe is not code-signed, so Windows SmartScreen or your antivirus may warn about it. We have not seen what a real Windows desktop shows. Signing is on the <a href="#next">roadmap</a>.</p>
 
     <h3 id="first-run">First run</h3>
-    <pre data-copy>tristan --version     <span class="c"># 0.6.0 for this release; a development build says 0.0.0-dev</span>
+    <pre data-copy>tristan --version     <span class="c"># 0.6.1 for this release; a development build says 0.0.0-dev</span>
 tristan providers     <span class="c"># which providers are ready, and what to set for the others</span>
 tristan --help</pre>
     <p><code>tristan providers</code> prints one line per provider: <code>ready</code>, or <code>not ready:</code> with the fix. It checks that tools are present and settings look right. It does not check that you are logged in.</p>
@@ -200,11 +214,12 @@ tristan sessions                             <span class="c"># missions running 
     <p>Use Windows Terminal, PowerShell or cmd. In mintty, the window Git Bash opens by default, a program’s input is a pipe, not a console, so <code>tristan</code> sees no terminal. Every approval in Ask mode is denied, and <code>kids set-pin</code>, <code>kids off</code> and <code>secret set</code> refuse. Code review found this, and no test has run it. A related known gap: input redirected from <code>NUL</code> may look like a terminal, so saved always-allow rules would apply, while every prompt still reads nothing and denies.</p>
 
     <h3 id="uninstall">Uninstall</h3>
-    <pre data-copy>tristan secret delete azure-openai-key                 <span class="c"># if you stored a key</span>
+    <p>If you used the installer, uninstall in Settings, Apps (or Add or remove programs). That removes the program files and the <code>PATH</code> entry. It <b>keeps</b> your settings and history in <code>%APPDATA%\Tristan</code> and your stored secrets in Credential Manager. To remove those as well, run the first three lines below <em>before</em> you uninstall (the <code>tristan</code> command is gone afterwards):</p>
+    <pre data-copy>tristan secret delete azure-openai-key                 <span class="c"># if you stored a key; repeat for any other key you stored</span>
 cmdkey /delete:com.tristan.app/kids.pin                <span class="c"># the parent PIN hash, if you set one (form checked in CI on a made-up entry)</span>
 Remove-Item -Recurse "$env:APPDATA\Tristan"            <span class="c"># settings, history and the sessions folder</span>
-Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or wherever you unpacked the zip</span></pre>
-    <p>Then remove that folder from your user <code>PATH</code> (Settings &gt; System &gt; About &gt; Advanced system settings &gt; Environment Variables). Ollama, the provider CLIs and their logins are not touched.</p>
+Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># only if you used the zip and unpacked it here</span></pre>
+    <p>If you used the zip, also remove its folder from your user <code>PATH</code> (Settings &gt; System &gt; About &gt; Advanced system settings &gt; Environment Variables). Ollama, the provider CLIs and their logins are not touched.</p>
   </div>
 </section>
 
@@ -255,7 +270,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
       <li><span class="pill no">Not on Windows</span> Not built for Windows in this milestone.</li>
     </ul>
     <div class="tablewrap"><table id="matrix"><caption>Every provider and feature on Windows</caption><thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">What the evidence is</th></tr></thead><tbody>
-<tr><th scope="row"><code>tristan.exe</code> build and zip</th><td><span class="pill ok">Verified in CI</span></td><td>Built in release mode, zipped with its DLLs and licence notices. The unpacked zip runs <code>--version</code> and <code>providers</code> with only the Windows system folders on <code>PATH</code>, and the SHA-256 matches. The runner still has the Visual C++ runtime in System32, so this is not a fresh Windows install. The released zip was also downloaded on a Mac: its file list, notices and SHA-256 were checked. It has not been run on a Windows 10 or 11 desktop.</td></tr>
+<tr><th scope="row"><code>tristan.exe</code> build and zip</th><td><span class="pill ok">Verified in CI</span></td><td>Built in release mode, zipped with its DLLs and licence notices. The unpacked zip runs <code>--version</code> and <code>providers</code> with only the Windows system folders on <code>PATH</code>, and the SHA-256 matches. The runner still has the Visual C++ runtime in System32, so this is not a fresh Windows install. The released zips (0.6.0 and 0.6.1) were also downloaded on a Mac: file list, notices and SHA-256 were checked. It has not been run on a Windows 10 or 11 desktop.</td></tr>
 <tr><th scope="row">Ollama</th><td><span class="pill">Needs a live check</span></td><td>Against a mocked Ollama on <code>127.0.0.1</code> that streams two chunks 700 ms apart: configured only through <code>tristan config</code>, reported ready, and <code>tristan run</code> exits 0 with the full answer. Never run against a real Ollama on Windows.</td></tr>
 <tr><th scope="row">Azure OpenAI</th><td><span class="pill">Needs a live check</span></td><td>The real <code>az.cmd</code> was found through <code>PATHEXT</code>, run through cmd.exe, and its “not logged in” answer explained. The real HTTP client sent the <code>Bearer</code> token or <code>api-key</code> header to an in-process stub and parsed CRLF server-sent events. The key was read from Credential Manager. No real Azure endpoint was called.</td></tr>
 <tr><th scope="row">Amazon Bedrock</th><td><span class="pill">Needs a live check</span></td><td>The real <code>aws.exe</code> read the request from <code>file://C:/…</code> (a third slash breaks it), and its <code>export-credentials</code> output with CRLF parsed. A fake <code>aws</code> drove a full mission with an approval, plus the CLI fallback. No real AWS credentials were used.</td></tr>
@@ -270,15 +285,15 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
 <tr><th scope="row">Settings, <code>config</code> and <code>secret</code></th><td><span class="pill ok">Verified in CI</span></td><td>The JSON file, a corrupt file failing closed, the key allowlist, refusing <code>kidsMode</code>, and <code>secret set</code> refusing piped input.</td></tr>
 <tr><th scope="row">Kids mode</th><td><span class="pill ok">Verified in CI</span></td><td>Routing and refusals, the PIN rules and the PIN delay, with a scripted PIN. Typing the PIN at a real console is in the row above.</td></tr>
 <tr><th scope="row">History and sessions</th><td><span class="pill ok">Verified in CI</span></td><td>Filters, re-run rules, and the registry with process liveness through <code>OpenProcess</code>.</td></tr>
-<tr><th scope="row">Release workflow</th><td><span class="pill ok">Verified in CI</span></td><td>It has run once: <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>, <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">run 42409091093</a>, from commit <code>6146693</code> on <code>main</code>, on 7 November 2026. The Windows job’s tests, zip packaging and SHA-256 and notices checks ran inside it, and it published the Mac DMG, the Windows zip and both checksums. A second run for a different tag has not happened. Running the extracted <code>tristan.exe</code> on a pristine Windows install is still unverified.</td></tr>
+<tr><th scope="row">Release workflow</th><td><span class="pill ok">Verified in CI</span></td><td>It has now run twice with the Windows job. First for <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a> (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">run 42409091093</a>, from <code>6146693</code>): the Mac DMG and the Windows zip. Then for <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">v0.6.1</a> (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42425315224">run 42425315224</a>, from <code>38c90d4</code>, 7 November 2026): the Mac DMG, the Windows zip and the installer, each with a SHA-256. All three v0.6.1 checksums were downloaded and verified on a Mac. The release workflow built the installer and ran the same installer test as the Windows workflow before it published. Running either Windows file on a pristine Windows install is still unverified.</td></tr>
 <tr><th scope="row">HUD window, notch, themes and Markdown rendering</th><td><span class="pill no">Not on Windows</span></td><td>Plain terminal text only.</td></tr>
 <tr><th scope="row">Voice, wake word, spoken lines</th><td><span class="pill no">Not on Windows</span></td><td>Out of scope for this milestone.</td></tr>
 <tr><th scope="row">Spotify, notifications, launch at login</th><td><span class="pill no">Not on Windows</span></td><td>Out of scope for this milestone.</td></tr>
 <tr><th scope="row">Windows Hello for the parent unlock</th><td><span class="pill no">Not on Windows</span></td><td>The PIN is the only unlock.</td></tr>
 <tr><th scope="row">iPhone remote link to a Windows host</th><td><span class="pill no">Not on Windows</span></td><td>The link uses Apple’s Network framework with TLS-PSK.</td></tr>
 <tr><th scope="row">Offline fallback, DEMO provider, session memory</th><td><span class="pill no">Not on Windows</span></td><td><code>tristan run</code> does not use them: it runs one mission at a time with no memory of earlier ones.</td></tr>
-<tr><th scope="row">Installer (Inno Setup)</th><td><span class="pill ok">Verified in CI</span></td><td>Not released yet: v0.6.0 has only the zip, and the installer ships with the next release. CI builds <code>Tristan-&lt;version&gt;-windows-x64-setup.exe</code> from the same files as the zip and, with silent installs only, checks a per-user install with the PATH option (files, <code>--version</code>, <code>PATH</code> value and type), an upgrade over it, the uninstall (folder, Add/Remove Programs entry and <code>PATH</code> restored exactly, <code>%APPDATA%\Tristan</code> kept), an install without the PATH option and an all-users install. The setup is not code-signed. The wizard has not been clicked through, and it has not run on a Windows 10 or 11 desktop.</td></tr>
-<tr><th scope="row">MSIX or winget package</th><td><span class="pill no">Not on Windows</span></td><td>The zip (released in 0.6.0) and the installer above are the only packages.</td></tr>
+<tr><th scope="row">Installer (Inno Setup)</th><td><span class="pill ok">Verified in CI</span></td><td>Built and tested in CI and again in the release workflow, and published in v0.6.1 as <code>Tristan-0.6.1-windows-x64-setup.exe</code>. It is built from the same files as the zip. With silent installs only, the test checks a per-user install with the PATH option (files, <code>--version</code>, <code>PATH</code> value and type), an upgrade over it, the uninstall (folder, Add/Remove Programs entry and <code>PATH</code> restored exactly, <code>%APPDATA%\Tristan</code> kept), an install without the PATH option and an all-users install. <b>Not verified:</b> the wizard screens (nobody has clicked through them), what SmartScreen shows for the unsigned setup, and any run on a Windows 10 or 11 desktop. Code signing, MSIX and winget are on the roadmap.</td></tr>
+<tr><th scope="row">MSIX or winget package</th><td><span class="pill no">Not on Windows</span></td><td>The installer and the zip (both in v0.6.1) are the only packages. No MSIX or winget package exists yet; both are on the roadmap.</td></tr>
 <tr><th scope="row">ARM64 Windows</th><td><span class="pill no">Not on Windows</span></td><td>x64 only.</td></tr>
 </tbody></table></div>
   </div>
@@ -291,11 +306,11 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
     <h2>What is next</h2>
     <p class="note"><b>Plans, not promises.</b> These come from the items we deferred during the work and from the backlog. None of them has a date.</p>
     <ul class="roadmap">
-      <li>Run the released zip on a real Windows 10 or 11 desktop<small>What SmartScreen shows and how a pristine install behaves are still unchecked (the zip itself was released on 7 November 2026)</small></li>
+      <li>Run the released installer and zip on a real Windows 10 or 11 desktop<small>Click through the wizard, see what SmartScreen shows, and check how a pristine install behaves (both were released on 7 November 2026 and are still unchecked there)</small></li>
       <li>Live provider checks on a real Windows PC<small>One real mission per provider, typing at a real console, Ctrl+C, and whether Claude Code passes the MCP <code>env</code> block</small></li>
             <li>Job Object process-tree kill<small><code>taskkill /T</code> can miss orphaned grandchildren; a Job Object that kills everything on close would not</small></li>
-      <li>Installer: built and tested in CI, ships with the next release<small>Inno Setup, per user without administrator rights, adds itself to <code>PATH</code>; until then, the zip and a manual <code>PATH</code> change</small></li>
-      <li>winget or MSIX package<small>Not started</small></li>
+      <li><span class="pill ok">Done</span> Installer, as a <code>setup.exe</code><small>Inno Setup, released in 0.6.1: per user without administrator rights, optional <code>PATH</code> entry. Signing and a winget or MSIX package remain, below</small></li>
+      <li>winget or MSIX package<small>Not started; the <code>setup.exe</code> is the only installer</small></li>
       <li>Code signing for <code>tristan.exe</code> and the installer<small>Fewer SmartScreen warnings</small></li>
       <li>Auto-update<small>Not on the Mac either</small></li>
       <li>ARM64 Windows<small>Out of scope so far</small></li>
@@ -349,6 +364,11 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
       <li><time datetime="2026-11-07">7 Nov</time> The whole-branch review and its one fix wave: the iOS project regenerated with a CI drift check, the approval prompt naming PowerShell on Windows, and a minimum test count for the Windows and release test steps (from <code>d9942c6</code>). Green run <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42382067145">42382067145</a>.</li>
       <li><time datetime="2026-11-07">7 Nov</time> The Windows work was merged to <code>main</code> by pull request (#27). A release-prep pull request (#28) made the timing-sensitive tests tolerant and bumped <code>VERSION</code> to 0.6.0. <code>main</code> is now protected: changes land only by pull request, and <code>build-and-test</code>, <code>ios</code>, <code>windows</code> and <code>gitleaks</code> must pass.</li>
       <li><time datetime="2026-11-07">7 Nov</time> <b>First release.</b> The first run of <code>release.yml</code> (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">run 42409091093</a>, from <code>6146693</code>) published <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>: the Mac DMG, rebuilt from the refactored core, and the Windows zip, each with a SHA-256. Both checksums were checked on a Mac.</li>
+      <li><time datetime="2026-11-07T15:38-06:00">7 Nov, 15:38</time> <b>The installer.</b> Pull request #30 added the Inno Setup <code>setup.exe</code>, built from the same files as the zip, with a shared silent-install test that both the Windows workflow and the release workflow run (<code>74b7572</code>). The pull request before it, #29 (14:37), had put the Download for Windows steps and release facts on the site (<code>3863582</code>).</li>
+      <li><time datetime="2026-11-07T16:05-06:00">7 Nov, 16:05</time> Path-aware CI: each job runs only when the files it builds changed (#31, <code>cb0256d</code>).</li>
+      <li><time datetime="2026-11-07T16:49-06:00">7 Nov, 16:49</time> The proof that docs-only changes skip the build jobs, recorded in the docs (#65, <code>67f8b59</code>).</li>
+      <li><time datetime="2026-11-07T17:21-06:00">7 Nov, 17:21</time> Release prep 0.6.1: <code>VERSION</code> bumped (#66, <code>38c90d4</code>).</li>
+      <li><time datetime="2026-11-07T17:44-06:00">7 Nov, about 17:44</time> <b>Second release, with the installer.</b> The second run of <code>release.yml</code> with the Windows job (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42425315224">run 42425315224</a>, from <code>38c90d4</code>) published <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">v0.6.1</a>: the Mac DMG, the Windows zip and the Windows installer, each with a SHA-256. All three checksums were verified on a Mac; the installer itself was tested only with silent installs.</li>
     </ol>
 
     <h3 id="bugs">Bugs the reviews and the Windows runner caught</h3>
@@ -385,14 +405,14 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
     <div class="facts" role="list">
       <div role="listitem"><b>230 + 109</b><span>core and CLI tests on Windows at <code>ed290b0</code>, 0 failures (229 + 109 before the final fix wave)</span></div>
       <div role="listitem"><b>425</b><span>tests on the Mac: 124 app, 206 core, 95 CLI (190 before the port), plus 17 iOS tests</span></div>
-      <div role="listitem"><b>28</b><span>Windows workflow runs on the branch up to <code>ed290b0</code>: 15 green, 12 failed, 1 cancelled. A snapshot taken during the final fix wave; later pushes add runs, and the Actions page has the live list.</span></div>
+      <div role="listitem"><b>28</b><span>Windows workflow runs on the branch up to <code>ed290b0</code>: 15 green, 12 failed, 1 cancelled. A snapshot taken during the final fix wave; later pushes add runs, and the Actions page has the live list. Counted again on 7 November 2026, after the 0.6.1 release (all branches, a second snapshot): 48 runs, 33 green, 14 failed, 1 cancelled.</span></div>
       <div role="listitem"><b>15 / 10</b><span>reviewed work units / fix rounds (each needed at most one)</span></div>
     </div>
     <ul class="plain" style="margin-top:28px">
       <li><b>Runs before the first green:</b> 4 failed runs (compile errors in runs 1, 2 and 4, and 22 test failures in run 3), then green.</li>
       <li><b>Rulings:</b> 17 (R1 to R17, the last one setting the scope of the final fix wave), recorded in the working ledger, which is not in the repository.</li>
       <li><b>Commits:</b> 64 on the branch before this page. From the plan to the last fix took about ten hours of wall-clock time.</li>
-      <li><b>Zip:</b> about 30 MB. <code>tristan.exe</code> is 19.2 MB and the ICU data DLL 38.2 MB unpacked.</li>
+      <li><b>Zip and installer:</b> the 0.6.1 zip is about 30 MB (30,224,547 bytes) and the installer about 21 MB (21,201,665 bytes). <code>tristan.exe</code> is 19.2 MB and the ICU data DLL 38.2 MB unpacked.</li>
     </ul>
 
     <h3 id="build-from-source">Build, test and package from source on Windows</h3>
@@ -432,20 +452,20 @@ pwsh -NoProfile -File scripts\package-windows-installer.ps1 -Version 0.0.0-local
 
     <h3 id="releases">How releases are cut</h3>
     <ol class="steps">
-      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. <code>v0.6.0</code> is the only tag so far.</li>
+      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. <code>v0.6.1</code> is the latest tag so far.</li>
       <li><b>Secret scan.</b> gitleaks over the whole history. A leak stops the release.</li>
       <li><b>Windows job</b> (read-only token): the same toolchain pins, both test suites, then the version. The leading <code>v</code> is dropped, and every character other than a letter, digit, dot or dash becomes a dash, case-sensitively (<code>v1.2.3_rc1</code> gives <code>1.2.3-rc1</code>; a bare <code>v</code> gives <code>0.0.0</code>). It packages, unpacks into a clean folder, checks <code>--version</code>, the checksum and the notices, builds the installer from the same files and runs the installer test on it, and uploads the zip and the installer. A version that still does not start with a letter or digit (the tag <code>v-1</code>) stops it.</li>
       <li><b>Mac job</b> (<code>macos-15</code>, Xcode 16.2): runs <code>swift test</code> and builds the DMG with the tag as its version. It waits for the Windows job, downloads the zip and the installer, and creates <b>one</b> GitHub Release with generated notes, the DMG, the zip, the installer and a SHA-256 for each.</li>
     </ol>
-    <p class="note"><b>The release workflow has run once.</b> <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">Run 42409091093</a> succeeded for <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>, and its Windows steps are the same lines the Windows workflow runs with made-up tags. Other tag shapes have only been tried in that workflow. The installer steps were added after that run: they have not run in <code>release.yml</code> yet and will first run on the next tag. The same lines run in the Windows workflow on every push, with the made-up tag <code>v1.2.3_rc1</code>.</p>
+    <p class="note"><b>The release workflow has run twice with the Windows job.</b> <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">Run 42409091093</a> succeeded for <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a> (the zip and the DMG). <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42425315224">Run 42425315224</a> succeeded for <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">v0.6.1</a>, the first release with the installer: it built the installer and ran the same installer test as the Windows workflow before publishing. The Windows steps are the same lines the Windows workflow runs on every push with made-up tags, such as <code>v1.2.3_rc1</code>; other tag shapes have only been tried in that workflow. (Counted as a snapshot on 7 November 2026, <code>release.yml</code> has six successful runs in all; the four before v0.6.0 were Mac-only releases from before the Windows work.)</p>
 
     <h3 id="ci-limits">What CI cannot prove</h3>
     <ul class="plain">
       <li><b>Live logins and services:</b> real Claude Code (including whether it passes the MCP <code>env</code> block), the real Copilot CLI, <code>az login</code> tokens against Azure OpenAI, Bedrock with real AWS credentials, a real Ollama.</li>
       <li><b>A person at a console:</b> typing <code>y</code> / <code>n</code> / <code>a</code>, the echo-free PIN prompt, <kbd>Ctrl+C</kbd> through the console handler, how <code>NUL</code> and mintty look to the terminal check.</li>
       <li><b>Desktop Windows:</b> CI runs Windows Server 2025; Windows 10 and 11 desktop editions have not run it.</li>
-      <li><b>The installer’s wizard:</b> only silent installs and uninstalls run in CI. Nobody has clicked through the wizard, seen the final uninstall message, or seen what SmartScreen says about the unsigned setup.</li>
-      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the zip on a fresh PC” is strong evidence, not proof. The released zip was only inspected on a Mac, and SmartScreen’s reaction to the unsigned exe has not been seen.</li>
+      <li><b>The installer’s wizard:</b> only silent installs and uninstalls run in CI, including inside the release workflow that built the released installer. Nobody has clicked through the wizard, seen the final uninstall message, or seen what SmartScreen says about the unsigned setup.</li>
+      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the installer or the zip on a fresh PC” is strong evidence, not proof. The released installer and zip were only inspected on a Mac, and SmartScreen’s reaction to the unsigned files has not been seen.</li>
       <li><b>Other environments:</b> consoles with a non-UTF-8 code page, Credential Manager under an interactive or roaming profile or enterprise policy, UNC working folders, case-sensitive folders, drives without 8.3 names, ARM64.</li>
     </ul>
 
