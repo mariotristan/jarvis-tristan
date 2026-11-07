@@ -1,16 +1,28 @@
 # CI and releases
 
-Three GitHub Actions workflows.
+Four GitHub Actions workflows.
 
 | Workflow | File | Trigger | What it does |
 |----------|------|---------|--------------|
 | CI | `.github/workflows/ci.yml` | Push to `main`, pull requests | Runs the tests, builds the app and a DMG, checks the signature, uploads the DMG as an artifact |
 | Secret scan | `.github/workflows/secret-scan.yml` | Push to `main`, pull requests, every Monday, and called by Release | Runs gitleaks over the full git history and fails on any leaked credential |
-| Release | `.github/workflows/release.yml` | Push a tag `v*` | Runs the secret scan first, then the tests, builds `Tristan-<version>.dmg`, publishes a GitHub Release with generated notes, the DMG and its SHA-256 |
+| Windows | `.github/workflows/windows.yml` | Push to `main` or `windows-cli`, pull requests, manual | Builds and tests the core and the `tristan` command on `windows-latest`, runs `tristan.exe` against fake provider CLIs and a mocked Ollama, packages and uploads the Windows zip |
+| Release | `.github/workflows/release.yml` | Push a tag `v*` | Runs the secret scan first; then the Windows job (tests, `Tristan-<version>-windows-x64.zip`) and the Mac job (tests, `Tristan-<version>.dmg`); publishes one GitHub Release with generated notes, the DMG, the zip and a SHA-256 for each |
 
 CI has two jobs. `build-and-test` is the Mac app (above). `ios` builds the iPhone and iPad app in `ios/` and runs its tests on an iPhone simulator. The iOS job uses the **newest Xcode 16.x** on the runner rather than 16.2: the `macos-15` image has no simulator runtime matching Xcode 16.2 (it reports "iOS 18.2 is not installed"), while Xcode 16.4 has the iOS 18.5 runtime. The generated `ios/TristanIOS.xcodeproj` is committed, so CI does not need XcodeGen; regenerate it with `cd ios && xcodegen generate` after editing `ios/project.yml`.
 
 Every CI run leaves a `Tristan-dmg` artifact on the run page, so any build can be installed for testing without a release.
+
+## Windows
+
+The `windows` job of `.github/workflows/windows.yml` runs on `windows-latest` with Swift 6.4.2 (`compnerd/gha-setup-swift`, pinned by commit). It builds `TristanCore` and `tristan`, runs `swift test --filter TristanCoreTests` and `--filter TristanCLITests`, then drives the built `tristan.exe`:
+
+- against the fake `claude`, `copilot`, `aws` and `az` CLIs in `scripts/ci/fakes` (no real account or secret);
+- against `scripts/ci/mock-ollama.ps1`, a stand-in for Ollama on `127.0.0.1` that streams a two-chunk answer. The exe is pointed at it only with `tristan config set ollama.host` and `ollama.model`, `tristan providers` must report Ollama ready, and `tristan run --provider ollama "hello"` must exit 0 with the mock's answer.
+
+`scripts/package-windows.ps1 -Version <version>` then builds `tristan.exe` in release, stamps the version into `Sources/TristanCLICore/BuildVersion.swift` for the build (so `tristan --version` prints it; development builds print `0.0.0-dev`), ships next to it every DLL it needs that Windows does not have (found with `dumpbin /dependents`: the Swift runtime and Foundation DLLs, about 60 MB with ICU, and the Visual C++ runtime; a `-static-stdlib` link fails because the Swift 6.4.2 Windows SDK has no static `curl.lib`), and writes `dist/Tristan-<version>-windows-x64.zip` (`tristan.exe`, those DLLs, `LICENSE.txt`, `README.txt`) and `dist/Tristan-<version>-windows-x64.zip.sha256`. CI packages version `0.0.0-ci` and uploads both files as the `tristan-windows` artifact, then extracts the zip into an empty folder and runs `tristan --version` and `tristan providers` with only the Windows system folders on `PATH`, and checks the SHA-256. A last step packages with a made-up tag, `v9.9.9-test`, using the same lines the release uses to turn a tag into a version.
+
+In `release.yml` the `windows` job (read-only token) runs the same tests and the packaging script with the version from the tag, `v1.2.3` giving `1.2.3`, and uploads the zip as an artifact. The Mac `release` job waits for it (`needs: [secret-scan, windows]`), downloads the zip and attaches it with its `.sha256` in the same `gh release create` as the DMG, so one release carries both and a failed Windows build stops the release. Tags must look like `v1.2.3` or `v1.2.3-beta.1`.
 
 ## Publishing a release
 
@@ -21,7 +33,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-The release appears under **Releases** in about three minutes. Also bump the `VERSION` file when you cut a release so local builds report the same number.
+The release appears under **Releases** once both the Mac and the Windows jobs have finished (the Windows build and tests take longer than the Mac ones). Also bump the `VERSION` file when you cut a release so local builds report the same number.
 
 ## Building locally
 

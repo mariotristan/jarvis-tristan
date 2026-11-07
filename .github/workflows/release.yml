@@ -8,8 +8,53 @@ jobs:
   secret-scan:
     uses: ./.github/workflows/secret-scan.yml
 
-  release:
+  # tristan.exe for Windows: the same toolchain, tests and packaging script as .github/workflows/windows.yml, which runs
+  # them on every push (including this exact version derivation, with a made-up tag). The release below waits for it,
+  # so a failed Windows build blocks the whole release.
+  windows:
     needs: secret-scan
+    runs-on: windows-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Install Swift
+        uses: compnerd/gha-setup-swift@9ff1ee4c44888c5817fc14d1b257ac8cabb4935f # v0.5.1
+        with:
+          swift-version: swift-6.4.2-release
+          swift-build: 6.4.2-RELEASE
+
+      - name: Test TristanCore
+        run: swift test --filter TristanCoreTests
+
+      - name: Test TristanCLI
+        run: swift test --filter TristanCLITests
+
+      - name: Build the zip
+        run: |
+          # The tag (for example v1.2.3) is the version: `tristan --version` reports 1.2.3.
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '\Av[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?\z') { throw "The tag '$tag' is not like v1.2.3" }
+          $version = $tag.Substring(1)
+          pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload the zip
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tristan-windows
+          path: |
+            dist/Tristan-*-windows-x64.zip
+            dist/Tristan-*-windows-x64.zip.sha256
+          if-no-files-found: error
+
+  release:
+    needs: [secret-scan, windows]
     runs-on: macos-15
     permissions:
       contents: write
@@ -28,6 +73,12 @@ jobs:
           # The tag (for example v1.2.3) is the version: the app reports 1.2.3.
           VERSION="${GITHUB_REF_NAME#v}" BUILD_NUMBER="${{ github.run_number }}" scripts/make-dmg.sh
 
+      - name: Download the Windows zip
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tristan-windows
+          path: dist-windows
+
       - name: Create GitHub Release and attach the DMG
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -35,4 +86,5 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
-            dist/Tristan-*.dmg dist/Tristan-*.dmg.sha256
+            dist/Tristan-*.dmg dist/Tristan-*.dmg.sha256 \
+            dist-windows/Tristan-*-windows-x64.zip dist-windows/Tristan-*-windows-x64.zip.sha256
