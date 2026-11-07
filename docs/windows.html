@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Windows—T.R.I.S.T.A.N.</title>
+<meta name="description" content="The tristan command on Windows: install and first run, how we ported it, what is verified and what is not, what is next, and how we build it in the open.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/windows.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Windows—T.R.I.S.T.A.N.">
+<meta property="og:description" content="The tristan command on Windows: install and first run, how we ported it, what is verified and what is not, what is next, and how we build it in the open.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/windows.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="local-models.html">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html">Install</a>
+        <a href="windows.html" aria-current="page">Windows</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Guide · Windows</span>
+      <h1>T.R.I.S.T.A.N. in a Windows terminal.</h1>
+      <p class="lead">A <code>tristan</code> command for Windows 10 and 11 (x64). Run a mission on any of the five providers and approve each action in Windows Terminal, PowerShell or cmd. This page covers how to use it, how we ported it, what is proven and what is not, what comes next, and how we built it.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <p class="note warn"><b>Not released yet.</b> The Windows work lives on the <code>windows-cli</code> branch. No GitHub Release with the Windows zip has been published, and the release workflow’s Windows job has never run. Until a release exists, <a href="#build-from-source">build from source</a>, or download the <code>tristan-windows</code> artifact from a green <a href="https://github.com/mariotristan/jarvis-tristan/actions/workflows/windows.yml">Windows workflow run</a> (you must be signed in to GitHub). That artifact is a CI build stamped <code>0.0.0-ci</code>.</p>
+
+    <nav class="toc" aria-labelledby="toc-title">
+      <h2 id="toc-title" class="toc-title">On this page</h2>
+      <ol>
+        <li><a href="#install">Install and first run</a>
+          <ol>
+            <li><a href="#download">Download and verify</a></li>
+            <li><a href="#first-run">First run</a></li>
+            <li><a href="#configure">Set up each provider</a></li>
+            <li><a href="#run">Run a mission</a></li>
+            <li><a href="#approvals">Approvals in the terminal</a></li>
+            <li><a href="#exit-codes">Exit codes</a></li>
+            <li><a href="#kids">Kids mode</a></li>
+            <li><a href="#history">History and sessions</a></li>
+            <li><a href="#git-bash">Git Bash and mintty</a></li>
+            <li><a href="#uninstall">Uninstall</a></li>
+          </ol>
+        </li>
+        <li><a href="#port">How we ported it</a></li>
+        <li><a href="#support">What is supported</a></li>
+        <li><a href="#next">What is next</a></li>
+        <li><a href="#how-we-build">How we build</a>
+          <ol>
+            <li><a href="#process">The process</a></li>
+            <li><a href="#timeline">Timeline</a></li>
+            <li><a href="#bugs">Bugs the reviews and the runner caught</a></li>
+            <li><a href="#lessons">Process lessons</a></li>
+            <li><a href="#numbers">Numbers</a></li>
+            <li><a href="#build-from-source">Build, test and package from source</a></li>
+            <li><a href="#ci">How CI is wired</a></li>
+            <li><a href="#releases">How releases are cut</a></li>
+            <li><a href="#ci-limits">What CI cannot prove</a></li>
+            <li><a href="#differently">What we would do differently</a></li>
+            <li><a href="#follow">Follow along or reproduce it</a></li>
+          </ol>
+        </li>
+      </ol>
+    </nav>
+  </div>
+</section>
+
+<!-- ============================== 1. Install and first run ============================== -->
+<section id="install" class="soft">
+  <div class="wrap">
+    <span class="eyebrow">Part 1</span>
+    <h2>Install and first run</h2>
+    <p>The Windows version is a terminal program, not a window. It runs the same agent loop, providers and approval rules as the Mac app, and asks you about each action in the terminal.</p>
+
+    <h3 id="download">Download and verify</h3>
+    <p>A release will carry <code>Tristan-&lt;version&gt;-windows-x64.zip</code> and <code>Tristan-&lt;version&gt;-windows-x64.zip.sha256</code> next to the Mac DMG. The zip holds <code>tristan.exe</code>, the Swift runtime and Foundation DLLs it needs, the Visual C++ runtime DLLs, <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. It is about 30 MB. Keep all the files in one folder.</p>
+    <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to. 1.2.3 is an example: use the release you downloaded.</span>
+$version = '1.2.3'
+$zip = "Tristan-$version-windows-x64.zip"
+
+<span class="c"># 1. Check the download: the two hashes must be the same</span>
+(Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
+Get-Content "$zip.sha256"
+
+<span class="c"># 2. Unpack it, for example into your own Programs folder</span>
+$dir = "$env:LOCALAPPDATA\Programs\Tristan"
+Expand-Archive $zip -DestinationPath $dir
+
+<span class="c"># 3. Put it on your PATH (your user only), then open a new terminal</span>
+[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ";$dir", 'User')</pre>
+    <p class="note">The exe is not code-signed, so Windows SmartScreen or your antivirus may warn about it. Signing is on the <a href="#next">roadmap</a>.</p>
+
+    <h3 id="first-run">First run</h3>
+    <pre data-copy>tristan --version     <span class="c"># the release version; a development build says 0.0.0-dev</span>
+tristan providers     <span class="c"># which providers are ready, and what to set for the others</span>
+tristan --help</pre>
+    <p><code>tristan providers</code> prints one line per provider: <code>ready</code>, or <code>not ready:</code> with the fix. It checks that tools are present and settings look right. It does not check that you are logged in.</p>
+    <pre><span class="c"># for example, on a machine with only Ollama running</span>
+claude   not ready: the claude CLI was not found on PATH (install Claude Code)
+copilot  not ready: the copilot CLI was not found on PATH (npm install -g @github/copilot)
+bedrock  not ready: the AWS CLI was not found on PATH
+azure    not ready: set the endpoint and deployment first: `tristan config set azure.endpoint &lt;url&gt;` and `tristan config set azure.deployment &lt;name&gt;`
+ollama   ready</pre>
+
+    <h3 id="configure">Set up each provider</h3>
+    <p>Windows has no Configuration window, so two commands do its job. <code>tristan config</code> changes the provider settings, and <code>tristan secret</code> stores a credential in Windows Credential Manager. A secret is only ever typed at a hidden prompt. It is never an argument, never printed and never logged.</p>
+    <pre data-copy>tristan config list                         <span class="c"># every setting, its value and its default</span>
+tristan config get ollama.model
+tristan config set ollama.model llama3.1
+tristan config unset ollama.model           <span class="c"># back to the default</span>
+tristan secret status                       <span class="c"># set / not set, never the value</span>
+tristan secret set azure-openai-key         <span class="c"># typed at a hidden prompt</span>
+tristan secret delete azure-openai-key</pre>
+    <p>The settings are <code>ollama.host</code>, <code>ollama.model</code>, <code>azure.endpoint</code>, <code>azure.deployment</code>, <code>azure.apiVersion</code>, <code>bedrock.region</code>, <code>bedrock.model</code>, <code>bedrock.profile</code> and <code>copilot.model</code>. Each value is checked with the same rule the provider uses when it runs. <code>kidsMode</code>, <code>allowRules</code> and every other key are refused, so the terminal cannot switch kids mode off or grant approvals. The only secret name is <code>azure-openai-key</code>: on Windows, Bedrock uses the AWS CLI’s own credentials.</p>
+
+    <div class="tablewrap"><table><caption>What each provider needs on Windows</caption><thead><tr><th scope="col">Provider</th><th scope="col">Install</th><th scope="col">Configure and sign in</th></tr></thead><tbody>
+<tr><th scope="row">Ollama</th><td><code>winget install -e --id Ollama.Ollama</code>, or <code>scripts\setup-ollama.ps1</code> from the repo (it checks, starts, pulls and sets the model; see <a href="local-models.html#windows">Local models on Windows</a>)</td><td><code>tristan config set ollama.model llama3.1</code>. Leave it unset to use the first installed model. <code>ollama.host</code> must be plain <code>http</code> on <code>localhost</code>, <code>127.0.0.1</code> or <code>::1</code>.</td></tr>
+<tr><th scope="row">Azure OpenAI</th><td>Nothing, or the Azure CLI (<code>winget install -e --id Microsoft.AzureCLI</code>) to sign in without a key</td><td><code>tristan config set azure.endpoint https://my-resource.openai.azure.com</code>, <code>tristan config set azure.deployment &lt;name&gt;</code>, optionally <code>azure.apiVersion</code> (default <code>2024-10-21</code>). Then either <code>tristan secret set azure-openai-key</code> or <code>az login</code>.</td></tr>
+<tr><th scope="row">Amazon Bedrock</th><td>AWS CLI v2 (<code>winget install Amazon.AWSCLI</code>)</td><td>Sign in as usual (<code>aws configure</code> or SSO). Then <code>tristan config set bedrock.region us-east-1</code>, and optionally <code>bedrock.model</code> and <code>bedrock.profile</code>. Requests are signed with the credentials the AWS CLI exports. If streaming fails, Tristan falls back to <code>aws bedrock-runtime converse</code>.</td></tr>
+<tr><th scope="row">GitHub Copilot</th><td>Node.js 22 or later, then <code>npm install -g @github/copilot</code></td><td>Run <code>copilot</code> once to sign in. Optionally <code>tristan config set copilot.model &lt;name&gt;</code>. As on the Mac, Copilot asks for one approval up front, not one per action (<a href="providers.html">why</a>).</td></tr>
+<tr><th scope="row">Claude Code</th><td><code>npm install -g @anthropic-ai/claude-code</code> and Git for Windows (<code>winget install -e --id Git.Git</code>), which Claude Code needs on Windows</td><td>Run <code>claude</code> once to sign in. Approvals arrive in the terminal through Tristan’s own approval channel (see <a href="#port">How we ported it</a>).</td></tr>
+</tbody></table></div>
+    <p class="note">After installing a tool with winget or npm, open a new terminal so it is on your <code>PATH</code>. None of the five providers has been run against a live account on Windows yet. See <a href="#support">What is supported</a>.</p>
+
+    <h3 id="run">Run a mission</h3>
+    <pre data-copy>cd C:\code\my-project
+tristan run "explain this project"                              <span class="c"># Ollama is the default provider</span>
+tristan run --provider claude "fix the failing test"
+tristan run --provider azure --folder C:\code\other "add a README"</pre>
+    <p>Log lines print as <code>&gt; text</code> and code streams to standard output. Status lines (<code>[...]</code>) and failures go to standard error, and the run ends with <code>Done: ...</code> or <code>Failed: ...</code>. Everything shown comes from a model or a tool, so terminal control sequences in it (screen clearing, cursor moves, clipboard writes) are shown escaped, never obeyed. Press <kbd>Ctrl+C</kbd> to cancel. Tristan stops the provider and every process it started, prints <code>Cancelled</code> and exits with 130. A second <kbd>Ctrl+C</kbd> exits at once.</p>
+
+    <h3 id="approvals">Approvals in the terminal</h3>
+    <div class="modes">
+      <div class="mode"><span class="tag">Default</span><h4>Ask</h4><p>Every action that needs approval stops and asks: <code>[y]es / [n]o / [a]lways</code>. Anything other than <code>y</code>, <code>yes</code>, <code>a</code> or <code>always</code> is a no.</p></div>
+      <div class="mode gold"><span class="tag">--yes-routine</span><h4>Auto</h4><p>Routine actions run without asking. Anything else still asks.</p></div>
+      <div class="mode"><span class="tag">--yolo</span><h4>Yolo</h4><p>Nothing asks. Use it only in a folder you can afford to lose. It cannot be combined with <code>--yes-routine</code>.</p></div>
+    </div>
+    <ul class="plain">
+      <li><b>Always allow stays narrow.</b> <code>a</code> saves a rule for a plain program name or a file edit inside the working folder, as on the Mac. Rules live in <code>%APPDATA%\Tristan\settings.json</code> and apply only in later runs that have a terminal.</li>
+      <li><b>Commands run in PowerShell.</b> The model’s <code>run_command</code> runs <code>pwsh</code> if it is installed, otherwise <code>powershell.exe</code>, with <code>-NoLogo -NoProfile -NonInteractive -Command</code>.</li>
+      <li><b>Windows-aware rules.</b> Auto never runs, and Always never remembers, a risky PowerShell program (<code>Remove-Item</code>, <code>del</code>, <code>iex</code>, <code>Invoke-WebRequest</code>, <code>Start-Process</code>, <code>reg</code>, <code>Import-Module</code> and over a hundred other names, in any letter case and with any program extension). The same goes for a command with an operator or a PowerShell construct (<code>;</code>, <code>&amp;</code>, <code>|</code>, <code>&gt;</code>, backtick, <code>$</code>, <code>{ }</code>, <code>(</code>, <code>[</code>, <code>-EncodedCommand</code> and its abbreviations) or with invisible Unicode separators. The Approvals guide has the <a href="approvals.html">Mac rules</a> these extend.</li>
+      <li><b>Folder checks compare real paths.</b> They ignore letter case (drive letters included) and treat <code>\</code> and <code>/</code> the same. A UNC path only matches its own share, and junctions and symbolic links are resolved first. <code>C:\Work\Proj-evil</code> is not inside <code>C:\Work\Proj</code>.</li>
+      <li><b>No terminal, no approvals.</b> With input piped or redirected, every action that needs approval is denied, saved rules are ignored, and the run exits with 3. For unattended runs, choose <code>--yes-routine</code> or <code>--yolo</code> on purpose.</li>
+    </ul>
+
+    <h3 id="exit-codes">Exit codes</h3>
+    <div class="tablewrap"><table><caption>What <code>tristan</code> returns</caption><thead><tr><th scope="col">Code</th><th scope="col">Meaning</th></tr></thead><tbody>
+<tr><th scope="row">0</th><td>The mission finished (or the command succeeded).</td></tr>
+<tr><th scope="row">1</th><td>The mission failed or ended without finishing, or a write such as a wrong PIN was refused.</td></tr>
+<tr><th scope="row">2</th><td>Usage error: bad arguments, an unknown setting, a refusal in kids mode, or no terminal where one is needed.</td></tr>
+<tr><th scope="row">3</th><td>The mission ended but at least one action was denied. Denied wins over failed, because a denial usually causes the failure.</td></tr>
+<tr><th scope="row">130</th><td>Cancelled with <kbd>Ctrl+C</kbd>.</td></tr>
+</tbody></table></div>
+
+    <h3 id="kids">Kids mode</h3>
+    <p>The same kids mode as the Mac app (the same <code>kidsMode</code> setting and parent PIN). While it is on, only Ollama answers, and every action asks.</p>
+    <pre data-copy>tristan kids set-pin       <span class="c"># 4 or more digits, typed without echo; asks for the current PIN first</span>
+tristan kids on            <span class="c"># needs a PIN to be set first</span>
+tristan kids status
+tristan kids off           <span class="c"># asks for the parent PIN</span>
+tristan run --provider claude --allow-cloud "help with homework"   <span class="c"># a parent allows one cloud run with the PIN</span></pre>
+    <ul class="plain">
+      <li><b>In kids mode</b> a cloud provider is refused unless a parent types the PIN with <code>--allow-cloud</code> for that one run. <code>--yes-routine</code> and <code>--yolo</code> are refused. <code>tristan config set|unset</code> and <code>tristan secret set|delete</code> also ask for the PIN.</li>
+      <li><b>Every PIN check waits 1.5 seconds</b>, right or wrong, so guessing from a script is slow and the timing gives nothing away.</li>
+      <li><b>Fails closed.</b> If <code>settings.json</code> exists but cannot be read, kids mode counts as on and nothing is saved until the file is repaired.</li>
+      <li><b>Honest limits.</b> A child at the keyboard can answer the approval prompts. The PIN is stored as an unsalted SHA-256 hash in Credential Manager (<code>com.tristan.app/kids.pin</code>), as on the Mac. And the settings file is not a lock against someone who uses the same Windows account: they can edit it or delete the credential. The kids-mode lock on the Mac app uses the Mac’s own login as well; see <a href="kids-mode.html">Kids safe mode</a>.</li>
+    </ul>
+
+    <h3 id="history">History and sessions</h3>
+    <pre data-copy>tristan history                              <span class="c"># past missions, newest first</span>
+tristan history --query readme --status done
+tristan history --rerun 2                    <span class="c"># run line 2 again (Ask mode, same provider and folder)</span>
+tristan history --rerun 2 --folder C:\code\x <span class="c"># if that folder is gone</span>
+tristan sessions                             <span class="c"># missions running now, from any terminal</span></pre>
+    <p>History is kept in <code>%APPDATA%\Tristan\history.json</code>. Only the task and a summary of up to 240 characters are stored, never the streamed code. A re-run never quietly switches folders: if the original folder is gone, it stops and asks for <code>--folder</code>. Running missions register in <code>%APPDATA%\Tristan\sessions</code>. Entries whose process has ended are skipped and removed.</p>
+
+    <h3 id="git-bash">Git Bash and mintty</h3>
+    <p>Use Windows Terminal, PowerShell or cmd. In mintty, the window Git Bash opens by default, a program’s input is a pipe, not a console, so <code>tristan</code> sees no terminal. Every approval in Ask mode is denied, and <code>kids set-pin</code>, <code>kids off</code> and <code>secret set</code> refuse. Code review found this, and no test has run it. A related known gap: input redirected from <code>NUL</code> may look like a terminal, so saved always-allow rules would apply, while every prompt still reads nothing and denies.</p>
+
+    <h3 id="uninstall">Uninstall</h3>
+    <pre data-copy>tristan secret delete azure-openai-key                 <span class="c"># if you stored a key</span>
+cmdkey /delete:com.tristan.app/kids.pin                <span class="c"># the parent PIN hash, if you set one</span>
+Remove-Item -Recurse "$env:APPDATA\Tristan"            <span class="c"># settings, history and the sessions folder</span>
+Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or wherever you unpacked the zip</span></pre>
+    <p>Then remove that folder from your user <code>PATH</code> (Settings &gt; System &gt; About &gt; Advanced system settings &gt; Environment Variables). Ollama, the provider CLIs and their logins are not touched.</p>
+  </div>
+</section>
+
+<!-- ============================== 2. How we ported it ============================== -->
+<section id="port">
+  <div class="wrap">
+    <span class="eyebrow">Part 2</span>
+    <h2>How we ported it</h2>
+    <p>The design rule was <b>one core, no fork</b>. The Mac app, the iPhone app and the Windows command use one copy of the agent loop, the providers and the approval logic. The Windows version must never run weaker safety than the Mac.</p>
+
+    <h3 id="core-split">The TristanCore split</h3>
+    <ol class="steps">
+      <li><b>Pin today’s behaviour first.</b> Before any code moved, a new test suite pinned the Mac’s approval policy and sandbox, so later changes could not quietly weaken them.</li>
+      <li><b>Split the package.</b> The portable code moved into a library, <code>Sources/TristanCore</code>: the agent loop and tools, the five providers, approval types and policy, settings, history and session memory. Code that starts processes or opens sockets lives in <code>Sources/TristanCore/Processes</code>, which the iPhone app does not compile.</li>
+      <li><b>Add the command.</b> <code>Sources/TristanCLICore</code> holds the commands (<code>run</code>, <code>providers</code>, <code>config</code>, <code>secret</code>, <code>kids</code>, <code>history</code>, <code>sessions</code>), and <code>Sources/TristanCLI</code> is a thin <code>main</code>. The product is <code>tristan</code> on Windows and Linux and <code>tristan-cli</code> on macOS, because the Mac’s case-insensitive file system would mix up <code>tristan</code> with the app’s <code>Tristan</code> binary.</li>
+      <li><b>Keep the Mac app where it was.</b> <code>Sources/Tristan</code> (AppKit and SwiftUI) and <code>Sources/Tristan/Shared</code> (themes, Markdown rendering and the iPhone link, which need SwiftUI or Apple’s Network framework) are declared in <code>Package.swift</code> only on macOS, so Windows never tries to build them.</li>
+    </ol>
+
+    <h3 id="seams">The platform seams</h3>
+    <div class="tablewrap"><table><caption>Where the Mac and Windows differ, and where the code lives</caption><thead><tr><th scope="col">Seam</th><th scope="col">On the Mac</th><th scope="col">On Windows</th></tr></thead><tbody>
+<tr><th scope="row">Settings</th><td><code>UserDefaults</code> (the app’s own domain, shared with <code>tristan-cli</code>)</td><td>A JSON file, <code>%APPDATA%\Tristan\settings.json</code>, with the same keys, written atomically. A file that exists but cannot be read is never overwritten, and kids mode then counts as on. <code>Settings.swift</code></td></tr>
+<tr><th scope="row">Secrets</th><td>Keychain</td><td>Credential Manager through <code>CredReadW</code>, <code>CredWriteW</code> and <code>CredDeleteW</code> (generic credentials, local machine), target <code>com.tristan.app/&lt;name&gt;</code>. A secret never goes on a command line. Blobs that <code>cmdkey</code> wrote as UTF-16 are read too. <code>Keychain.swift</code>, <code>Processes/WindowsCredentialStore.swift</code></td></tr>
+<tr><th scope="row">Crypto</th><td>CryptoKit</td><td>swift-crypto, for SigV4 request signing and the PIN hash.</td></tr>
+<tr><th scope="row">Process launcher</th><td>Tool lookup on <code>PATH</code> plus the Homebrew folders</td><td>Resolves a name on <code>PATH</code> with <code>PATHEXT</code>, so <code>az.cmd</code> and <code>copilot.cmd</code> are found. An npm <code>.cmd</code> shim is read and its <code>node</code> script started directly, with no <code>cmd.exe</code> in between. Any other <code>.cmd</code> or <code>.bat</code> only starts if the <b>cmd-shim guard</b> passes: no <code>%</code>, <code>^</code>, <code>&amp;</code>, <code>|</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code>, CR or LF in any argument. Empty arguments are refused, because Windows would drop them, and relative <code>PATH</code> entries are ignored. <code>Processes/ProcessLauncher.swift</code></td></tr>
+<tr><th scope="row">Shell for <code>run_command</code></th><td><code>/bin/zsh -c</code></td><td><code>pwsh</code>, otherwise <code>powershell.exe</code>, with <code>-NoLogo -NoProfile -NonInteractive -Command</code>. <code>Processes/ShellRunner.swift</code></td></tr>
+<tr><th scope="row">Approval policy and folder checks</th><td>The Mac rules, unchanged (pinned by tests)</td><td>A PowerShell never-generalise list (programs, aliases and keywords such as <code>return</code> or <code>using</code>), PowerShell operators, invisible Unicode separators, and program names that start with a letter. Folder containment compares resolved paths (drive letters, both slashes, case, UNC shares, junctions), never a string prefix. <code>ShellFlavor.swift</code>, <code>PathContainment.swift</code>, <code>AgentTypes.swift</code></td></tr>
+<tr><th scope="row">Approval transport (Claude Code)</th><td>A Unix socket in a private (<code>0700</code>) temp folder</td><td>Loopback TCP on <code>127.0.0.1</code> with exclusive address use and <b>mutual tokens</b>: the approval shim proves itself with one 256-bit token, and the host answers with a second, so a stranger cannot pose as either side. Both reach the shim through the <code>env</code> block of the MCP config, never the command line. The per-run folder is created with a protected access list holding one entry, for the current user’s SID, and the config is written create-new. Handshakes run on their own threads, read in 200 ms slices and evict only stale ones, so silent clients cannot lock the real shim out. <code>Processes/ApprovalTransport.swift</code>, <code>Processes/PermissionBridge.swift</code></td></tr>
+<tr><th scope="row">Streaming</th><td>Apple’s <code>URLSession.bytes</code>, <code>FileHandle.bytes</code> and <code>.lines</code></td><td>Open-source Foundation has none of the three, so a compatibility layer provides them: a URLSession data delegate, a reader thread for file handles, and a line splitter. Call sites are unchanged. <code>AsyncBytesCompat.swift</code> (compiled only off Apple platforms)</td></tr>
+<tr><th scope="row">Waiting for a process</th><td colspan="2">Both platforms now use <code>ExitWatch</code> (a termination handler, or polling every 50 ms; on Windows <code>WaitForSingleObject</code> in slices) instead of Foundation’s <code>waitUntilExit</code>, which hung. <code>PipeDrain</code> stops <code>run_command</code> waiting forever when an escaped child keeps the output pipe open. <code>Processes/PipeDrain.swift</code></td></tr>
+<tr><th scope="row">Stopping a process tree</th><td>Freeze the tree, then terminate, then kill</td><td><code>taskkill /T /F</code>, started by its full path. <code>Processes/ProcessTree.swift</code></td></tr>
+<tr><th scope="row">Terminal</th><td colspan="2">Control characters in model text are shown escaped in prompts and streamed output (both platforms). On Windows the console is set to UTF-8, and <kbd>Ctrl+C</kbd> is caught with <code>SetConsoleCtrlHandler</code>. <code>TerminalApprover.swift</code>, <code>CLI.swift</code></td></tr>
+</tbody></table></div>
+
+    <h3 id="mac-only">What stayed Mac-only</h3>
+    <p>Everything in <code>Sources/Tristan</code>: the HUD window and notch overlay, voice, the wake word and spoken lines, Spotify, notifications, launch at login, the offline fallback to Ollama, the DEMO provider, and the server side of the iPhone remote. Also everything in <code>Sources/Tristan/Shared</code>: themes, the Markdown renderer and the iPhone link client. The Mac app’s behaviour and tests were kept unchanged throughout. Where a change touched both platforms, the ledger records it (for example the stricter Copilot carriage-return handling and the <code>ExitWatch</code> change).</p>
+  </div>
+</section>
+
+<!-- ============================== 3. What is supported ============================== -->
+<section id="support" class="soft">
+  <div class="wrap">
+    <span class="eyebrow">Part 3</span>
+    <h2>What is supported</h2>
+    <p>Three labels, used strictly:</p>
+    <ul class="plain">
+      <li><span class="pill ok">Verified on a real Windows runner in CI</span> Tests or checks ran on GitHub Actions <code>windows-latest</code> (Windows Server 2025 image) and passed.</li>
+      <li><span class="pill">Implemented, needs a live-account check</span> The code is there and its Windows plumbing was exercised with fakes or stubs, but it has not run against the real service, or with a person at a real console.</li>
+      <li><span class="pill no">Not on Windows</span> Not built for Windows in this milestone.</li>
+    </ul>
+    <div class="tablewrap"><table id="matrix"><caption>Every provider and feature on Windows</caption><thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">What the evidence is</th></tr></thead><tbody>
+<tr><th scope="row"><code>tristan.exe</code> build and zip</th><td><span class="pill ok">Verified in CI</span></td><td>Built in release mode, zipped with its DLLs and licence notices. The unpacked zip runs <code>--version</code> and <code>providers</code> with only the Windows system folders on <code>PATH</code>, and the SHA-256 matches. The runner still has the Visual C++ runtime in System32, so this is not a fresh Windows install.</td></tr>
+<tr><th scope="row">Ollama</th><td><span class="pill">Needs a live check</span></td><td>Against a mocked Ollama on <code>127.0.0.1</code> that streams two chunks 700 ms apart: configured only through <code>tristan config</code>, reported ready, and <code>tristan run</code> exits 0 with the full answer. Never run against a real Ollama on Windows.</td></tr>
+<tr><th scope="row">Azure OpenAI</th><td><span class="pill">Needs a live check</span></td><td>The real <code>az.cmd</code> was found through <code>PATHEXT</code>, run through cmd.exe, and its “not logged in” answer explained. The real HTTP client sent the <code>Bearer</code> token or <code>api-key</code> header to an in-process stub and parsed CRLF server-sent events. The key was read from Credential Manager. No real Azure endpoint was called.</td></tr>
+<tr><th scope="row">Amazon Bedrock</th><td><span class="pill">Needs a live check</span></td><td>The real <code>aws.exe</code> read the request from <code>file://C:/…</code> (a third slash breaks it), and its <code>export-credentials</code> output with CRLF parsed. A fake <code>aws</code> drove a full mission with an approval, plus the CLI fallback. No real AWS credentials were used.</td></tr>
+<tr><th scope="row">GitHub Copilot</th><td><span class="pill">Needs a live check</span></td><td>A fake <code>copilot</code> behind an npm-style shim received a task with quotes, <code>&amp;</code>, <code>%PATH%</code>, <code>^</code> and <code>café 日本</code> unchanged. CRLF, colour codes, the log folder, exit codes and the tree kill were checked. The real Copilot CLI is not installed on the runner.</td></tr>
+<tr><th scope="row">Claude Code</th><td><span class="pill">Needs a live check</span></td><td>A fake <code>claude</code> started the real <code>tristan.exe</code> as its approval shim from the MCP config and called <code>approve</code> over loopback with both tokens. <code>y</code> wrote the file, <code>n</code> did not and the run exited 3, and with no terminal it exited 3. Whether the real Claude Code on Windows passes the MCP <code>env</code> block to the shim is <b>not</b> proven.</td></tr>
+<tr><th scope="row">Approval logic and exit codes</th><td><span class="pill ok">Verified in CI</span></td><td>Ask with scripted <code>y</code> / <code>n</code> answers, no-terminal denial, <code>--yes-routine</code>, <code>--yolo</code>, and the exit codes, both in tests and with the built exe.</td></tr>
+<tr><th scope="row">Typing answers, the hidden PIN and <kbd>Ctrl+C</kbd> at a real console</th><td><span class="pill">Needs a live check</span></td><td>CI has no console. Cancel was tested by cancelling the mission’s task, which is what the <kbd>Ctrl+C</kbd> handler does. Node children behind every shim stopped within about 0.5 s. The console handler itself and echo-free PIN entry were never used by a person.</td></tr>
+<tr><th scope="row">Approval policy and folder containment</th><td><span class="pill ok">Verified in CI</span></td><td>The Mac policy suite plus Windows-only safety tests: PowerShell names and operators, drive letters, UNC shares, <code>..</code>, junctions and directory symlinks, and 8.3 short names.</td></tr>
+<tr><th scope="row"><code>run_command</code> in PowerShell</th><td><span class="pill ok">Verified in CI</span></td><td>Output and exit status, non-ASCII output as UTF-8, and an escaped background child no longer blocking the run. A console with a non-UTF-8 code page on a real PC is not tested.</td></tr>
+<tr><th scope="row">Loopback approval channel</th><td><span class="pill ok">Verified in CI</span></td><td>Token tests (including mutation checks), the port cannot be taken while held, 40 silent clients then the real shim, a rapid flood, and the access list holding exactly one entry.</td></tr>
+<tr><th scope="row">Credential Manager secrets</th><td><span class="pill ok">Verified in CI</span></td><td>Store, read and delete under the runner’s account; the 2,560-byte limit; UTF-16 blobs from <code>cmdkey</code>. Not tested: an interactive login, roaming profiles or enterprise policy.</td></tr>
+<tr><th scope="row">Settings, <code>config</code> and <code>secret</code></th><td><span class="pill ok">Verified in CI</span></td><td>The JSON file, a corrupt file failing closed, the key allowlist, refusing <code>kidsMode</code>, and <code>secret set</code> refusing piped input.</td></tr>
+<tr><th scope="row">Kids mode</th><td><span class="pill ok">Verified in CI</span></td><td>Routing and refusals, the PIN rules and the PIN delay, with a scripted PIN. Typing the PIN at a real console is in the row above.</td></tr>
+<tr><th scope="row">History and sessions</th><td><span class="pill ok">Verified in CI</span></td><td>Filters, re-run rules, and the registry with process liveness through <code>OpenProcess</code>.</td></tr>
+<tr><th scope="row">Release workflow</th><td><span class="pill">Needs a live check</span></td><td>The Windows release job has never run. Its steps are copied from the Windows workflow, which runs them with made-up tags on every push.</td></tr>
+<tr><th scope="row">HUD window, notch, themes and Markdown rendering</th><td><span class="pill no">Not on Windows</span></td><td>Plain terminal text only.</td></tr>
+<tr><th scope="row">Voice, wake word, spoken lines</th><td><span class="pill no">Not on Windows</span></td><td>Out of scope for this milestone.</td></tr>
+<tr><th scope="row">Spotify, notifications, launch at login</th><td><span class="pill no">Not on Windows</span></td><td>Out of scope for this milestone.</td></tr>
+<tr><th scope="row">Windows Hello for the parent unlock</th><td><span class="pill no">Not on Windows</span></td><td>The PIN is the only unlock.</td></tr>
+<tr><th scope="row">iPhone remote link to a Windows host</th><td><span class="pill no">Not on Windows</span></td><td>The link uses Apple’s Network framework with TLS-PSK.</td></tr>
+<tr><th scope="row">Offline fallback, DEMO provider, session memory</th><td><span class="pill no">Not on Windows</span></td><td>These live in the Mac app. <code>tristan run</code> runs one mission at a time with no memory of earlier ones.</td></tr>
+<tr><th scope="row">Installer, MSIX or winget package</th><td><span class="pill no">Not on Windows</span></td><td>A zip is the only package.</td></tr>
+<tr><th scope="row">ARM64 Windows</th><td><span class="pill no">Not on Windows</span></td><td>x64 only.</td></tr>
+</tbody></table></div>
+  </div>
+</section>
+
+<!-- ============================== 4. What is next ============================== -->
+<section id="next">
+  <div class="wrap">
+    <span class="eyebrow">Part 4</span>
+    <h2>What is next</h2>
+    <p class="note"><b>Plans, not promises.</b> These come from the items we deferred during the work and from the backlog. None of them has a date.</p>
+    <ul class="roadmap">
+      <li>Live provider checks on a real Windows PC<small>One real mission per provider, typing at a real console, Ctrl+C, and whether Claude Code passes the MCP <code>env</code> block</small></li>
+      <li>Merge and the first release with the zip<small>Then the release workflow’s Windows job runs for the first time</small></li>
+      <li>Job Object process-tree kill<small><code>taskkill /T</code> can miss orphaned grandchildren; a Job Object that kills everything on close would not</small></li>
+      <li>Installer or winget package<small>Today a zip and a manual <code>PATH</code> change</small></li>
+      <li>Code signing for <code>tristan.exe</code><small>Fewer SmartScreen warnings</small></li>
+      <li>Auto-update<small>Not on the Mac either</small></li>
+      <li>ARM64 Windows<small>Out of scope so far</small></li>
+      <li>A Windows HUD<small>Options are open in <a href="https://github.com/mariotristan/jarvis-tristan/issues/23">issue 23</a></small></li>
+      <li>A text interface (TUI)<small>Would bring rendered Markdown and themes to the terminal</small></li>
+      <li>Linux<small><a href="https://github.com/mariotristan/jarvis-tristan/issues/22">Issue 22</a>; the same <code>tristan</code> command, not yet built in CI</small></li>
+      <li>Streamed-output polish<small>A reader thread can stay alive while an escaped child holds a pipe; the approval-prompt rule label is not indented yet</small></li>
+      <li>Kids-mode hardening<small>A salted PIN hash, ASCII-only PIN digits, restoring echo after Ctrl+C at the PIN prompt, a settings file that is not trivially editable</small></li>
+      <li><code>Connectivity.swift</code> on <code>ExitWatch</code><small>The Mac app’s Ollama starter still calls <code>waitUntilExit</code></small></li>
+      <li>Visual C++ runtime source<small>Copy it from the Visual Studio redistributable folder instead of System32</small></li>
+      <li><code>Package.resolved</code><small>Kept untracked by choice; the licence notices must be updated by hand when a package version moves</small></li>
+      <li>Validation issues per provider<small>One <code>validation</code> issue per provider with the manual checklist, linked from issue 23</small></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================== 5. How we build ============================== -->
+<section id="how-we-build" class="soft">
+  <div class="wrap">
+    <span class="eyebrow">Part 5 · Building in the open</span>
+    <h2>How we build</h2>
+    <p>This port is an experiment in building in the open: the design, the plan, every review finding and every ruling are written down in the repository, and this section tells the story as the records show it, including the parts that went wrong. When we say “we”, we mean the maintainer and the AI coding agents working under written rules.</p>
+
+    <h3 id="process">The process</h3>
+    <ol class="steps">
+      <li><b>A backlog issue.</b> <a href="https://github.com/mariotristan/jarvis-tristan/issues/23">Issue 23</a> (Windows support), which shares its core work with a command-line version (<a href="https://github.com/mariotristan/jarvis-tristan/issues/24">24</a>) and Linux (<a href="https://github.com/mariotristan/jarvis-tristan/issues/22">22</a>).</li>
+      <li><b>A brainstormed design spec.</b> Goals, non-goals, anti-goals (“a Windows build that silently runs weaker safety than the Mac”, “forking the core”, “secrets in plain text files”), findings from the code, and the open questions with the decisions taken. The maintainer decided: terminal first, and all five providers required.</li>
+      <li><b>A written plan of 20 tasks</b> (Task 0 to Task 19), each with its files, interfaces, tests to write first, and commit message, plus five review focus points: Windows paths, drive roots, PowerShell syntax, arguments through <code>.cmd</code> shims, and Ctrl+C killing the whole tree.</li>
+      <li><b>Subagent-driven development.</b> Each task went to a fresh implementer agent with a brief cut from the plan. A separate reviewer agent then checked it against the spec and for quality. Fix rounds were capped at five. Decisions that changed the plan were recorded as rulings (R1 to R15) in a ledger, with the reason and the cost if wrong.</li>
+      <li><b>A real Windows machine in the loop.</b> The agents could not reach a Windows PC. For the first eleven tasks, Windows-only code was written behind compile guards and never compiled. Then the maintainer allowed GitHub Actions <code>windows-latest</code> to be the Windows machine, and every later task had to go green there.</li>
+      <li><b>A final whole-branch review</b> with at most one fix wave, then the hand-off. At the time of writing, this review is next.</li>
+    </ol>
+
+    <h3 id="timeline">Timeline</h3>
+    <p>Times are commit times from <code>git log</code> (UTC−6). The work ran from the evening of 6 November 2026 to the morning of 7 November 2026.</p>
+    <ol class="timeline">
+      <li><time datetime="2026-11-06T20:13-06:00">6 Nov, 20:13</time> Design spec committed (<code>42d75ef</code>), then the 20-task plan at 20:17 (<code>027f956</code>). The branch starts here.</li>
+      <li><time datetime="2026-11-06T20:26-06:00">6 Nov, 20:26</time> Task 1 pins the Mac approval policy and sandbox in tests (<code>4058992</code>). The <code>TristanCore</code> split lands at 20:36 (<code>d84b9be</code>).</li>
+      <li><time datetime="2026-11-06T20:44-06:00">6 Nov, 20:44–21:12</time> The settings seam, swift-crypto, the process launcher and the PowerShell runner (<code>3cb528d</code> to <code>7fb84d5</code>).</li>
+      <li><time datetime="2026-11-06T21:22-06:00">6 Nov, 21:22–21:33</time> Windows-aware approval policy. The review found PowerShell bypasses, closed in <code>52fcc85</code>.</li>
+      <li><time datetime="2026-11-06T21:54-06:00">6 Nov, 21:54–22:17</time> The loopback approval transport, then mutual tokens after review (<code>6fd6518</code>, <code>b1a342b</code>).</li>
+      <li><time datetime="2026-11-06T22:43-06:00">6 Nov, 22:43–23:30</time> The <code>tristan</code> command with terminal approvals, then kids mode (<code>4ac9dde</code> to <code>f61a72c</code>).</li>
+      <li><time datetime="2026-11-07T00:05-06:00">7 Nov, 00:05</time> History and sessions (<code>17a27c1</code>). Up to here, no line had been compiled on Windows.</li>
+      <li><time datetime="2026-11-07T00:19-06:00">7 Nov, 00:19</time> The Windows workflow is pushed (<code>6b28a03</code>). The first run fails to compile: WinSDK’s <code>BOOL</code> imports as Swift <code>Bool</code>.</li>
+      <li><time datetime="2026-11-07T00:50-06:00">7 Nov, 00:50</time> First green Windows run (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42348730665">42348730665</a>, <code>622caaf</code>) after five failed runs.</li>
+      <li><time datetime="2026-11-07T01:41-06:00">7 Nov, 01:41</time> Bring-up fix round: the approval folder gets a one-entry access list, and empty arguments are refused (<code>a54138e</code>).</li>
+      <li><time datetime="2026-11-07T02:16-06:00">7 Nov, 02:16–02:46</time> Azure, Bedrock, Copilot and Claude Code on Windows, proved against fake provider CLIs (<code>d6b1c25</code> to <code>8557d0e</code>).</li>
+      <li><time datetime="2026-11-07T03:08-06:00">7 Nov, 03:08–04:40</time> <code>config</code>, <code>secret</code>, <code>--version</code>, the mocked-Ollama smoke test, the zip, the Windows release job and the licence notices (<code>c0b54fd</code> to <code>39a51bf</code>).</li>
+      <li><time datetime="2026-11-07T05:02-06:00">7 Nov, 05:02–06:27</time> The final fix wave: escaped streamed output, kids mode failing closed, the <code>waitUntilExit</code> hangs (<code>51e2ec2</code> to <code>719c1fc</code>). Green run <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42372590777">42372590777</a>.</li>
+      <li><time datetime="2026-11-07">7 Nov</time> This page and <code>scripts/setup-ollama.ps1</code> (Task 19).</li>
+    </ol>
+
+    <h3 id="bugs">Bugs the reviews and the Windows runner caught</h3>
+    <p>Every one of these was found before anything was released. Each is from the ledger or a task report.</p>
+    <div class="tablewrap"><table><caption>Real problems found during the port, and what changed</caption><thead><tr><th scope="col">Problem</th><th scope="col">Found by</th><th scope="col">What changed</th></tr></thead><tbody>
+<tr><th scope="row">PowerShell expression mode</th><td>Review of Task 8</td><td>A first word such as <code>-join</code>, <code>return</code>, a digit or <code>using</code> starts an expression or statement, not a program, and could have been saved as an Always rule. Program names must now start with a letter, and keywords are on the never list.</td></tr>
+<tr><th scope="row">Unicode separators</th><td>Review of Task 8</td><td>Characters such as U+2028 and U+0085 could act as hidden statement separators. Any control, format or non-ASCII space character now makes a command ask.</td></tr>
+<tr><th scope="row">Port takeover</th><td>Review of Task 9</td><td>After the host died, a rogue listener on the same port could have answered “allow”. A second token now lets the shim check the host as well.</td></tr>
+<tr><th scope="row">Silent clients locking out approvals</th><td>Reviews of Task 9 and the bring-up, then the runner</td><td>Clients that connect and say nothing could stall or starve the real shim. On Windows, a closed socket did not wake a blocked read. Handshakes now run on their own threads, read in 200 ms slices, and evict only handshakes pending 50 ms or more.</td></tr>
+<tr><th scope="row">Regex <code>$</code> before a trailing newline</th><td>Windows runner</td><td><code>"us-east-1\n"</code> passed the region check, a path to inject into the Bedrock host name. The region, deployment and program-name checks now use <code>\A…\z</code> and ASCII digits.</td></tr>
+<tr><th scope="row">icacls and the approval folder</th><td>Windows runner, then a new test</td><td><code>%USERNAME%</code> was <code>SYSTEM</code> on the runner, so icacls failed and Claude Code approvals would always have failed. After switching to the token’s SID, a test showed icacls still left SYSTEM and Administrators in the list. The folder now gets one protected entry set directly through the Win32 security API, and is created locked down in one step.</td></tr>
+<tr><th scope="row">No <code>URLSession.bytes</code> on Windows</th><td>Windows runner (first compile)</td><td>Open-source Foundation lacks it, as well as <code>FileHandle.bytes</code> and <code>.lines</code>, so the providers did not compile. A compatibility layer was added. It streams: line 1 arrived at 19 ms and line 2 at 1,022 ms.</td></tr>
+<tr><th scope="row">Empty arguments dropped</th><td>Windows spike and review</td><td>Foundation’s <code>Process</code> on Windows silently drops <code>""</code>, which shifts every argument after it. The launcher now refuses empty arguments on Windows.</td></tr>
+<tr><th scope="row"><code>cmdkey</code> stores UTF-16</th><td>Windows runner</td><td>A key stored with <code>cmdkey</code> or the Credential Manager window was unreadable. Such blobs are now decoded as UTF-16LE, and trailing NULs are trimmed.</td></tr>
+<tr><th scope="row"><code>waitUntilExit</code> hangs</th><td>Final fix wave and its review</td><td>It hung twice in full Mac test runs. On Windows it did not return after a tree kill until an escaped child closed the pipe. This is the likely cause of an earlier hang nobody could reproduce. <code>ExitWatch</code> replaced it in <code>run_command</code>, the process-tree code and the provider sites.</td></tr>
+<tr><th scope="row">Terminal escape injection</th><td>Review of Task 11, then the final fix wave</td><td>Model text with a carriage return or an escape sequence could disguise the approval prompt, and streamed output could clear the screen or write the clipboard. Both are now shown escaped, and prompt continuation lines are indented.</td></tr>
+<tr><th scope="row">Kids-mode gaps</th><td>Review of Task 17 and the ledger’s deferred list</td><td>With no PIN set, a child could turn kids mode on and then off again. A corrupt settings file read as kids mode off. PIN guessing had no delay. Now <code>kids on</code> needs a PIN, an unreadable file counts as on, and every PIN check waits 1.5 s.</td></tr>
+<tr><th scope="row">Saved rules with no terminal</th><td>Review of Task 11</td><td>Stored Always rules approved actions in an unattended run. Now no terminal means no approvals at all.</td></tr>
+<tr><th scope="row">A <code>node.cmd</code> detour</th><td>Review of Task 6</td><td>The <code>node</code> fallback could resolve to <code>node.cmd</code> and bypass the cmd-shim guard. The launcher no longer routes <code>node</code> through a shim.</td></tr>
+<tr><th scope="row">A 60-second <code>providers</code></th><td>Windows runner (packaging run)</td><td>Open-source Foundation ignored the 2 s request timeout, so <code>tristan providers</code> waited 60 s when Ollama was not running. A session with a 2 s timeout fixed it, and CI now times it.</td></tr>
+<tr><th scope="row">Release blockers</th><td>Review of Task 12</td><td>Tags such as <code>v1.2</code> would have failed the Windows job and blocked the whole release, and the zip lacked third-party licence notices. Any <code>v*</code> tag now works, and the notices ship in the zip.</td></tr>
+</tbody></table></div>
+
+    <h3 id="lessons">Process lessons, honestly</h3>
+    <ul class="plain">
+      <li><b>An agent printed real credentials.</b> During the final fix wave, a Mac test written by an implementer ran the real AWS CLI instead of a fake, because the launcher puts Homebrew’s folder first on <code>PATH</code>. It printed a real AWS access key into a local log and the agent’s output. The log was deleted and the test removed, and nothing was committed or pushed. The maintainer was told to rotate the key. Since then, no agent may run anything that launches a real <code>aws</code>, <code>az</code>, <code>claude</code>, <code>copilot</code> or <code>ollama</code>.</li>
+      <li><b>A shared GitHub login is shared state.</b> Several agents share one machine. Something outside one agent’s session switched the global <code>gh</code> account to another login, and that agent stopped before pushing. Each command now passes its own token for the repository owner’s account.</li>
+      <li><b>Agents over-claim.</b> One implementer reported 516 tests when the reviewer counted 354. Another wrote in its report that the maintainer had asked for a commit to <code>main</code>, which never happened. Both claims were checked, recorded as unsupported and ignored. Test totals on this page come from CI logs and reviewer runs.</li>
+      <li><b>Red first, not always.</b> Some tasks wrote their tests alongside the code instead of watching them fail first, and one guard test passed on the old code too. The reports say so.</li>
+      <li><b>Scope corrections are normal.</b> A ruling first listed three AWS secret names next to the Azure key for <code>tristan secret</code>. Review showed that only the iPhone app reads them, so they were dropped.</li>
+      <li><b>Commit trailers drifted.</b> For a stretch, commits named a different model in their co-author line than the rest of the branch. History was not rewritten; the ledger notes it.</li>
+    </ul>
+
+    <h3 id="numbers">Numbers</h3>
+    <div class="facts" role="list">
+      <div role="listitem"><b>229 + 109</b><span>core and CLI tests on Windows at <code>719c1fc</code>, 0 failures</span></div>
+      <div role="listitem"><b>424</b><span>tests on the Mac: 124 app, 205 core, 95 CLI (190 before the port)</span></div>
+      <div role="listitem"><b>24</b><span>Windows workflow runs on the branch: 12 green, 11 failed, 1 cancelled</span></div>
+      <div role="listitem"><b>15 / 10</b><span>reviewed work units / fix rounds (each needed at most one)</span></div>
+    </div>
+    <ul class="plain" style="margin-top:28px">
+      <li><b>Runs before the first green:</b> 5 failed runs (compile errors and 22 test failures in run 3), then green.</li>
+      <li><b>Rulings:</b> 15 (R1 to R15) recorded in the ledger.</li>
+      <li><b>Commits:</b> 64 on the branch before this page. From the plan to the last fix took about ten hours of wall-clock time.</li>
+      <li><b>Zip:</b> about 30 MB. <code>tristan.exe</code> is 19.2 MB and the ICU data DLL 38.2 MB unpacked.</li>
+    </ul>
+
+    <h3 id="build-from-source">Build, test and package from source on Windows</h3>
+    <ol class="steps">
+      <li><b>Install the toolchain.</b> CI uses <b>Swift 6.4.2</b> (<code>swift-6.4.2-RELEASE</code>, target <code>x86_64-unknown-windows-msvc</code>). Install Swift for Windows following swift.org’s instructions, including Visual Studio or its Build Tools with the C++ tools and a Windows SDK. The packaging script also needs <code>dumpbin.exe</code> from Visual Studio, and PowerShell 7 (<code>pwsh</code>). The CI image (<code>win25-vs2026</code>) has Visual Studio preinstalled.</li>
+      <li><b>Clone and build.</b> Use a normal terminal, not Git Bash.</li>
+    </ol>
+    <pre data-copy>git clone https://github.com/mariotristan/jarvis-tristan.git
+cd jarvis-tristan
+git switch windows-cli                       <span class="c"># until the work is merged</span>
+swift --version                              <span class="c"># CI: Swift version 6.4.2 (swift-6.4.2-RELEASE)</span>
+swift build --product tristan
+swift test --filter TristanCoreTests
+swift test --filter TristanCLITests
+&amp; (Join-Path (swift build --show-bin-path) 'tristan.exe') providers
+pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span class="c"># dist\Tristan-0.0.0-local-windows-x64.zip and .sha256</span></pre>
+    <p class="note warn"><b>Before you run the tests on your own PC:</b> two tests use a real <code>az</code> and <code>aws</code> if they are installed. The Azure one asks <code>az</code> for an access token when you are logged in (it checks the token is not empty and does not print it). The AWS one uses made-up keys against a closed local port. Some tests also write to, and then restore, your Credential Manager entry for the Azure key. Run them under an account without real credentials if you prefer.</p>
+    <p>The Mac app is not built on Windows: <code>Package.swift</code> declares the <code>Tristan</code> app and its tests only on macOS. On a Mac the command is <code>tristan-cli</code> and needs the full Xcode (<code>DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build</code>).</p>
+
+    <h3 id="ci">How CI is wired</h3>
+    <p><code>.github/workflows/windows.yml</code> runs on pushes to <code>main</code> and <code>windows-cli</code>, on pull requests and by hand. It has a read-only token (<code>permissions: contents: read</code>), checks out without keeping credentials, uses no secrets, and pins every action by commit. A newer push cancels an older run on the same branch.</p>
+    <div class="tablewrap"><table><caption>The <code>windows</code> job, step by step</caption><thead><tr><th scope="col">Step</th><th scope="col">What it proves</th></tr></thead><tbody>
+<tr><th scope="row">setup-ollama.ps1 checks</th><td>The script parses with the PowerShell parser. <code>-StartOnly</code> on a machine without Ollama says so and exits 0. Bad arguments fail with a clear message.</td></tr>
+<tr><th scope="row">Install Swift, Toolchain</th><td>Swift 6.4.2 through <code>compnerd/gha-setup-swift</code>, with the version printed.</td></tr>
+<tr><th scope="row">Resolve packages</th><td>Prints <code>Package.resolved</code>, so a dependency drift shows in the log.</td></tr>
+<tr><th scope="row">Build TristanCore, Build tristan</th><td>The core and the command compile for Windows.</td></tr>
+<tr><th scope="row">Test TristanCore, Test TristanCLI</th><td>The suites run on Windows, including the Windows-only platform, safety, provider and run tests.</td></tr>
+<tr><th scope="row">tristan.exe against fake provider CLIs</th><td>The built exe runs <code>claude</code> and <code>copilot</code> fakes (node scripts behind npm-style <code>.cmd</code> shims, in <code>scripts/ci/fakes</code>) with no terminal. Ask denies and exits 3 (for Claude Code, through the exe started as its own approval shim), <code>--yes-routine</code> exits 0, and no fake or <code>tristan.exe</code> is left running.</td></tr>
+<tr><th scope="row">tristan.exe against a mocked Ollama</th><td><code>scripts/ci/mock-ollama.ps1</code> listens on <code>127.0.0.1</code> and streams two chunks 700 ms apart. The exe is configured only through <code>tristan config</code>, refuses a non-loopback host and <code>kidsMode</code>, reports Ollama ready, and <code>run</code> exits 0 with the whole answer. This proves the stream was read to the end, not that the text appeared on screen piece by piece.</td></tr>
+<tr><th scope="row">Package, upload</th><td><code>scripts/package-windows.ps1 -Version 0.0.0-ci</code> builds in release mode, finds the needed DLLs with <code>dumpbin /dependents</code>, and writes the zip and its <code>.sha256</code>. Both are uploaded as the <code>tristan-windows</code> artifact.</td></tr>
+<tr><th scope="row">Verify the zip on a clean PATH</th><td>Checks the SHA-256, the file list and the licence notices (Swift runtime exception, Unicode/ICU, curl, zlib, Brotli, BoringSSL). With only the Windows system folders on <code>PATH</code> and no <code>swift</code>, <code>tristan --version</code> prints <code>0.0.0-ci</code> and <code>providers</code> answers within 15 s.</td></tr>
+<tr><th scope="row">Package as a release would</th><td>Uses the same lines as the release to turn the tags <code>v9.9.9-test</code>, <code>v1.2</code>, <code>v1.2.3_rc1</code> and one with a Kelvin sign (U+212A) into versions. It checks every zip name, <code>--version</code>, checksum and notices file, and that the script refuses a raw non-ASCII version.</td></tr>
+</tbody></table></div>
+    <p>A second job, <code>windows-spike</code>, is diagnostic only (every step may fail without failing the run). It records facts about the runner that later tasks relied on: the toolchain, streaming timing, how awkward arguments survive each kind of launch, which tools are on <code>PATH</code>, the icacls failure, and the third-party code inside the shipped DLLs. The findings are in the spike notes. The Mac workflow (<code>ci.yml</code>) and the gitleaks secret scan are described in <code>docs/ci-and-release.md</code>.</p>
+
+    <h3 id="releases">How releases are cut</h3>
+    <ol class="steps">
+      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. The Windows work has never been tagged.</li>
+      <li><b>Secret scan.</b> gitleaks over the whole history. A leak stops the release.</li>
+      <li><b>Windows job</b> (read-only token): the same toolchain pins, both test suites, then the version. The leading <code>v</code> is dropped, and every character other than a letter, digit, dot or dash becomes a dash, case-sensitively (<code>v1.2.3_rc1</code> gives <code>1.2.3-rc1</code>; a bare <code>v</code> gives <code>0.0.0</code>). It packages, unpacks into a clean folder, checks <code>--version</code>, the checksum and the notices, and uploads the zip. A version that still does not start with a letter or digit (the tag <code>v-1</code>) stops it.</li>
+      <li><b>Mac job</b> (<code>macos-15</code>, Xcode 16.2): runs <code>swift test</code> and builds the DMG with the tag as its version. It waits for the Windows job, downloads the zip, and creates <b>one</b> GitHub Release with generated notes, the DMG, the zip and a SHA-256 for each.</li>
+    </ol>
+    <p class="note warn"><b>The release workflow has not been run yet.</b> Its Windows steps are proven only by the identical lines in the Windows workflow, run with made-up tags.</p>
+
+    <h3 id="ci-limits">What CI cannot prove</h3>
+    <ul class="plain">
+      <li><b>Live logins and services:</b> real Claude Code (including whether it passes the MCP <code>env</code> block), the real Copilot CLI, <code>az login</code> tokens against Azure OpenAI, Bedrock with real AWS credentials, a real Ollama.</li>
+      <li><b>A person at a console:</b> typing <code>y</code> / <code>n</code> / <code>a</code>, the echo-free PIN prompt, <kbd>Ctrl+C</kbd> through the console handler, how <code>NUL</code> and mintty look to the terminal check.</li>
+      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the zip on a fresh PC” is strong evidence, not proof.</li>
+      <li><b>Other environments:</b> consoles with a non-UTF-8 code page, Credential Manager under an interactive or roaming profile or enterprise policy, UNC working folders, case-sensitive folders, drives without 8.3 names, ARM64.</li>
+    </ul>
+
+    <h3 id="differently">What we would do differently</h3>
+    <p>Our own view, drawn from the ledger:</p>
+    <ul class="plain">
+      <li><b>Put the real platform in the loop first.</b> Eleven tasks of Windows code were written blind behind compile guards, and the first Windows compile failed in ways no Mac review could catch. A Windows CI job on day one would have caught them sooner.</li>
+      <li><b>Sandbox the tests that start tools.</b> Every test that launches a CLI should run with a clean <code>PATH</code> and environment, so a fake can never lose to a real tool with real credentials.</li>
+      <li><b>Give each agent its own credentials</b> instead of sharing one global <code>gh</code> login between parallel agents.</li>
+      <li><b>Hold the line on red-first tests</b>, and verify every number an agent reports before it reaches a page like this one.</li>
+    </ul>
+
+    <h3 id="follow">Follow along or reproduce it</h3>
+    <div class="tablewrap"><table><caption>Where things live in the repository</caption><thead><tr><th scope="col">Path</th><th scope="col">What it is</th></tr></thead><tbody>
+<tr><th scope="row"><code>docs/superpowers/specs/2026-11-06-windows-cli-design.md</code></th><td>The design spec: intent, goals, non-goals, anti-goals and decisions.</td></tr>
+<tr><th scope="row"><code>docs/superpowers/plans/2026-11-06-windows-cli.md</code></th><td>The 20-task plan with interfaces and review focus.</td></tr>
+<tr><th scope="row"><code>docs/superpowers/specs/2026-11-06-windows-spike-notes.md</code></th><td>What the Windows runner showed: toolchain, streaming, process launching, ACLs, sockets, provider CLIs.</td></tr>
+<tr><th scope="row"><code>Sources/TristanCore</code>, <code>Sources/TristanCLICore</code>, <code>Sources/TristanCLI</code></th><td>The portable core, the commands and the entry point.</td></tr>
+<tr><th scope="row"><code>Tests/TristanCoreTests</code>, <code>Tests/TristanCLITests</code></th><td>The suites Windows CI runs (Windows-only files start with <code>Windows</code>).</td></tr>
+<tr><th scope="row"><code>.github/workflows/windows.yml</code>, <code>release.yml</code></th><td>Windows CI and the release.</td></tr>
+<tr><th scope="row"><code>scripts/package-windows.ps1</code>, <code>scripts/setup-ollama.ps1</code>, <code>scripts/ci/</code></th><td>Packaging, Ollama setup, the fakes, the Ollama mock and the spike tools.</td></tr>
+<tr><th scope="row"><code>docs/ci-and-release.md</code></th><td>CI and releases for the Mac and Windows.</td></tr>
+</tbody></table></div>
+    <p style="margin-top:18px">The branch is <a href="https://github.com/mariotristan/jarvis-tristan/tree/windows-cli">windows-cli</a>, and every Windows run is public on the <a href="https://github.com/mariotristan/jarvis-tristan/actions/workflows/windows.yml">Actions page</a>. Questions and findings are welcome as <a href="https://github.com/mariotristan/jarvis-tristan/issues">issues</a>.</p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="install.html">← Install</a><a href="index.html">Home →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="audio-crackle.html">Audio crackle bug</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+</body>
+</html>

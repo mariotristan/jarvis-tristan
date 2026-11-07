@@ -214,3 +214,19 @@ pre { border-left: 0; box-shadow: inset 4px 0 0 var(--gold); padding-left: 24px;
 tbody th { border-bottom: 1px solid var(--line); }
 .tablewrap caption { padding: 14px 18px 4px; }
 .tablewrap thead th { border-bottom: 3px solid var(--red); }
+
+/* ---------- long guide pages (windows.html): contents, timeline, third status pill ---------- */
+.doc p code, .doc li code, .doc td code, .doc th code { overflow-wrap: anywhere; }
+.toc { border: 1px solid var(--line); border-radius: var(--r); padding: 20px 22px 6px; max-width: 46em; margin-top: 8px; }
+.doc .toc h2.toc-title { font-size: 1.0625rem; line-height: 1.2; margin-bottom: 10px; }
+.toc ol { margin: 0 0 12px; padding-left: 1.3em; }
+.toc ol ol { display: flex; flex-wrap: wrap; gap: 2px 18px; list-style: none; margin: 4px 0 8px; padding: 0; font-size: .9375rem; }
+.mode h4 { margin: 0 0 .35em; font-size: 1.0625rem; font-weight: 800; line-height: 1.2; }
+.pill.no { border-color: var(--muted); color: var(--muted); }
+ol.timeline { list-style: none; margin: 0 0 28px; padding: 0 0 0 22px; border-left: 3px solid var(--red); max-width: 46em; }
+ol.timeline li { position: relative; padding: 0 0 18px 8px; }
+ol.timeline li::before { content: ""; position: absolute; left: -34px; top: .3em; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); border: 3px solid var(--red); }
+ol.timeline time { display: block; font-size: .8125rem; font-weight: 800; letter-spacing: .05em; color: var(--link); }
+.doc .facts b { font-size: 1.6rem; }
+.doc .facts { margin-top: 20px; }
+@media (max-width: 600px) { .doc .facts { grid-template-columns: 1fr; } }
