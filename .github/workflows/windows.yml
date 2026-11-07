@@ -328,19 +328,22 @@ jobs:
             Get-Content $file.FullName | ForEach-Object { Write-Host "| $_" }
             Write-Host "===== END $($file.FullName)"
           }
-          $patterns = 'libcurl[/ ][0-9][0-9A-Za-z.\-]*', 'curl [0-9]+\.[0-9]+\.[0-9]+', 'nghttp2[/ ]?[0-9.]*', 'zlib[/ ]?[0-9.]*',
-            '(de|in)flate [0-9.]+ Copyright[^\x00]{0,80}', 'libssh2?[/ ]?[0-9.]*', 'brotli[/ ]?[0-9.]*', 'zstd[/ ]?[0-9.]*', 'OpenSSL[^\x00]{0,40}',
-            'BoringSSL', 'Schannel', 'WinSSL', 'libidn2?[/ ]?[0-9.]*', 'libpsl', 'icudt[0-9]+[a-z]?', 'ICU [0-9][0-9.]*', 'libxml2?', 'expat'
+          Get-ChildItem $swift -Directory | ForEach-Object { Write-Host "   $($_.FullName)" }
+          Get-ChildItem $swift -Recurse -Directory -Depth 2 | ForEach-Object { Write-Host "   $($_.FullName)" }
+          # Printable strings that name a component, a version or a copyright.
+          $keywords = '(?i)curl|zlib|inflate|deflate|nghttp|brotli|zstd|openssl|boringssl|schannel|libssh|idn|psl|gzip|copyright|licen[cs]e|unicode, inc|icu [0-9]|icudt|mozilla|expat|libxml'
           $runtime = Get-ChildItem $swift -Recurse -Filter FoundationNetworking.dll | Where-Object { $_.FullName -match '\\usr\\bin\\' } | Select-Object -First 1
           $bin = $runtime.DirectoryName
           Write-Host "== runtime folder: $bin"
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $dumpbin = & $vswhere -latest -products * -find 'VC\Tools\MSVC\**\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1
           foreach ($name in 'FoundationNetworking.dll', '_FoundationICU.dll', 'Foundation.dll', 'FoundationEssentials.dll', 'FoundationInternationalization.dll', 'swiftCore.dll', 'dispatch.dll') {
             $path = Join-Path $bin $name
             if (-not (Test-Path $path)) { Write-Host "== $name not found"; continue }
             $text = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($path))
             Write-Host "== $name ($((Get-Item $path).Length) bytes)"
-            foreach ($pattern in $patterns) {
-              $found = [regex]::Matches($text, $pattern) | ForEach-Object { $_.Value } | Sort-Object -Unique | Select-Object -First 8
-              if ($found) { Write-Host "   /$pattern/: $($found -join ' | ')" }
-            }
+            $strings = [regex]::Matches($text, '[\x20-\x7E]{5,}') | ForEach-Object { $_.Value } | Where-Object { $_ -match $keywords } | Sort-Object -Unique
+            Write-Host "   $(@($strings).Count) matching strings"
+            $strings | Select-Object -First 150 | ForEach-Object { Write-Host "   | $($_.Substring(0, [Math]::Min(200, $_.Length)))" }
+            & $dumpbin /nologo /dependents $path | Where-Object { $_ -match '\.dll' } | ForEach-Object { Write-Host "   dep $($_.Trim())" }
           }
