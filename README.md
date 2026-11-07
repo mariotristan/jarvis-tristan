@@ -34,7 +34,7 @@ You give T.R.I.S.T.A.N. a task ("add login to the API"). It works inside a proje
 
 > **Just for fun.** T.R.I.S.T.A.N. is a hobby project and a learning experiment that I build together with my kids. We pick the features, draw the themes, and try things to see what happens. That is why there is a Paw Patrol-style theme, a kids safe mode and a lot of sound effects. It is not a commercial product, and it comes with no promises beyond the [MIT license](LICENSE). Ideas, issues and pull requests are very welcome.
 
-> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 441 automated tests pass (424 Swift package tests on the Mac: 124 for the app, 205 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is released as a zip in [0.6.0](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0). It is built and tested on a Windows machine in CI, but it has not been run on a real Windows 10 or 11 desktop or against any live provider on Windows: see [Windows](#windows).
+> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 441 automated tests pass (424 Swift package tests on the Mac: 124 for the app, 205 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is released in [0.6.1](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1) as an installer and a zip. It is built and tested on a Windows machine in CI, but it has not been run on a real Windows 10 or 11 desktop or against any live provider on Windows: see [Windows](#windows).
 
 ## Demo videos
 
@@ -187,7 +187,7 @@ The full guide (pairing, security, limits, standalone mode, running the simulato
 ### Requirements
 
 - **The app:** an **Apple Silicon** Mac on macOS 14 or later. Building from source needs the full Xcode.
-- **The `tristan` command on Windows:** the target is Windows 10 or 11, x64; so far CI has run it only on Windows Server 2025. Download the zip from [the latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest), or build it from source with Swift 6.4.2 (see [Windows](#windows)).
+- **The `tristan` command on Windows:** the target is Windows 10 or 11, x64; so far CI has run it only on Windows Server 2025. Download the installer or the portable zip from [the latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest), or build it from source with Swift 6.4.2 (see [Windows](#windows)).
 - **Providers:** the CLI or account for each provider you use (Claude Code, the Copilot CLI, the AWS CLI, an Azure OpenAI deployment, or Ollama). Nothing is needed for the `DEMO` provider in the app.
 
 The full guide, with every script and troubleshooting, is [Install](https://mariotristan.github.io/jarvis-tristan/install.html).
@@ -195,9 +195,9 @@ The full guide, with every script and troubleshooting, is [Install](https://mari
 **From a release (no Xcode needed).** Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then:
 
 ```bash
-cd ~/Downloads && shasum -a 256 -c Tristan-0.6.0.dmg.sha256      # optional: check the download
-hdiutil attach ~/Downloads/Tristan-0.6.0.dmg
-cp -R "/Volumes/Tristan 0.6.0/Tristan.app" /Applications/
+cd ~/Downloads && shasum -a 256 -c Tristan-0.6.1.dmg.sha256      # optional: check the download
+hdiutil attach ~/Downloads/Tristan-0.6.1.dmg
+cp -R "/Volumes/Tristan 0.6.1/Tristan.app" /Applications/
 xattr -dr com.apple.quarantine /Applications/Tristan.app          # Tristan is ad-hoc signed, not notarized
 open /Applications/Tristan.app
 ```
@@ -222,20 +222,38 @@ Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git pus
 
 ## Windows
 
-On Windows, T.R.I.S.T.A.N. is a terminal command, `tristan`, not a window. It runs the same core as the Mac app (the agent loop, all five providers and the approval rules) and asks about each action in Windows Terminal, PowerShell or cmd. **It is released as 0.6.0, as a zip (not an installer).** It is built and tested on GitHub Actions Windows Server 2025 against fake provider CLIs and a mocked Ollama. It has not been run on a real Windows 10 or 11 desktop, and no provider has run against a live account on Windows.
+On Windows, T.R.I.S.T.A.N. is a terminal command, `tristan`, not a window. It runs the same core as the Mac app (the agent loop, all five providers and the approval rules) and asks about each action in Windows Terminal, PowerShell or cmd. **It is released as 0.6.1, as an installer (recommended) and as a portable zip.** It is built and tested on GitHub Actions Windows Server 2025 against fake provider CLIs and a mocked Ollama. It has not been run on a real Windows 10 or 11 desktop, and no provider has run against a live account on Windows.
 
-**Download.** Get `Tristan-0.6.0-windows-x64.zip` and its `.sha256` file from the [0.6.0 release](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0) (or [the latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest)), then in PowerShell:
+**Install (recommended).** Get `Tristan-0.6.1-windows-x64-setup.exe` and its `.sha256` file from [the latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest), check it, run it, leave "Add Tristan to my PATH" ticked, then open a **new** terminal:
 
 ```powershell
 cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.6.0-windows-x64.zip).Hash   # compare with the hash inside Tristan-0.6.0-windows-x64.zip.sha256
-Expand-Archive Tristan-0.6.0-windows-x64.zip -DestinationPath $HOME\Tristan
-$env:Path += ";$HOME\Tristan"                                        # this window only; add the folder to PATH in Settings to keep it
-tristan --version                                                     # prints 0.6.0
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.1-windows-x64-setup.exe).Hash   # compare with the hash inside Tristan-0.6.1-windows-x64-setup.exe.sha256 (hex case does not matter)
+.\Tristan-0.6.1-windows-x64-setup.exe                                       # the installer; SmartScreen may warn, see below
+tristan --version                                                       # in a new terminal: prints 0.6.1
 tristan providers
 ```
 
-`tristan.exe` is not code-signed, so Windows SmartScreen may warn the first time you run it (not yet checked on a real Windows desktop). The zip is x64 only; an installer (MSIX, winget) is on the roadmap.
+It installs for you alone by default (into `%LocalAppData%\Programs\Tristan`, no administrator rights); choose all users in the dialog or pass `/ALLUSERS` for everyone. For a silent install:
+
+```powershell
+.\Tristan-0.6.1-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"
+```
+
+Uninstall in Settings, Apps. Your settings and history in `%APPDATA%\Tristan` and your stored secrets are kept; to remove them too, delete that folder and run `tristan secret delete azure-openai-key` (and any other key you stored) before uninstalling.
+
+**Portable, no install.** Get `Tristan-0.6.1-windows-x64.zip` and its `.sha256` file from the same release, then in PowerShell:
+
+```powershell
+cd ~\Downloads
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.1-windows-x64.zip).Hash   # compare with the hash inside Tristan-0.6.1-windows-x64.zip.sha256
+Expand-Archive Tristan-0.6.1-windows-x64.zip -DestinationPath $HOME\Tristan
+$env:Path += ";$HOME\Tristan"                 # this window only; add the folder to PATH in Settings to keep it
+tristan --version                              # prints 0.6.1
+tristan providers
+```
+
+Neither file is code-signed, so Windows SmartScreen may warn the first time you run it (we have not seen what it shows on a real Windows desktop). In CI the installer was tested only with silent installs, on Windows Server 2025; nobody has gone through the wizard screens. Both are x64 only; MSIX, winget and code signing are on the roadmap.
 
 To build from source instead:
 
@@ -314,7 +332,7 @@ Tests/TristanTests/           124 tests for the Mac app (macOS only)
 Tests/TristanCoreTests/       206 tests on the Mac, 230 on Windows (files whose names start with Windows run only there)
 Tests/TristanCLITests/        95 tests on the Mac, 109 on Windows
 ios/                          The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
-scripts/                      bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh and setup-ollama.ps1 (local models; `--start-only` / `-StartOnly` just starts it), package-windows.ps1 (Windows zip), install-voices.sh (Enhanced voice), uninstall.sh (remove test versions), record-demo.sh with record-window.swift (films the window and the app's own sound), ios-demo.sh, ios-icon.sh, ci/ (Windows CI fakes, the Ollama mock and the spike tools)
+scripts/                      bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh and setup-ollama.ps1 (local models; `--start-only` / `-StartOnly` just starts it), package-windows.ps1 (Windows zip), package-windows-installer.ps1 (Windows installer), install-voices.sh (Enhanced voice), uninstall.sh (remove test versions), record-demo.sh with record-window.swift (films the window and the app's own sound), ios-demo.sh, ios-icon.sh, ci/ (Windows CI fakes, the Ollama mock and the spike tools)
 VERSION                       Version number used by the scripts
 docs/ci-and-release.md        How CI and releases work
 docs/superpowers/             Design specs, plans and the Windows spike notes
@@ -426,8 +444,8 @@ Next (every item is a GitHub issue; start from the [backlog overview](https://gi
 - [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
 - [ ] Track title in the notch, and Apple Music support
 - [ ] Individual user profiles ([#25](https://github.com/mariotristan/jarvis-tristan/issues/25)) and extra kids mode configuration through markdown files ([#26](https://github.com/mariotristan/jarvis-tristan/issues/26))
-- [x] The portable core split into `TristanCore`, and a command-line version, `tristan` ([#24](https://github.com/mariotristan/jarvis-tristan/issues/24)), built and tested on Windows in CI ([#23](https://github.com/mariotristan/jarvis-tristan/issues/23)); released as a zip in 0.6.0
-- [ ] Windows: live checks of each provider on a real PC, live checks on a real Windows desktop, then an installer, signing and a Windows HUD (see [What is next](https://mariotristan.github.io/jarvis-tristan/windows.html#next))
+- [x] The portable core split into `TristanCore`, and a command-line version, `tristan` ([#24](https://github.com/mariotristan/jarvis-tristan/issues/24)), built and tested on Windows in CI ([#23](https://github.com/mariotristan/jarvis-tristan/issues/23)); released in 0.6.0 as a zip; 0.6.1 adds a `setup.exe` installer ([#30](https://github.com/mariotristan/jarvis-tristan/pull/30))
+- [ ] Windows: live checks of each provider on a real PC, live checks on a real Windows desktop, then signing, winget or MSIX and a Windows HUD (see [What is next](https://mariotristan.github.io/jarvis-tristan/windows.html#next))
 - [ ] Linux starting with Omarchy ([#22](https://github.com/mariotristan/jarvis-tristan/issues/22)), on the same `tristan` command
 
 ## Regenerating the screenshots
