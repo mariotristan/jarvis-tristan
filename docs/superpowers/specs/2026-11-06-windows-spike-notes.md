@@ -81,3 +81,23 @@ Also seen:
 - **`taskkill /T /F`** stopped a `cmd` → `ping` tree: the root and both children were gone. `ProcessTreeWindowsTests.testCancelTerminatesProcessTreeOnWindows` passes.
 - **OpenProcess / STILL_ACTIVE** liveness works: `SessionRegistryTests.testProcessIsAlive` passes on Windows (this process is alive, `Int32.max` is not).
 - **Junctions and symlinks:** `SafePath.real` (Foundation's `resolvingSymlinksInPath`) follows `mklink /J` junctions and `mklink /D` directory symlinks on Windows. A junction from the working folder to a sibling resolves to the sibling, and `ToolSandbox` and `ApprovalRule` treat it as outside. A root given by its 8.3 short name still contains paths given by their long names. **No `GetFinalPathNameByHandleW` change was needed.**
+
+## (f) Provider CLIs (plan Tasks 13–16)
+Proven in run https://github.com/mariotristan/jarvis-tristan/actions/runs/42356084693 (`WindowsProviderTests`, `WindowsRunTests` and the job's "tristan.exe against fake provider CLIs" step). The fakes live in `scripts/ci/fakes`: node scripts behind npm-style `.cmd` shims for `claude`, `copilot` and `aws`, and a plain batch file for `az` (the real `az.cmd` runs Python, so `az` goes through cmd.exe and `CmdShimGuard`).
+- **AWS CLI v2 and `--cli-input-json`** (real `aws.exe` on the runner, request sent to a closed local port so a parse error and a connection error can be told apart):
+
+  | Value | Result |
+  |---|---|
+  | `file://C:/Users/…/request.json` (what Bedrock now sends) | file read; then `Could not connect to` / `Connect timeout on endpoint URL` |
+  | `file://C:\Users\…\request.json` | file read (same connection error) |
+  | `file:///C:/Users/…/request.json` | `ParamValidation: Unable to load paramfile` (exit 252) |
+
+  The AWS CLI drops `file://` and opens the rest as a path, so a third slash breaks it. Which connection message appears varies between runs.
+- **`aws configure export-credentials --format process`** prints its JSON with CR LF line ends (96 characters with made-up keys from the environment); `AWSCredentials.parse` reads it.
+- **Real `az account get-access-token`** (not logged in on the runner) takes about 5 s and fails, so Tristan says "not logged in": `az.cmd` was found through PATHEXT and run through cmd.exe with the token arguments.
+- **`cmdkey /generic:<target> /pass:<11 characters>`** stores a 22-byte blob: Windows' own tools write the password as UTF-16LE. `WindowsCredentialStore.get` now reads a blob whose every second byte is zero as UTF-16LE (what Tristan writes itself stays UTF-8).
+- **A `URLProtocol` subclass in `URLSessionConfiguration.protocolClasses`** answers requests made through the compatibility `bytes(for:)` (a private delegate session with the caller's configuration), so the real Azure HTTP client is tested without a network.
+- **`SetEnvironmentVariableW`** in the test process is seen by `ProcessInfo.processInfo.environment` and passed to every program `ProcessLauncher` starts; the tests put the fakes first on `Path` that way.
+- **Cancel:** `taskkill /T /F` stopped node (behind `copilot.cmd`, `claude.cmd`, `aws.cmd`) and the node child it started, within about 0.5 s, both from the provider stream and from `tristan run` (Task cancel, as Ctrl+C does). After the job's tristan.exe step no fake node or `tristan.exe` process was left.
+- **Claude Code approvals end to end:** fake claude starts the MCP server named in `--mcp-config` (`tristan.exe --mcp-permission tcp:127.0.0.1:<port>`) with the config's `env` block added to its environment, speaks MCP over stdio, and calls `approve`. The answer typed at the terminal approver (`y` writes hello.txt, `n` does not and the run exits 3) arrives through the shim and the loopback transport. With no terminal attached, the built `tristan.exe` denies and exits 3. Whether the real Claude Code passes `env` the same way on Windows is **not** proven by this.
+- The repository is checked out on `D:` (`D:\a\jarvis-tristan\jarvis-tristan`) while `%TEMP%` is on `C:`.
