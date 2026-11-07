@@ -13,7 +13,7 @@ function Check-Log($name, $minimum, $expectPass, $expectText, [string[]]$lines) 
   Set-Content -LiteralPath $file -Value $lines -Encoding utf8
   $out = (& pwsh -NoProfile -File $checker -LogFile $file -Minimum $minimum 2>&1 | ForEach-Object { "$_" }) -join "`n"
   $code = $LASTEXITCODE
-  Write-Host $out
+  Write-Host ($out -replace '::error::', '(expected error) ')   # not an annotation: these failures are the point
   $ok = (($code -eq 0) -eq $expectPass) -and $out.Contains($expectText)
   if ($ok) { Write-Host "PASS: $name" } else { Write-Host "FAIL: $name (exit $code, expected text: $expectText)"; $script:failures++ }
 }
