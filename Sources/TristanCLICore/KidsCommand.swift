@@ -23,6 +23,8 @@ struct CLIEnvironment {
     var readAnswer: () -> String? = { readLine() }
     /// Reads a secret without echo after showing `prompt` (`tristan secret set`); nil when nothing could be read.
     var readSecret: (String) -> String? = { PINPrompt.read($0, trim: false) }
+    /// Waits after a wrong parent PIN, so guessing from a script is slow; tests count the calls instead of waiting.
+    var afterWrongPIN: () -> Void = { Thread.sleep(forTimeInterval: Kids.wrongPINDelay) }
 
     static var live: CLIEnvironment {
         CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: { PINPrompt.read($0) },
@@ -80,6 +82,8 @@ struct KidsCommand: ParsableCommand {
 
 enum Kids {
     static let key = "kidsMode"
+    /// Seconds `askParentPIN` waits after a wrong PIN before saying so.
+    static let wrongPINDelay: TimeInterval = 1.5
     static let noPINMessage = "Kids mode is on without a PIN. Ask a parent to change it in the Tristan app."
     /// Every kids check in the CLI goes through here: on when the setting is on, and also when the settings file
     /// exists but cannot be read (fail closed, `KidsRouting.kidsModeIsOn`).
@@ -114,7 +118,11 @@ enum Kids {
         guard let entered = environment.readPIN("Parent PIN: ") else {
             return refuse("No PIN was entered. Nothing was changed.", .failed)
         }
-        return ParentPIN.matches(entered) ? nil : refuse("Wrong PIN. Nothing was changed.", .failed)
+        guard ParentPIN.matches(entered) else {
+            environment.afterWrongPIN()   // each wrong guess costs time
+            return refuse("Wrong PIN. Nothing was changed.", .failed)
+        }
+        return nil
     }
 
     /// Settings and secrets may only change with the parent PIN while kids mode is on, exactly like `kids off`.

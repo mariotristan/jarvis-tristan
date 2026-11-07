@@ -44,13 +44,55 @@ final class KidsCommandTests: XCTestCase {
         Settings.backend = saved
     }
 
+    /// How often a run waited after a wrong PIN (the real wait is replaced so tests run at once).
+    private let delays = Counter()
+
     private func exec(_ arguments: [String], _ calls: Calls, interactive: Bool = true) async throws -> ExitCode {
         let command = try XCTUnwrap(TristanCommand.parseAsRoot(arguments) as? CLICommand)
-        let env = CLIEnvironment(interactive: interactive, readPIN: { calls.next($0) },
+        var env = CLIEnvironment(interactive: interactive, readPIN: { calls.next($0) },
                                  makeProvider: { p, m in calls.make(p, m); return Quiet() }, installInterrupt: false,
                                  historyURL: scratch.appendingPathComponent("history.json"),
                                  sessions: SessionRegistry(directory: scratch.appendingPathComponent("sessions"), isAlive: { _ in true }))
+        let delays = self.delays
+        env.afterWrongPIN = { delays.add() }
         return await command.execute(environment: env)
+    }
+
+    // MARK: - A wrong parent PIN costs a delay
+
+    func testWrongPINWaitsOncePerAttempt() async throws {
+        XCTAssertTrue(ParentPIN.set("1234"))
+        Settings.set(true, forKey: "kidsMode")
+        var code = try await exec(["kids", "off"], Calls(answers: ["9999"]))
+        XCTAssertEqual(code, .failed)
+        XCTAssertEqual(delays.value, 1)
+        code = try await exec(["kids", "set-pin"], Calls(answers: ["0000"]))
+        XCTAssertEqual(code, .failed)
+        XCTAssertEqual(delays.value, 2)
+        code = try await exec(["run", "--provider", "claude", "--allow-cloud", "hi"], Calls(answers: ["1111"]))
+        XCTAssertEqual(code, .usage)
+        XCTAssertEqual(delays.value, 3)
+        code = try await exec(["config", "set", "ollama.model", "llama3"], Calls(answers: ["2222"]))
+        XCTAssertEqual(code, .failed)
+        XCTAssertEqual(delays.value, 4)
+        XCTAssertTrue(kidsOn)
+    }
+
+    func testRightPINOrNoTerminalDoesNotWait() async throws {
+        XCTAssertTrue(ParentPIN.set("1234"))
+        Settings.set(true, forKey: "kidsMode")
+        var code = try await exec(["kids", "off"], Calls(answers: ["1234"]), interactive: false)
+        XCTAssertNotEqual(code, .ok)
+        code = try await exec(["kids", "off"], Calls(answers: [nil]))
+        XCTAssertEqual(code, .failed, "no PIN entered")
+        XCTAssertEqual(delays.value, 0)
+        code = try await exec(["kids", "off"], Calls(answers: ["1234"]))
+        XCTAssertEqual(code, .ok)
+        XCTAssertEqual(delays.value, 0)
+    }
+
+    func testWrongPINDelayIsAboutASecondAndAHalf() {
+        XCTAssertEqual(Kids.wrongPINDelay, 1.5, accuracy: 0.01)
     }
 
     private var kidsOn: Bool { Settings.bool("kidsMode") }
@@ -344,6 +386,13 @@ final class KidsCommandTests: XCTestCase {
         _ = try await exec(["kids", "status"], Calls(), interactive: false)
         XCTAssertEqual(on.value, "Kids mode: on\nParent PIN: set\n")
     }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+    func add() { lock.lock(); count += 1; lock.unlock() }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return count }
 }
 
 private final class Sink: @unchecked Sendable {
