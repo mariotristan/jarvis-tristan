@@ -1,5 +1,6 @@
 #if os(Windows)
 import XCTest
+import ucrt
 import WinSDK
 @testable import TristanCore
 
@@ -116,7 +117,10 @@ final class WindowsPlatformTests: XCTestCase {
         func pipe() throws -> (read: FileHandle, write: HANDLE) {
             var read: HANDLE? = nil, write: HANDLE? = nil
             guard CreatePipe(&read, &write, nil, 0), let read, let write else { throw XCTSkip("CreatePipe failed") }
-            return (FileHandle(handle: read, closeOnDealloc: true), write)
+            // FileHandle takes a C runtime descriptor here; _open_osfhandle wraps the pipe's read handle in one.
+            let descriptor = _open_osfhandle(Int(bitPattern: read), 0 /* _O_RDONLY */)
+            guard descriptor >= 0 else { throw XCTSkip("_open_osfhandle failed") }
+            return (FileHandle(fileDescriptor: descriptor, closeOnDealloc: true), write)
         }
         func send(_ write: HANDLE) {
             var written: DWORD = 0
