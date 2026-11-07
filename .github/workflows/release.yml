@@ -56,6 +56,26 @@ jobs:
           $notices = Join-Path $clean 'THIRD-PARTY-NOTICES.txt'
           if (-not (Test-Path $notices) -or (Get-Item $notices).Length -lt 1000) { throw "$zip has no THIRD-PARTY-NOTICES.txt" }
 
+      # The installer from the same staging folder as the zip, then the same silent install, upgrade, uninstall, PATH
+      # and all-users checks as windows.yml (which runs these lines with the made-up tag v1.2.3_rc1 on every push).
+      - name: Build and test the installer
+        run: |
+          $ref = $env:GITHUB_REF_NAME
+          $version = ($ref -creplace '^v', '') -creplace '[^0-9A-Za-z.-]', '-'
+          if (-not $version) { $version = '0.0.0' }
+          pwsh -NoProfile -File scripts/package-windows-installer.ps1 -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File scripts/ci/test-installer.ps1 -Installer "dist/Tristan-$version-windows-x64-setup.exe" -Version $version -StageDir "dist/Tristan-$version-windows-x64" -LogDir "$env:RUNNER_TEMP/installer-logs-$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload the installer logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: installer-logs
+          path: ${{ runner.temp }}/installer-logs-*
+          if-no-files-found: ignore
+
       - name: Upload the zip
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -63,6 +83,8 @@ jobs:
           path: |
             dist/Tristan-*-windows-x64.zip
             dist/Tristan-*-windows-x64.zip.sha256
+            dist/Tristan-*-windows-x64-setup.exe
+            dist/Tristan-*-windows-x64-setup.exe.sha256
           if-no-files-found: error
 
   release:
@@ -99,4 +121,5 @@ jobs:
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
             dist/Tristan-*.dmg dist/Tristan-*.dmg.sha256 \
-            dist-windows/Tristan-*-windows-x64.zip dist-windows/Tristan-*-windows-x64.zip.sha256
+            dist-windows/Tristan-*-windows-x64.zip dist-windows/Tristan-*-windows-x64.zip.sha256 \
+            dist-windows/Tristan-*-windows-x64-setup.exe dist-windows/Tristan-*-windows-x64-setup.exe.sha256
