@@ -287,6 +287,30 @@ jobs:
           if ($failures -gt 0) { exit 1 }
           exit 0
 
+      # The installer (Inno Setup 6.7.3, pinned in the script) from the staging folder the zip was made from, then
+      # silent per-user install, upgrade and uninstall, a run without the PATH task and an all-users run, checking
+      # files, `tristan --version`, PATH (value and type) and that user data survives. release.yml runs the same two
+      # scripts with the version from the tag.
+      - name: Build the installer (0.0.0-ci)
+        run: pwsh -NoProfile -File scripts/package-windows-installer.ps1 -Version 0.0.0-ci
+
+      - name: Test the installer (install, upgrade, uninstall, PATH, all users)
+        run: pwsh -NoProfile -File scripts/ci/test-installer.ps1 -Installer dist/Tristan-0.0.0-ci-windows-x64-setup.exe -Version 0.0.0-ci -StageDir dist/Tristan-0.0.0-ci-windows-x64 -LogDir "$env:RUNNER_TEMP/installer-logs-0.0.0-ci"
+
+      # The same artifact as above, now with the installer too (the zip is uploaded first so it is there even if the
+      # installer fails).
+      - name: Upload the zip and the installer
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tristan-windows
+          overwrite: true
+          path: |
+            dist/Tristan-0.0.0-ci-windows-x64.zip
+            dist/Tristan-0.0.0-ci-windows-x64.zip.sha256
+            dist/Tristan-0.0.0-ci-windows-x64-setup.exe
+            dist/Tristan-0.0.0-ci-windows-x64-setup.exe.sha256
+          if-no-files-found: error
+
       # release.yml's Windows job turns the tag into a version with exactly these lines (there $ref is
       # $env:GITHUB_REF_NAME); made-up tags prove the derivation, the stamping, the zip name and the checks.
       - name: Package as a release would (tags v9.9.9-test, v1.2, v1.2.3_rc1, v1.2.3-<Kelvin sign>)
@@ -317,6 +341,29 @@ jobs:
             if (-not (Test-Path "dist/Tristan-$($case.Want)-windows-x64.zip")) { throw "No dist/Tristan-$($case.Want)-windows-x64.zip" }
             Write-Host "PASS: $ref -> $version, $zip, tristan --version $printed, sha256 $expected"
           }
+
+      # release.yml's installer step with a made-up tag: the same lines, with $ref set here instead of from GITHUB_REF_NAME.
+      # The zip and staging folder for 1.2.3-rc1 were made by the step above.
+      - name: Installer as a release would (tag v1.2.3_rc1)
+        run: |
+          $ref = 'v1.2.3_rc1'
+          $version = ($ref -creplace '^v', '') -creplace '[^0-9A-Za-z.-]', '-'
+          if (-not $version) { $version = '0.0.0' }
+          pwsh -NoProfile -File scripts/package-windows-installer.ps1 -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File scripts/ci/test-installer.ps1 -Installer "dist/Tristan-$version-windows-x64-setup.exe" -Version $version -StageDir "dist/Tristan-$version-windows-x64" -LogDir "$env:RUNNER_TEMP/installer-logs-$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path 'dist/Tristan-1.2.3-rc1-windows-x64-setup.exe.sha256')) { throw 'No dist/Tristan-1.2.3-rc1-windows-x64-setup.exe.sha256' }
+          Write-Host "PASS: $ref -> $version, dist/Tristan-$version-windows-x64-setup.exe built and tested"
+
+      # The /LOG files of every installer and uninstaller run above, when any step failed.
+      - name: Upload the installer logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: installer-logs
+          path: ${{ runner.temp }}/installer-logs-*
+          if-no-files-found: ignore
 
   # Plan Task 0 (spike): facts about this runner that later tasks rely on. Diagnostic only, so every check may fail
   # without failing the run; read the log. Notes: docs/superpowers/specs/2026-11-06-windows-spike-notes.md
