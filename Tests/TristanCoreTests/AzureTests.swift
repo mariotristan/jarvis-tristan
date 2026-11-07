@@ -228,7 +228,7 @@ final class AzureTests: XCTestCase {
                 let message = error.localizedDescription
                 if windows {
                     XCTAssertTrue(message.contains("winget install -e --id Microsoft.AzureCLI"), message)
-                    XCTAssertTrue(message.contains("com.tristan.app/azure-openai-key"), message)
+                    XCTAssertTrue(message.contains("tristan secret set azure-openai-key"), message)
                     XCTAssertFalse(message.contains("brew"), message)
                 } else {
                     // The Mac wording is unchanged.
