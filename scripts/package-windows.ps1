@@ -20,22 +20,17 @@ $OutDir = [System.IO.Path]::GetFullPath((Join-Path $root $OutDir))
 $stage = Join-Path $OutDir $name
 $zip = Join-Path $OutDir "$name.zip"
 
-# 1. Stamp the version and build. -static-stdlib links the Swift runtime and Foundation into the exe where the
-#    toolchain allows it; whatever is still a DLL is found in step 2.
+# 1. Stamp the version and build. Not -static-stdlib: the Windows SDK of Swift 6.4.2 has no static curl.lib for
+#    FoundationNetworking, so that link fails. The Swift runtime DLLs are shipped next to the exe instead (step 2).
 $versionFile = Join-Path $root 'Sources\TristanCLICore\BuildVersion.swift'
 $original = [System.IO.File]::ReadAllText($versionFile)
 $stamped = $original -replace 'static let value = "[^"]*"', "static let value = `"$Version`""
 if (-not $stamped.Contains("`"$Version`"")) { throw "Could not stamp the version into $versionFile" }
-$buildArguments = @('-c', 'release', '--product', 'tristan', '-Xswiftc', '-static-stdlib')
+$buildArguments = @('-c', 'release', '--product', 'tristan')
 try {
     [System.IO.File]::WriteAllText($versionFile, $stamped)
     swift build @buildArguments
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning 'The static build failed; building against the Swift runtime DLLs instead (they are shipped below).'
-        $buildArguments = @('-c', 'release', '--product', 'tristan')
-        swift build @buildArguments
-        if ($LASTEXITCODE -ne 0) { throw "swift build failed ($LASTEXITCODE)" }
-    }
+    if ($LASTEXITCODE -ne 0) { throw "swift build failed ($LASTEXITCODE)" }
     $bin = (swift build @buildArguments --show-bin-path | Select-Object -Last 1).Trim()
 } finally {
     [System.IO.File]::WriteAllText($versionFile, $original)
@@ -56,7 +51,8 @@ Write-Host "dumpbin: $dumpbin"
 function Get-Dependents([string]$file) {
     $lines = & $dumpbin /nologo /dependents $file
     if ($LASTEXITCODE -ne 0) { throw "dumpbin failed on $file" }
-    @($lines | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '\.dll$' })
+    # Only the bare names in the "Image has the following dependencies" list, not "Dump of file <path>.dll".
+    @($lines | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '\A[A-Za-z0-9_.+-]+\.dll\z' })
 }
 
 $windowsDir = $env:SystemRoot
