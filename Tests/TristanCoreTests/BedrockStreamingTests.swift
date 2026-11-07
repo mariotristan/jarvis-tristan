@@ -1,5 +1,5 @@
 import XCTest
-@testable import Tristan
+@testable import TristanCore
 
 /// Builds event-stream frames exactly as the wire format defines them, so the decoder is tested against the spec.
 enum FrameBuilder {

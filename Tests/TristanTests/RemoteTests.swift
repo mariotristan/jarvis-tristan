@@ -1,6 +1,7 @@
 import XCTest
 import Network
 @testable import Tristan
+@testable import TristanCore
 
 final class RemoteProtocolTests: XCTestCase {
     func testFramesSurviveArbitrarySplittingAndMerging() throws {

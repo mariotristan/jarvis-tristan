@@ -1,10 +1,10 @@
 import Foundation
 
 /// Calls `aws bedrock-runtime converse`, so credentials, SSO and profiles work exactly as in the user's terminal.
-struct AWSCLIConverseClient: ConverseClient {
+package struct AWSCLIConverseClient: ConverseClient {
     let config: BedrockConfig
 
-    func converse(_ request: [String: Any]) async throws -> [String: Any] {
+    package func converse(_ request: [String: Any]) async throws -> [String: Any] {
         var body = request
         body["modelId"] = config.model
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-bedrock-\(UUID().uuidString.prefix(8))")
@@ -71,7 +71,7 @@ struct AWSCLIConverseClient: ConverseClient {
     }
 }
 
-extension BedrockProvider {
+package extension BedrockProvider {
     /// Streams over HTTPS when possible and falls back to the AWS CLI (which also gives the clearest error messages).
     static func standard(mode: ApprovalMode) -> BedrockProvider {
         let config = BedrockConfig.load()

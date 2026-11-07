@@ -7,7 +7,7 @@ import Foundation
 /// - ASK: one up-front approval, then all tools are allowed except the deny list.
 /// - AUTO: file writes and a short list of routine commands are allowed; anything else is refused by the CLI.
 /// - YOLO: everything is allowed, including the commands the other modes deny.
-enum CopilotArguments {
+package enum CopilotArguments {
     static let deniedShell = ["rm", "sudo", "dd", "chmod", "chown", "mv", "kill", "killall", "shred", "mkfs", "diskutil",
                               "launchctl", "curl", "wget", "ssh", "scp", "git push", "git reset"]
     static let routineShell = ["git status", "git diff", "git log", "git add", "git commit", "ls", "cat", "pwd", "grep",
@@ -44,13 +44,20 @@ enum CopilotArguments {
 }
 
 /// Drives the GitHub Copilot CLI (`copilot -p`) and streams its output into the HUD.
-struct CopilotProvider: AgentProvider {
+package struct CopilotProvider: AgentProvider {
     var mode: ApprovalMode = .ask
     var model: String = UserDefaults.standard.string(forKey: "copilot.model") ?? ""
     /// Tests replace the launch command so no real CLI is needed.
     var launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))?
 
-    func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
+    package init(mode: ApprovalMode = .ask, model: String = UserDefaults.standard.string(forKey: "copilot.model") ?? "",
+                 launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))? = nil) {
+        self.mode = mode
+        self.model = model
+        self.launchOverride = launchOverride
+    }
+
+    package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
             let process = Process()
             let worker = Task {

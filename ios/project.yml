@@ -10,6 +10,8 @@ settings:
     MARKETING_VERSION: "0.2.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
+    # The core marks what the Mac app uses as `package`; that access level needs a package name to compile.
+    SWIFT_PACKAGE_NAME: TristanIOS
     # The simulator needs at least an ad-hoc signature for the Keychain to work. Real devices use your own team.
     "CODE_SIGN_IDENTITY[sdk=iphonesimulator*]": "-"
 targets:
@@ -18,9 +20,14 @@ targets:
     platform: iOS
     sources:
       - path: App
-      # The protocol, client, theme and models are shared with the Mac app, compiled straight from there.
+      # The protocol, client and theme are shared with the Mac app, compiled straight from there.
       - path: ../Sources/Tristan/Shared
         name: Shared
+      # The portable core (agent loop, models, providers). Processes/ holds everything built on Process or sockets,
+      # which iOS does not have.
+      - path: ../Sources/TristanCore
+        name: TristanCore
+        excludes: ["Processes/**"]
     scheme:
       testTargets: [TristanIOSTests]
     settings:

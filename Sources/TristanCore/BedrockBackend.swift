@@ -1,11 +1,11 @@
 import Foundation
 
-struct BedrockConfig {
+package struct BedrockConfig {
     var model: String
     var region: String
     var profile: String
 
-    static let defaultModel = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    package static let defaultModel = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 
     static func load() -> BedrockConfig {
         let defaults = UserDefaults.standard
@@ -17,28 +17,28 @@ struct BedrockConfig {
 }
 
 /// One model call. The real implementation shells out to the AWS CLI; tests use a scripted fake.
-protocol ConverseClient: Sendable {
+package protocol ConverseClient: Sendable {
     func converse(_ request: [String: Any]) async throws -> [String: Any]
     /// Streams text through `onText` when the client can; the result is always the complete response.
     func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any]
 }
 
-extension ConverseClient {
+package extension ConverseClient {
     func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
         try await converse(request)
     }
 }
 
-struct BedrockError: LocalizedError {
+package struct BedrockError: LocalizedError {
     let message: String
-    var errorDescription: String? { message }
+    package var errorDescription: String? { message }
 }
 
 /// Translates the neutral transcript to and from Bedrock's Converse wire format.
-struct BedrockBackend: ChatBackend {
+package struct BedrockBackend: ChatBackend {
     let client: ConverseClient
 
-    func nextTurn(system: String, history: [ChatMessage], onText: @escaping @Sendable (String) -> Void) async throws -> ModelTurn {
+    package func nextTurn(system: String, history: [ChatMessage], onText: @escaping @Sendable (String) -> Void) async throws -> ModelTurn {
         let request: [String: Any] = [
             "messages": history.map(Self.wire),
             "system": [["text": system]],
@@ -87,12 +87,12 @@ struct BedrockBackend: ChatBackend {
 }
 
 /// Bedrock agent: the shared agent loop on top of Bedrock's Converse API.
-struct BedrockProvider: AgentProvider {
+package struct BedrockProvider: AgentProvider {
     var mode: ApprovalMode = .ask
     var client: ConverseClient
     var maxTurns = 25
 
-    func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
+    package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AgentLoop(label: "Bedrock", mode: mode, backend: BedrockBackend(client: client), maxTurns: maxTurns)
             .run(task: task, workingDirectory: workingDirectory, approve: approve)
     }

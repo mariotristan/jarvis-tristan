@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import Combine
 import Carbon.HIToolbox
+import TristanCore
 
 final class HUDWindow: NSWindow {
     override var canBecomeKey: Bool { true }

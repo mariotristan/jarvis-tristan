@@ -1,5 +1,6 @@
 import XCTest
 @testable import Tristan
+@testable import TristanCore
 
 /// A pretend Spotify: records every script and answers the status query from its own state.
 final class FakeSpotify: ScriptRunner, @unchecked Sendable {

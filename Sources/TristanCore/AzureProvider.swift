@@ -1,17 +1,17 @@
 import Foundation
 
-struct AzureError: LocalizedError {
+package struct AzureError: LocalizedError {
     let message: String
-    var errorDescription: String? { message }
+    package var errorDescription: String? { message }
 }
 
-struct AzureConfig {
+package struct AzureConfig {
     var endpoint: String
     var deployment: String
     var apiVersion: String
 
-    static let defaultAPIVersion = "2024-10-21"
-    static let keychainAccount = "azure-openai-key"
+    package static let defaultAPIVersion = "2024-10-21"
+    package static let keychainAccount = "azure-openai-key"
     /// Hosts the API key may be sent to. Anything else is refused so a typo cannot leak the key.
     static let allowedHostSuffixes = ["openai.azure.com", "cognitiveservices.azure.com", "services.ai.azure.com",
                                       "openai.azure.us", "openai.azure.cn"]
@@ -45,12 +45,12 @@ struct AzureConfig {
 
 /// One chat-completions call. The real client streams over HTTPS; tests use a scripted fake.
 /// Streamed text is delivered through `onText`; the return value is always the assembled non-streaming shape.
-protocol ChatCompletionsClient: Sendable {
+package protocol ChatCompletionsClient: Sendable {
     func complete(_ body: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any]
 }
 
 /// Chooses between an API key (from the Keychain) and the Azure CLI login (Entra ID).
-final class AzureAuth: @unchecked Sendable {
+package final class AzureAuth: @unchecked Sendable {
     private var cachedToken: (value: String, expires: Date)?
 
     func headers() async throws -> [String: String] {
@@ -100,7 +100,7 @@ final class AzureAuth: @unchecked Sendable {
 
 
 /// Server-sent-events assembler for streamed chat completions. Pure, so it is easy to test.
-struct SSEAssembler {
+package struct SSEAssembler {
     private(set) var text = ""
     private var finish: String?
     private var calls: [Int: (id: String, name: String, arguments: String)] = [:]
@@ -144,12 +144,12 @@ struct SSEAssembler {
     }
 }
 
-struct AzureHTTPClient: ChatCompletionsClient {
+package struct AzureHTTPClient: ChatCompletionsClient {
     let config: AzureConfig
     let auth = AzureAuth()
     var session: URLSession = .shared
 
-    func complete(_ body: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
+    package func complete(_ body: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
         let url = try config.requestURL()
         var payload = body
         payload["stream"] = true
@@ -210,10 +210,10 @@ struct AzureHTTPClient: ChatCompletionsClient {
 }
 
 /// Translates the neutral transcript to and from the OpenAI / Azure OpenAI chat-completions format.
-struct AzureBackend: ChatBackend {
+package struct AzureBackend: ChatBackend {
     let client: ChatCompletionsClient
 
-    func nextTurn(system: String, history: [ChatMessage], onText: @escaping @Sendable (String) -> Void) async throws -> ModelTurn {
+    package func nextTurn(system: String, history: [ChatMessage], onText: @escaping @Sendable (String) -> Void) async throws -> ModelTurn {
         var messages: [[String: Any]] = [["role": "system", "content": system]]
         messages += history.flatMap(Self.wire)
         let body: [String: Any] = ["messages": messages, "tools": AgentToolSpec.openAITools]
@@ -269,12 +269,18 @@ struct AzureBackend: ChatBackend {
 }
 
 /// Azure OpenAI agent: the shared agent loop on top of an Azure OpenAI chat-completions deployment.
-struct AzureOpenAIProvider: AgentProvider {
+package struct AzureOpenAIProvider: AgentProvider {
     var mode: ApprovalMode = .ask
     var client: ChatCompletionsClient = AzureHTTPClient(config: .load())
     var maxTurns = 25
 
-    func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
+    package init(mode: ApprovalMode = .ask, client: ChatCompletionsClient = AzureHTTPClient(config: .load()), maxTurns: Int = 25) {
+        self.mode = mode
+        self.client = client
+        self.maxTurns = maxTurns
+    }
+
+    package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AgentLoop(label: "Azure OpenAI", mode: mode, backend: AzureBackend(client: client), maxTurns: maxTurns)
             .run(task: task, workingDirectory: workingDirectory, approve: approve)
     }

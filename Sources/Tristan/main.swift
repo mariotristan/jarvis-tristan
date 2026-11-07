@@ -1,4 +1,5 @@
 import AppKit
+import TristanCore
 
 let args = CommandLine.arguments
 nonisolated(unsafe) var demoKeepAlive: (Any, Any)?

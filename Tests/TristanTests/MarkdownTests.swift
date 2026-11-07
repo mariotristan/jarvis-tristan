@@ -2,6 +2,7 @@ import XCTest
 import AppKit
 import SwiftUI
 @testable import Tristan
+@testable import TristanCore
 
 final class MarkdownParserTests: XCTestCase {
     private func parse(_ text: String) -> [MarkdownBlock] { MarkdownParser.parse(text) }

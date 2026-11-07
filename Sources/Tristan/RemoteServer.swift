@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Combine
+import TristanCore
 
 /// Lets a paired iPhone or iPad watch and drive this Mac's Session over a TLS-PSK connection (see the iOS design doc).
 @MainActor

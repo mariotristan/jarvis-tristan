@@ -1,5 +1,6 @@
 import XCTest
 @testable import Tristan
+@testable import TristanCore
 
 @MainActor
 final class KidsModeTests: XCTestCase {

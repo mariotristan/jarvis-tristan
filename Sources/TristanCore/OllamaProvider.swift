@@ -1,11 +1,11 @@
 import Foundation
 
-struct OllamaError: LocalizedError {
+package struct OllamaError: LocalizedError {
     let message: String
-    var errorDescription: String? { message }
+    package var errorDescription: String? { message }
 }
 
-struct OllamaConfig {
+package struct OllamaConfig {
     var host: String
     var model: String
 
@@ -38,9 +38,9 @@ struct OllamaConfig {
     }
 }
 
-enum OllamaStatus {
+package enum OllamaStatus {
     /// The installed model names, or nil when the Ollama server cannot be reached.
-    static func installedModels(_ config: OllamaConfig = .load(), session: URLSession = .shared) async -> [String]? {
+    package static func installedModels(_ config: OllamaConfig = .load(), session: URLSession = .shared) async -> [String]? {
         guard let url = try? config.endpoint("/api/tags") else { return nil }
         var request = URLRequest(url: url, timeoutInterval: 2)
         request.httpMethod = "GET"
@@ -51,24 +51,24 @@ enum OllamaStatus {
     }
 
     /// The model to use: the chosen one if it is installed (or none was chosen, the first installed), else nil.
-    static func resolveModel(chosen: String, installed: [String]) -> String? {
+    package static func resolveModel(chosen: String, installed: [String]) -> String? {
         if chosen.isEmpty { return installed.first }
         if installed.contains(chosen) { return chosen }
         return installed.first { $0.hasPrefix(chosen + ":") }
     }
 
     /// True when a local model is ready to answer. Kids mode asks this before every question.
-    static func ready(_ config: OllamaConfig = .load()) async -> Bool {
+    package static func ready(_ config: OllamaConfig = .load()) async -> Bool {
         guard let installed = await installedModels(config) else { return false }
         return resolveModel(chosen: config.model, installed: installed) != nil
     }
 }
 
-struct OllamaHTTPClient: ChatCompletionsClient {
+package struct OllamaHTTPClient: ChatCompletionsClient {
     let config: OllamaConfig
     var session: URLSession = .shared
 
-    func complete(_ body: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
+    package func complete(_ body: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
         guard let installed = await OllamaStatus.installedModels(config, session: session) else {
             throw OllamaError(message: "Ollama is not running. Start it with `ollama serve` (or open the Ollama app) and try again.")
         }
@@ -118,12 +118,18 @@ struct OllamaHTTPClient: ChatCompletionsClient {
 }
 
 /// Local agent: the shared agent loop on top of an Ollama model running on this Mac. Nothing leaves the machine.
-struct OllamaProvider: AgentProvider {
+package struct OllamaProvider: AgentProvider {
     var mode: ApprovalMode = .ask
     var client: ChatCompletionsClient = OllamaHTTPClient(config: .load())
     var maxTurns = 25
 
-    func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
+    package init(mode: ApprovalMode = .ask, client: ChatCompletionsClient = OllamaHTTPClient(config: .load()), maxTurns: Int = 25) {
+        self.mode = mode
+        self.client = client
+        self.maxTurns = maxTurns
+    }
+
+    package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AgentLoop(label: "Ollama (local)", mode: mode, backend: AzureBackend(client: client), maxTurns: maxTurns)
             .run(task: task, workingDirectory: workingDirectory, approve: approve)
     }

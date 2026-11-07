@@ -3,18 +3,18 @@ import Security
 
 /// Set by `Tristan --demo`: nothing in the recorded demo may read or write the real Keychain, because an ad-hoc signed app
 /// makes macOS ask for the login password. `KeychainStore` then keeps values in memory for the life of the process.
-enum NoKeychain {
-    nonisolated(unsafe) static var enabled = false
+package enum NoKeychain {
+    package nonisolated(unsafe) static var enabled = false
 }
 
 /// Minimal Keychain wrapper for provider credentials. Secrets never go in UserDefaults or the repository.
-enum KeychainStore {
+package enum KeychainStore {
     private static let service = "com.tristan.app"
 
     private static let memoryLock = NSLock()
     nonisolated(unsafe) private static var memory: [String: String] = [:]
 
-    static func get(_ account: String) -> String? {
+    package static func get(_ account: String) -> String? {
         if NoKeychain.enabled { memoryLock.lock(); defer { memoryLock.unlock() }; return memory[account] }
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrService as String: service,
@@ -28,7 +28,7 @@ enum KeychainStore {
 
     /// Stores the value, or deletes the entry when it is empty. Returns false on failure.
     @discardableResult
-    static func set(_ value: String, account: String) -> Bool {
+    package static func set(_ value: String, account: String) -> Bool {
         if NoKeychain.enabled {
             memoryLock.lock(); defer { memoryLock.unlock() }
             memory[account] = value.isEmpty ? nil : value

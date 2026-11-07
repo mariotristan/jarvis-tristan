@@ -1,6 +1,7 @@
 import SwiftUI
 import Carbon.HIToolbox
 import ServiceManagement
+import TristanCore
 
 struct SettingsOverlay: View {
     @EnvironmentObject var session: Session

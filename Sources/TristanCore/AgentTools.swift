@@ -1,11 +1,11 @@
 import Foundation
 
-struct ToolCallResult {
+package struct ToolCallResult {
     let text: String
     let isError: Bool
 }
 
-struct ToolDefinition {
+package struct ToolDefinition {
     let name: String
     let description: String
     let properties: [String: [String: String]]
@@ -13,7 +13,7 @@ struct ToolDefinition {
 }
 
 /// Tool definitions, rendered in whichever wire format a provider needs.
-enum AgentToolSpec {
+package enum AgentToolSpec {
     static let definitions: [ToolDefinition] = [
         ToolDefinition(name: "read_file", description: "Read a UTF-8 text file inside the working folder.",
                        properties: ["path": ["type": "string", "description": "Path relative to the working folder"]], required: ["path"]),
@@ -50,7 +50,7 @@ enum AgentToolSpec {
 }
 
 /// Symlink-safe path resolution that also works for files that do not exist yet.
-enum SafePath {
+package enum SafePath {
     /// Resolves symlinks in the deepest existing ancestor, then appends the not-yet-existing tail.
     /// Returns nil if the path runs through a dangling symlink, whose target cannot be checked.
     static func real(_ url: URL) -> String? {
@@ -67,7 +67,7 @@ enum SafePath {
 }
 
 /// Confines file access to the working folder (symlinks resolved) and runs the tools.
-struct ToolSandbox {
+package struct ToolSandbox {
     let root: URL
     private static let maxOutput = 20_000
 
@@ -151,7 +151,7 @@ struct ToolSandbox {
 }
 
 /// Which tool calls need the operator's approval, per approval mode.
-struct ToolPolicy {
+package struct ToolPolicy {
     let mode: ApprovalMode
 
     func needsApproval(tool: String, rule: ApprovalRule?) -> Bool {

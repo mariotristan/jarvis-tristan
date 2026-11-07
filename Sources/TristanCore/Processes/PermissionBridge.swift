@@ -2,7 +2,7 @@ import Foundation
 import Darwin
 
 /// Tiny POSIX helpers for newline-delimited JSON over a Unix domain socket.
-enum UnixSocket {
+package enum UnixSocket {
     private static func address(_ path: String) -> sockaddr_un {
         var addr = sockaddr_un()
         addr.sun_family = sa_family_t(AF_UNIX)
@@ -58,7 +58,7 @@ enum UnixSocket {
 }
 
 /// Runs inside the app. Receives permission requests from the MCP shim and asks the operator.
-final class PermissionServer: @unchecked Sendable {
+package final class PermissionServer: @unchecked Sendable {
     typealias Handler = @Sendable (_ tool: String, _ detail: String, _ rule: ApprovalRule?) async -> Bool
 
     let directory: URL
@@ -133,8 +133,8 @@ final class PermissionServer: @unchecked Sendable {
 
 /// `Tristan --mcp-permission <socket>`: a minimal MCP stdio server exposing one tool, `approve`,
 /// which Claude Code calls (via --permission-prompt-tool) before each action that needs permission.
-enum PermissionShim {
-    static func run(socketPath: String) -> Never {
+package enum PermissionShim {
+    package static func run(socketPath: String) -> Never {
         while let line = readLine() {
             guard let data = line.data(using: .utf8),
                   let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }

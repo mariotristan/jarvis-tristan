@@ -1,28 +1,28 @@
 import Foundation
 
 /// Provider-neutral transcript types. Each backend translates these to its own wire format.
-struct ToolCall: @unchecked Sendable {
+package struct ToolCall: @unchecked Sendable {
     let id: String
     let name: String
     let input: [String: Any]
     var argumentError: String?
 }
 
-struct ToolOutcome: Sendable {
+package struct ToolOutcome: Sendable {
     let id: String
     let text: String
     let isError: Bool
 }
 
-enum ChatMessage: @unchecked Sendable {
+package enum ChatMessage: @unchecked Sendable {
     case user(String)
     case assistant(text: String, calls: [ToolCall])
     case toolResults([ToolOutcome])
 }
 
-enum StopReason: Sendable { case toolUse, end, truncated, filtered }
+package enum StopReason: Sendable { case toolUse, end, truncated, filtered }
 
-struct ModelTurn: @unchecked Sendable {
+package struct ModelTurn: @unchecked Sendable {
     var text: String
     var calls: [ToolCall]
     var stop: StopReason
@@ -30,20 +30,20 @@ struct ModelTurn: @unchecked Sendable {
     var streamed = false
 }
 
-protocol ChatBackend: Sendable {
+package protocol ChatBackend: Sendable {
     /// `onText` receives text as it arrives for backends that can stream; others may ignore it.
     func nextTurn(system: String, history: [ChatMessage], onText: @escaping @Sendable (String) -> Void) async throws -> ModelTurn
 }
 
 /// Counts streamed deltas so a backend can tell whether the text already reached the UI.
-final class StreamTally: @unchecked Sendable {
+package final class StreamTally: @unchecked Sendable {
     private(set) var count = 0
     func note() { count += 1 }
 }
 
 /// The agent loop shared by every model-only provider: the model asks for tools, Tristan runs them
 /// (asking the operator first, per approval mode) and feeds the results back until the model is done.
-struct AgentLoop {
+package struct AgentLoop {
     let label: String
     let mode: ApprovalMode
     let backend: ChatBackend

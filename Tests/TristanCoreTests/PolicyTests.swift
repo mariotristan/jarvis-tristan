@@ -1,5 +1,5 @@
 import XCTest
-@testable import Tristan
+@testable import TristanCore
 
 /// Characterization tests: they pin today's approval-policy and sandbox behaviour.
 final class PolicyTests: XCTestCase {

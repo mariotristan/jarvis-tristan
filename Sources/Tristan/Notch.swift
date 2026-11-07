@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Combine
+import TristanCore
 
 /// Geometry of the camera notch, with a floating-pill fallback for Macs without one.
 struct NotchGeometry {

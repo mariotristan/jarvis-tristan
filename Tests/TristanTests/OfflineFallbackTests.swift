@@ -1,5 +1,6 @@
 import XCTest
 @testable import Tristan
+@testable import TristanCore
 
 private final class Counter: @unchecked Sendable {
     private let lock = NSLock()

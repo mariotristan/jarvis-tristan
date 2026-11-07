@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import TristanCore
 
 /// Reports whether the Mac has a route to the internet. Missions on a cloud provider fall back to Ollama while it does not.
 @MainActor

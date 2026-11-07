@@ -1,5 +1,5 @@
 import XCTest
-@testable import Tristan
+@testable import TristanCore
 
 final class CopilotTests: XCTestCase {
     private func run(mode: ApprovalMode, script: String, allow: Bool = true) async -> (events: [AgentEvent], prompts: [ApprovalRequest]) {

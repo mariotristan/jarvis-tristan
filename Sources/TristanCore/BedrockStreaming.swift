@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-struct AWSCredentials: Equatable {
+package struct AWSCredentials: Equatable {
     var accessKey: String
     var secretKey: String
     var sessionToken: String?
@@ -20,7 +20,7 @@ struct AWSCredentials: Equatable {
 }
 
 /// AWS Signature Version 4. Verified against the examples in AWS's own documentation (see the tests).
-enum SigV4 {
+package enum SigV4 {
     private static let unreserved = Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~".utf8)
 
     static func uriEncode(_ text: String) -> String {
@@ -87,12 +87,12 @@ enum SigV4 {
 }
 
 /// Decoder for the `application/vnd.amazon.eventstream` binary framing used by streaming AWS APIs.
-struct EventStreamMessage {
+package struct EventStreamMessage {
     var headers: [String: String]
     var payload: Data
 }
 
-struct EventStreamDecoder {
+package struct EventStreamDecoder {
     private var buffer = Data()
 
     /// How many more bytes are needed before the next frame can be decoded (lets callers batch their reads).
@@ -172,7 +172,7 @@ struct EventStreamDecoder {
 }
 
 /// Rebuilds a normal Converse response from the streamed events. Pure, so it is easy to test.
-struct ConverseStreamAssembler {
+package struct ConverseStreamAssembler {
     private var text: [Int: String] = [:]
     private var tools: [Int: (id: String, name: String, input: String)] = [:]
     private var stopReason = "end_turn"
@@ -219,19 +219,19 @@ struct ConverseStreamAssembler {
     }
 }
 
-protocol CredentialProvider: Sendable {
+package protocol CredentialProvider: Sendable {
     func credentials() async throws -> AWSCredentials
 }
 
 #if os(macOS)
 /// Uses `aws configure export-credentials`, which resolves the whole AWS chain (env, profiles, SSO, SAML helpers).
-final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
+package final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
     private let profile: String
     private var cached: AWSCredentials?
 
     init(profile: String) { self.profile = profile }
 
-    func credentials() async throws -> AWSCredentials {
+    package func credentials() async throws -> AWSCredentials {
         if let cached, (cached.expiration ?? .distantFuture) > Date().addingTimeInterval(120) { return cached }
         let fresh = try await Self.export(profile: profile)
         cached = fresh
@@ -274,12 +274,12 @@ final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
 
 /// Access keys the user typed into the app, kept in the Keychain. This is how the iPhone and iPad get AWS credentials,
 /// since there is no AWS CLI there. Prefer short-lived keys with a session token over long-lived ones.
-struct KeychainAWSCredentials: CredentialProvider {
+package struct KeychainAWSCredentials: CredentialProvider {
     static let accessKeyAccount = "aws-access-key-id"
     static let secretKeyAccount = "aws-secret-access-key"
     static let sessionTokenAccount = "aws-session-token"
 
-    func credentials() async throws -> AWSCredentials {
+    package func credentials() async throws -> AWSCredentials {
         guard let key = KeychainStore.get(Self.accessKeyAccount)?.trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty,
               let secret = KeychainStore.get(Self.secretKeyAccount)?.trimmingCharacters(in: .whitespacesAndNewlines), !secret.isEmpty else {
             throw BedrockError(message: "No AWS access key is set. Add an access key and secret in Settings.")
@@ -290,7 +290,7 @@ struct KeychainAWSCredentials: CredentialProvider {
 }
 
 /// Streams a Bedrock Converse response over HTTPS (ConverseStream), signing the request with SigV4.
-struct BedrockStreamingClient: ConverseClient {
+package struct BedrockStreamingClient: ConverseClient {
     let config: BedrockConfig
     let credentialProvider: CredentialProvider
     var session: URLSession = .shared
@@ -300,11 +300,11 @@ struct BedrockStreamingClient: ConverseClient {
         region.range(of: #"^[a-z]{2}(-[a-z]+)+-\d$"#, options: .regularExpression) != nil
     }
 
-    func converse(_ request: [String: Any]) async throws -> [String: Any] {
+    package func converse(_ request: [String: Any]) async throws -> [String: Any] {
         try await converseStreaming(request, onText: { _ in })
     }
 
-    func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
+    package func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
         guard Self.isValidRegion(config.region) else { throw BedrockError(message: "\"\(config.region)\" is not a valid AWS region") }
         let host = "bedrock-runtime.\(config.region).amazonaws.com"
         let path = "/model/\(SigV4.uriEncode(config.model))/converse-stream"
@@ -361,17 +361,17 @@ struct BedrockStreamingClient: ConverseClient {
 
 /// Tries streaming first and falls back to the AWS CLI if streaming cannot start. If it fails after text has
 /// already been shown, the error is reported instead, so the same text is never produced twice.
-struct FallbackConverseClient: ConverseClient {
+package struct FallbackConverseClient: ConverseClient {
     let primary: ConverseClient
     let fallback: ConverseClient
 
-    func converse(_ request: [String: Any]) async throws -> [String: Any] {
+    package func converse(_ request: [String: Any]) async throws -> [String: Any] {
         do { return try await primary.converse(request) } catch is CancellationError { throw CancellationError() } catch {
             return try await fallback.converse(request)
         }
     }
 
-    func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
+    package func converseStreaming(_ request: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any] {
         let tally = StreamTally()
         do {
             return try await primary.converseStreaming(request) { tally.note(); onText($0) }

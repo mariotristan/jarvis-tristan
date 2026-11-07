@@ -1,4 +1,5 @@
 import SwiftUI
+import TristanCore
 
 /// One session: its own provider, folder, mission log, code stream and approvals, plus the task that runs it.
 /// `Session` (the hub) owns several, so a Claude session and a Copilot session can work at the same time.

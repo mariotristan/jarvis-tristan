@@ -1,5 +1,5 @@
 import XCTest
-@testable import Tristan
+@testable import TristanCore
 
 /// Plays back canned model responses and records every request the agent loop sends.
 final class ScriptedClient: ConverseClient, @unchecked Sendable {

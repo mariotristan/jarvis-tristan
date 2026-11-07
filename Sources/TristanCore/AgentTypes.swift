@@ -3,10 +3,15 @@ import Foundation
 // The vocabulary every provider speaks. Shared by the Mac app and the iOS app.
 
 /// A narrowly scoped "always allow" rule. Only produced for actions that are safe to generalise.
-struct ApprovalRule: Codable, Hashable, Sendable, Identifiable {
-    let key: String
-    let label: String
-    var id: String { key }
+package struct ApprovalRule: Codable, Hashable, Sendable, Identifiable {
+    package let key: String
+    package let label: String
+    package var id: String { key }
+
+    package init(key: String, label: String) {
+        self.key = key
+        self.label = label
+    }
 
     private static let fileTools: Set<String> = ["Edit", "Write", "MultiEdit", "NotebookEdit"]
     private static let neverGeneralise: Set<String> = [
@@ -36,14 +41,20 @@ struct ApprovalRule: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-struct ApprovalRequest: Identifiable, Sendable {
-    let id = UUID()
-    let summary: String
-    let detail: String
-    var rule: ApprovalRule?
+package struct ApprovalRequest: Identifiable, Sendable {
+    package let id = UUID()
+    package let summary: String
+    package let detail: String
+    package var rule: ApprovalRule?
+
+    package init(summary: String, detail: String, rule: ApprovalRule? = nil) {
+        self.summary = summary
+        self.detail = detail
+        self.rule = rule
+    }
 }
 
-enum AgentEvent: Sendable {
+package enum AgentEvent: Sendable {
     case status(String)
     case log(String)
     case code(String)
@@ -51,8 +62,8 @@ enum AgentEvent: Sendable {
     case failed(String)
 }
 
-typealias Approver = @Sendable (ApprovalRequest) async -> Bool
+package typealias Approver = @Sendable (ApprovalRequest) async -> Bool
 
-protocol AgentProvider: Sendable {
+package protocol AgentProvider: Sendable {
     func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent>
 }

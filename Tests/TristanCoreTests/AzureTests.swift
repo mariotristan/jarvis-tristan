@@ -1,5 +1,5 @@
 import XCTest
-@testable import Tristan
+@testable import TristanCore
 
 final class ScriptedChat: ChatCompletionsClient, @unchecked Sendable {
     private var responses: [[String: Any]]
