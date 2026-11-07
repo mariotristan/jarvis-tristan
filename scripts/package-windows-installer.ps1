@@ -69,9 +69,17 @@ if (Test-Path -LiteralPath $zip) {
 }
 
 # 2. Inno Setup 6.7.3.
+# ISCC.exe has no numeric version resource (it reads 0.0.0), so the version strings of ISCC.exe and of the compiler
+# DLL next to it are tried too. Returns '' when none of them names a version.
 function Get-InnoVersion([string]$iscc) {
-    $info = (Get-Item -LiteralPath $iscc).VersionInfo
-    return "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart)"
+    $dir = Split-Path -Parent $iscc
+    foreach ($file in @($iscc) + @(Get-ChildItem -LiteralPath $dir -Filter 'ISCmplr*.dll' -ErrorAction SilentlyContinue | ForEach-Object FullName)) {
+        $info = (Get-Item -LiteralPath $file).VersionInfo
+        foreach ($text in "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart)", $info.ProductVersion, $info.FileVersion) {
+            if ($text -and $text -match '\A\s*([1-9]\d*\.\d+\.\d+)') { return $Matches[1] }
+        }
+    }
+    return ''
 }
 # On a CI runner RUNNER_TEMP is a short path without spaces; elsewhere the user's temp folder.
 $tempRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
@@ -87,7 +95,7 @@ foreach ($candidate in $candidates) {
     if (-not (Test-Path -LiteralPath $candidate)) { continue }
     $found = Get-InnoVersion $candidate
     if ($found -eq $innoVersion) { $iscc = $candidate; break }
-    Write-Host "Not used: $candidate is Inno Setup $found, not $innoVersion"
+    Write-Host "Not used: $candidate (version '$found', not $innoVersion)"
 }
 if (-not $iscc) {
     $download = Join-Path $tempRoot "innosetup-$innoVersion-$([System.Guid]::NewGuid().ToString('N')).exe"
@@ -111,15 +119,23 @@ if (-not $iscc) {
     }
     $iscc = Join-Path $privateDir 'ISCC.exe'
     if (-not (Test-Path -LiteralPath $iscc)) { throw "No ISCC.exe in $privateDir after installing Inno Setup" }
+    # The SHA-256 above already pins what was installed; a version that can be read must still agree.
     $found = Get-InnoVersion $iscc
-    if ($found -ne $innoVersion) { throw "Installed Inno Setup is $found, expected $innoVersion" }
+    if ($found -and $found -ne $innoVersion) { throw "Installed Inno Setup reports $found, expected $innoVersion" }
 }
-Write-Host "Inno Setup compiler: $iscc (version $(Get-InnoVersion $iscc), file version $((Get-Item -LiteralPath $iscc).VersionInfo.FileVersion))"
+Write-Host "Inno Setup compiler: $iscc (pinned $innoVersion; version resource: '$(Get-InnoVersion $iscc)')"
 
 # 3. Compile and hash. A setup or checksum left from an earlier run must never be mistaken for this one.
 foreach ($stale in $setup, "$setup.sha256") { if (Test-Path -LiteralPath $stale) { Remove-Item -LiteralPath $stale -Force } }
-& $iscc "/DAppVersion=$Version" "/DStageDir=$StageDir" "/O$OutDir" $iss
-if ($LASTEXITCODE -ne 0) { throw "ISCC.exe failed ($LASTEXITCODE)" }
+$ErrorActionPreference = 'Continue'   # ISCC may write to stderr; its exit code is checked below
+$compilerOutput = @(& $iscc "/DAppVersion=$Version" "/DStageDir=$StageDir" "/O$OutDir" $iss 2>&1 | ForEach-Object { $line = "$_"; Write-Host $line; $line })
+$isccExit = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+if ($isccExit -ne 0) { throw "ISCC.exe failed ($isccExit)" }
+# The compiler names its own version in its output ("Inno Setup 6.7.3" or similar); it must be the pinned one.
+$named = @($compilerOutput | Select-String -Pattern 'Inno Setup (\d+\.\d+\.\d+)' -AllMatches | ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+Write-Host "Versions named by ISCC.exe: $(if ($named) { $named -join ', ' } else { 'none' })"
+if ($named | Where-Object { $_ -ne $innoVersion }) { throw "ISCC.exe reports Inno Setup $($named -join ', '), expected $innoVersion" }
 if (-not (Test-Path -LiteralPath $setup)) { throw "ISCC.exe did not write $setup" }
 $size = (Get-Item -LiteralPath $setup).Length
 if ($size -le 0) { throw "$setup is empty" }
