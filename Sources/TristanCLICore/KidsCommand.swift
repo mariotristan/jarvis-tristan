@@ -50,12 +50,13 @@ enum PINPrompt {
 struct KidsCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "kids",
-        abstract: "Kids mode: only the local model (Ollama) answers; a parent PIN is needed to leave it.",
+        abstract: "Kids mode: only the local model (Ollama) answers. Set a PIN first (`kids set-pin`); the PIN is needed to leave it.",
         subcommands: [KidsOn.self, KidsOff.self, KidsSetPIN.self, KidsStatus.self])
 }
 
 enum Kids {
     static let key = "kidsMode"
+    static let noPINMessage = "Kids mode is on without a PIN. Ask a parent to change it in the Tristan app."
     static var isOn: Bool { Settings.bool(key) }
 
     static func refuse(_ message: String, _ code: ExitCode = .usage) -> ExitCode {
@@ -79,9 +80,9 @@ struct KidsOn: ParsableCommand, CLICommand {
     static let configuration = CommandConfiguration(commandName: "on", abstract: "Turn kids mode on.")
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
+        guard ParentPIN.isSet else { return Kids.refuse("Set a PIN first with `tristan kids set-pin`.") }
         Settings.set(true, forKey: Kids.key)
         Terminal.writeOutput("Kids mode is on.\n")
-        if !ParentPIN.isSet { Terminal.writeOutput("No parent PIN is set yet: run `tristan kids set-pin` so it needs one to turn off.\n") }
         return .ok
     }
 }
@@ -90,7 +91,9 @@ struct KidsOff: ParsableCommand, CLICommand {
     static let configuration = CommandConfiguration(commandName: "off", abstract: "Turn kids mode off (asks for the parent PIN).")
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
-        if ParentPIN.isSet, let stop = Kids.askParentPIN(environment, purpose: "to turn kids mode off") { return stop }
+        guard Kids.isOn else { Terminal.writeOutput("Kids mode is off.\n"); return .ok }
+        guard ParentPIN.isSet else { return Kids.refuse(Kids.noPINMessage) }
+        if let stop = Kids.askParentPIN(environment, purpose: "to turn kids mode off") { return stop }
         Settings.set(false, forKey: Kids.key)
         Terminal.writeOutput("Kids mode is off.\n")
         return .ok
@@ -103,6 +106,7 @@ struct KidsSetPIN: ParsableCommand, CLICommand {
         abstract: "Set or change the parent PIN (\(ParentPIN.minimumLength) or more digits; asks for the current one first).")
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
+        if Kids.isOn && !ParentPIN.isSet { return Kids.refuse(Kids.noPINMessage) }
         guard environment.interactive else {
             return Kids.refuse("Setting a PIN needs a terminal to type it in. Nothing was changed.")
         }
@@ -130,8 +134,6 @@ struct KidsStatus: ParsableCommand, CLICommand {
 }
 
 extension RunCommand {
-    private static let cloud: Set<CLIProvider> = [.claude, .copilot, .bedrock, .azure]
-
     /// Kids-mode rules for this run, read from `Settings` now. Nil to go ahead, else the exit code to stop with
     /// (nothing has been started by then).
     func kidsRefusal(_ environment: CLIEnvironment) -> ExitCode? {
@@ -139,7 +141,7 @@ extension RunCommand {
         if yolo || yesRoutine {
             return Kids.refuse("Kids mode is on: every action asks, so --yes-routine and --yolo are not allowed.")
         }
-        guard Self.cloud.contains(provider) else { return nil }
+        guard provider != .ollama else { return nil }   // an allowlist: any provider added later is refused too
         let name = provider.rawValue
         guard allowCloud else {
             return Kids.refuse("Kids mode is on: only Ollama answers, so \(name) is refused. A parent can allow one run with --allow-cloud.")

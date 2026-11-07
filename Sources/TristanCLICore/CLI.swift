@@ -79,7 +79,12 @@ package enum CLI {
 
 /// Unbuffered writes, so streamed text appears as it arrives and stdout and stderr keep their order.
 enum Terminal {
-    static func writeOutput(_ text: String) { FileHandle.standardOutput.write(Data(text.utf8)) }
+    /// Test hook: when set, standard output goes here instead of the terminal.
+    nonisolated(unsafe) static var capture: ((String) -> Void)?
+    static func writeOutput(_ text: String) {
+        if let capture { capture(text); return }
+        FileHandle.standardOutput.write(Data(text.utf8))
+    }
     static func writeError(_ text: String) { FileHandle.standardError.write(Data(text.utf8)) }
 
     /// True when a person can answer prompts: stdin is a terminal (not a pipe, file or /dev/null).

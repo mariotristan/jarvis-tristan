@@ -92,15 +92,62 @@ final class KidsCommandTests: XCTestCase {
         XCTAssertFalse(kidsOn)
     }
 
-    func testKidsOffWithoutPINIsAllowedAndOnIsFree() async throws {
+    func testKidsOnRefusesWithoutPIN() async throws {
         let calls = Calls()
-        var code = try await exec(["kids", "on"], calls, interactive: false)
+        let code = try await exec(["kids", "on"], calls, interactive: false)
+        XCTAssertEqual(code, .usage)
+        XCTAssertFalse(kidsOn)
+    }
+
+    func testKidsOnWithPINSucceedsWithoutAsking() async throws {
+        XCTAssertTrue(ParentPIN.set("1234"))
+        let calls = Calls()
+        let code = try await exec(["kids", "on"], calls, interactive: false)
         XCTAssertEqual(code, .ok)
         XCTAssertTrue(kidsOn)
-        code = try await exec(["kids", "off"], calls, interactive: false)
+        XCTAssertEqual(calls.prompts, [])
+    }
+
+    func testKidsOffWhenOnWithoutPINRefuses() async throws {
+        Settings.set(true, forKey: "kidsMode")   // e.g. switched on from the Mac app in Touch ID mode
+        let code = try await exec(["kids", "off"], Calls(answers: ["1234"]))
+        XCTAssertNotEqual(code, .ok)
+        XCTAssertTrue(kidsOn)
+    }
+
+    func testSetPinWhenKidsOnWithoutPINRefuses() async throws {
+        Settings.set(true, forKey: "kidsMode")
+        let code = try await exec(["kids", "set-pin"], Calls(answers: ["1234", "1234"]))
+        XCTAssertNotEqual(code, .ok)
+        XCTAssertFalse(ParentPIN.isSet)
+        XCTAssertTrue(kidsOn)
+    }
+
+    func testFirstPINCanBeSetWhileKidsIsOff() async throws {
+        let code = try await exec(["kids", "set-pin"], Calls(answers: ["1234", "1234"]))
+        XCTAssertEqual(code, .ok)
+        XCTAssertTrue(ParentPIN.matches("1234"))
+    }
+
+    func testKidsOffWhenAlreadyOffIsANoOp() async throws {
+        let code = try await exec(["kids", "off"], Calls(), interactive: false)
         XCTAssertEqual(code, .ok)
         XCTAssertFalse(kidsOn)
-        XCTAssertEqual(calls.prompts, [])
+    }
+
+    func testEveryProviderButOllamaIsRefusedInKidsMode() async throws {
+        Settings.set(true, forKey: "kidsMode")
+        for provider in CLIProvider.allCases {
+            let calls = Calls()
+            let code = try await exec(["run", "--provider", provider.rawValue, "hi"], calls)
+            if provider == .ollama {
+                XCTAssertEqual(code, .ok)
+                XCTAssertEqual(calls.providers, [.ollama])
+            } else {
+                XCTAssertEqual(code, .usage, provider.rawValue)
+                XCTAssertEqual(calls.providers, [], provider.rawValue)
+            }
+        }
     }
 
     func testSetPinRejectsShortPIN() async throws {
@@ -195,8 +242,24 @@ final class KidsCommandTests: XCTestCase {
         XCTAssertEqual(calls.approvalModes, [.yolo])
     }
 
-    func testStatus() async throws {
-        let code = try await exec(["kids", "status"], Calls(), interactive: false)
-        XCTAssertEqual(code, .ok)
+    func testStatusPrintsState() async throws {
+        let out = Sink()
+        Terminal.capture = { out.add($0) }
+        defer { Terminal.capture = nil }
+        _ = try await exec(["kids", "status"], Calls(), interactive: false)
+        XCTAssertEqual(out.value, "Kids mode: off\nParent PIN: not set\n")
+        XCTAssertTrue(ParentPIN.set("1234"))
+        Settings.set(true, forKey: "kidsMode")
+        let on = Sink()
+        Terminal.capture = { on.add($0) }
+        _ = try await exec(["kids", "status"], Calls(), interactive: false)
+        XCTAssertEqual(on.value, "Kids mode: on\nParent PIN: set\n")
     }
+}
+
+private final class Sink: @unchecked Sendable {
+    private let lock = NSLock()
+    private var text = ""
+    func add(_ s: String) { lock.lock(); text += s; lock.unlock() }
+    var value: String { lock.lock(); defer { lock.unlock() }; return text }
 }
