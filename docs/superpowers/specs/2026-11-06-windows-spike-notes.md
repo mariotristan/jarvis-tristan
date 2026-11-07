@@ -50,7 +50,7 @@ The arguments passed were: `two words`, `quote"inside`, `a&b`, `100%`, `%PATH%`,
 
 Also seen:
 - **Non-ASCII output from run_command** comes back as correct UTF-8: `"café 日本\r\n\n[exit status 0]"` (`WindowsPlatformTests.testRunCommandNonASCIIOutput`). The OEM code-page concern from the Task 7 ruling did not appear on the runner with pwsh 7. A console with a non-UTF-8 code page on a real PC is still unproven.
-- **Empty arguments are dropped.** This comes from Foundation's quoting on Windows. A run with an empty prompt (`-p ""`) would shift the argument list. I left it as a known limitation and did not fix it here.
+- **Empty arguments are dropped.** This comes from Foundation's quoting on Windows; a run with an empty prompt (`-p ""`) would shift the argument list. **Since fix round 1, `ProcessLauncher` refuses any empty argument on Windows** with `EmptyArgument` ("refusing to start <tool> with an empty argument…"). No caller passes `""` on purpose; an empty task, command or region now fails with that message instead of shifting the arguments.
 
 ## (d) Tools on PATH (`where.exe`)
 | Tool | Result |
@@ -68,11 +68,16 @@ Also seen:
 
 ## (e) Sockets, ACLs, tree kill, process liveness
 - **icacls with `%USERDOMAIN%\%USERNAME%` fails on the runner.** The step's environment has `USERNAME=SYSTEM`, while `whoami /user` shows `runnervmm7ud1\runneradmin` (SID `S-1-5-21-…-500`). icacls answered `runnervmm7ud1\SYSTEM: No mapping between account names and security IDs was done.` with exit code 1332. This was a real bug: the approval folder could never be restricted, so Claude Code approvals would always have failed.
-  - **Fixed:** `PermissionServer` now names the user by the SID of the process token (`OpenProcessToken` → `GetTokenInformation(TokenUser)` → `ConvertSidToStringSidW`) and grants `*S-1-5-…:(OI)(CI)F`.
-  - The PermissionServer and provider approval-flow tests now pass on Windows.
+  - **First fix:** name the user by the SID of the process token (`OpenProcessToken` → `GetTokenInformation(TokenUser)`) and grant `*S-1-5-…:(OI)(CI)F` with icacls.
+  - **Fix round 1:** a check of the result showed that `icacls /inheritance:r /grant:r` still left explicit `NT AUTHORITY\SYSTEM:(OI)(CI)(F)` and `BUILTIN\Administrators:(OI)(CI)(F)` entries next to the user's. `PermissionServer` now sets a protected DACL with exactly one entry (FILE_ALL_ACCESS, inherited by sub-folders and files, for the token SID) through `SetEntriesInAclW` and `SetNamedSecurityInfoW`. No icacls process runs any more.
+  - `WindowsPlatformTests.testApprovalFolderGrantsOnlyTheCurrentUser` checks the result with icacls: no `(I)` entries, exactly one entry ending `:(OI)(CI)(F)`, and `/findsid *<token SID>` finds it.
+  - The PermissionServer and provider approval-flow tests pass on Windows.
 - **SO_EXCLUSIVEADDRUSE** holds for the exact address: a second socket with SO_REUSEADDR cannot bind `127.0.0.1:<held port>`.
   - Windows **does** allow another socket to bind `0.0.0.0:<held port>` (`wildcard bind on the held port: allowed`). Connections to `127.0.0.1` still reach the host's more specific binding, and the full token handshake succeeds (`WindowsPlatformTests.testLoopbackPortCannotBeTakenWhileHeld`).
-  - A rogue listener after the host has died is handled by the server token (Task 9).
+  - A rogue listener after the host has died is handled by the server token (Task 9). The mutual tokens protect the channel, not the port.
+- **Shutting a socket down does not reliably wake a blocked `recv` on Windows.** Handshake reads therefore wait in 200 ms slices (`WSAPoll`, or `poll` on POSIX) and stop once evicted. At the 32-thread cap, the accept loop evicts the oldest unfinished handshake and waits for a thread instead of dropping the new client. With 40 silent clients connected first, the real shim still completes its handshake in about 0.2 s on Windows (`ApprovalTransportTests.testFortySilentClientsStillLetTheRealShimThrough`).
+- **Cancellation:** off Apple platforms a cancelled consumer of `bytes(for:)` gets `CancellationError` (`HTTPStreamingTests.testCancellingTheConsumerThrows`). On the Mac, Apple's `AsyncBytes` was seen to ignore the cancel and deliver the rest of the body.
+- **Credential Manager** stores a 2,560-byte secret and refuses 2,561 bytes, keeping the old value (`KeychainTests.testCredentialManagerSizeLimit`).
 - **`taskkill /T /F`** stopped a `cmd` → `ping` tree: the root and both children were gone. `ProcessTreeWindowsTests.testCancelTerminatesProcessTreeOnWindows` passes.
 - **OpenProcess / STILL_ACTIVE** liveness works: `SessionRegistryTests.testProcessIsAlive` passes on Windows (this process is alive, `Int32.max` is not).
 - **Junctions and symlinks:** `SafePath.real` (Foundation's `resolvingSymlinksInPath`) follows `mklink /J` junctions and `mklink /D` directory symlinks on Windows. A junction from the working folder to a sibling resolves to the sibling, and `ToolSandbox` and `ApprovalRule` treat it as outside. A root given by its 8.3 short name still contains paths given by their long names. **No `GetFinalPathNameByHandleW` change was needed.**
