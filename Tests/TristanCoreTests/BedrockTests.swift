@@ -161,6 +161,50 @@ final class BedrockTests: XCTestCase {
         XCTAssertTrue(AWSCLIConverseClient.explain(stderr: "An error occurred (ExpiredTokenException)").contains("expired"))
         XCTAssertTrue(AWSCLIConverseClient.explain(stderr: "An error occurred (AccessDeniedException)").contains("denied"))
     }
+
+    // MARK: AWS CLI on Windows (plan Task 14)
+
+    func testCLIInputURLIsValidOnWindows() {
+        XCTAssertEqual(AWSCLIConverseClient.inputArgument(for: "C:\\Users\\x\\AppData\\Local\\Temp\\tristan-bedrock-1\\request.json", windows: true),
+                       "file://C:/Users/x/AppData/Local/Temp/tristan-bedrock-1/request.json")
+        XCTAssertEqual(AWSCLIConverseClient.inputArgument(for: "/tmp/tristan-bedrock-1/request.json", windows: false),
+                       "file:///tmp/tristan-bedrock-1/request.json")
+        // A Mac path keeps any backslash it has (a legal file name character there).
+        XCTAssertEqual(AWSCLIConverseClient.inputArgument(for: "/tmp/a\\b/request.json", windows: false), "file:///tmp/a\\b/request.json")
+    }
+
+    func testExplainMentionsWindowsInstallHint() {
+        let windows = AWSCLIConverseClient.explain(stderr: "'aws' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n",
+                                                   windows: true)
+        XCTAssertTrue(windows.contains("winget install Amazon.AWSCLI"), windows)
+        XCTAssertFalse(windows.contains("brew"), windows)
+        XCTAssertEqual(AWSCLIConverseClient.notInstalledMessage(windows: false), "The AWS CLI was not found. Install it with `brew install awscli`.")
+        XCTAssertEqual(AWSCLIConverseClient.explain(stderr: "zsh: command not found: aws", windows: false),
+                       "The AWS CLI was not found. Install it with `brew install awscli`.")
+    }
+
+    func testExportedCredentialsTolerateCRLF() throws {
+        let output = "{\r\n  \"Version\": 1,\r\n  \"AccessKeyId\": \"AKIDEXAMPLE\",\r\n  \"SecretAccessKey\": \"secret\",\r\n"
+            + "  \"SessionToken\": \"token\",\r\n  \"Expiration\": \"2026-11-07T10:00:00+00:00\"\r\n}\r\n"
+        let credentials = try AWSCredentials.parse(Data(output.utf8))
+        XCTAssertEqual(credentials.accessKey, "AKIDEXAMPLE")
+        XCTAssertEqual(credentials.secretKey, "secret")
+        XCTAssertEqual(credentials.sessionToken, "token")
+        XCTAssertNotNil(credentials.expiration)
+    }
+
+    func testPrivateFolderNeedsNoPosixPermissionsOnWindows() throws {
+        let windowsStyle = folder.appendingPathComponent("win/logs")
+        try ProcessLauncher.createPrivateFolder(windowsStyle, windows: true)
+        var isDirectory: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: windowsStyle.path, isDirectory: &isDirectory) && isDirectory.boolValue)
+        #if !os(Windows)
+        let posix = folder.appendingPathComponent("posix/logs")
+        try ProcessLauncher.createPrivateFolder(posix, windows: false)
+        let mode = try FileManager.default.attributesOfItem(atPath: posix.path)[.posixPermissions] as? NSNumber
+        XCTAssertEqual(mode?.intValue, 0o700)
+        #endif
+    }
 }
 
 actor PromptLog {

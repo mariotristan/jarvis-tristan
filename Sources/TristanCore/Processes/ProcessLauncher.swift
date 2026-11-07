@@ -175,6 +175,24 @@ package enum ProcessLauncher {
         return Plan(executable: executable, arguments: arguments, environment: environment)
     }
 
+    /// How a file is named on a command line: `url.path` on the Mac and Linux; on Windows the file system's own
+    /// spelling (`C:\Users\...`), which other programs can open whatever form Foundation's `path` takes there.
+    package static func nativePath(_ url: URL) -> String {
+        #if os(Windows)
+        return url.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? url.path
+        #else
+        return url.path
+        #endif
+    }
+
+    /// Creates a scratch folder for a provider run (logs, request files). On the Mac and Linux only the owner may open
+    /// it (mode 0700). Windows has no mode bits: the folder lives in the user's own temp folder, whose access list
+    /// already limits it to that user (and administrators), so no attributes are passed there.
+    package static func createPrivateFolder(_ url: URL, windows: Bool = isWindows) throws {
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true,
+                                                attributes: windows ? nil : [.posixPermissions: 0o700])
+    }
+
     static func macPATH(inherited: String?) -> String {
         "/opt/homebrew/bin:/usr/local/bin:" + (inherited ?? "/usr/bin:/bin")
     }
