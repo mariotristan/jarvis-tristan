@@ -14,8 +14,7 @@ package struct OllamaConfig {
     static let loopbackHosts: Set<String> = ["localhost", "127.0.0.1", "::1"]
 
     static func load() -> OllamaConfig {
-        let defaults = UserDefaults.standard
-        func value(_ key: String) -> String { (defaults.string(forKey: key) ?? "").trimmingCharacters(in: .whitespaces) }
+        func value(_ key: String) -> String { (Settings.string(key) ?? "").trimmingCharacters(in: .whitespaces) }
         return OllamaConfig(host: value("ollama.host").isEmpty ? defaultHost : value("ollama.host"), model: value("ollama.model"))
     }
 

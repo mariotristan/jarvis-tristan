@@ -46,11 +46,11 @@ package enum CopilotArguments {
 /// Drives the GitHub Copilot CLI (`copilot -p`) and streams its output into the HUD.
 package struct CopilotProvider: AgentProvider {
     var mode: ApprovalMode = .ask
-    var model: String = UserDefaults.standard.string(forKey: "copilot.model") ?? ""
+    var model: String = Settings.string("copilot.model") ?? ""
     /// Tests replace the launch command so no real CLI is needed.
     var launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))?
 
-    package init(mode: ApprovalMode = .ask, model: String = UserDefaults.standard.string(forKey: "copilot.model") ?? "",
+    package init(mode: ApprovalMode = .ask, model: String = Settings.string("copilot.model") ?? "",
                  launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))? = nil) {
         self.mode = mode
         self.model = model

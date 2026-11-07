@@ -17,8 +17,7 @@ package struct AzureConfig {
                                       "openai.azure.us", "openai.azure.cn"]
 
     static func load() -> AzureConfig {
-        let defaults = UserDefaults.standard
-        func value(_ key: String) -> String { (defaults.string(forKey: key) ?? "").trimmingCharacters(in: .whitespaces) }
+        func value(_ key: String) -> String { (Settings.string(key) ?? "").trimmingCharacters(in: .whitespaces) }
         return AzureConfig(endpoint: value("azure.endpoint"), deployment: value("azure.deployment"),
                            apiVersion: value("azure.apiVersion").isEmpty ? defaultAPIVersion : value("azure.apiVersion"))
     }

@@ -8,8 +8,7 @@ package struct BedrockConfig {
     package static let defaultModel = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 
     static func load() -> BedrockConfig {
-        let defaults = UserDefaults.standard
-        func value(_ key: String) -> String { (defaults.string(forKey: key) ?? "").trimmingCharacters(in: .whitespaces) }
+        func value(_ key: String) -> String { (Settings.string(key) ?? "").trimmingCharacters(in: .whitespaces) }
         return BedrockConfig(model: value("bedrock.model").isEmpty ? defaultModel : value("bedrock.model"),
                              region: value("bedrock.region").isEmpty ? "us-east-1" : value("bedrock.region"),
                              profile: value("bedrock.profile"))
