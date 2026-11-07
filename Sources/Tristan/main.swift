@@ -6,9 +6,10 @@ nonisolated(unsafe) var demoKeepAlive: (Any, Any)?
 
 // `Tristan --mcp-permission <endpoint>`: MCP stdio shim spawned by Claude Code (see PermissionBridge.swift). A loopback
 // endpoint's two tokens arrive in the environment (the MCP config's `env` block), never on the command line.
-if let flag = args.firstIndex(of: "--mcp-permission"), args.indices.contains(flag + 1) {
+// Only as the first argument, which is how Claude Code starts it.
+if args.count >= 3, args[1] == "--mcp-permission" {
     let environment = ProcessInfo.processInfo.environment
-    PermissionShim.run(endpoint: args[flag + 1],
+    PermissionShim.run(endpoint: args[2],
                        token: environment[ApprovalTransport.tokenEnvironmentKey],
                        serverToken: environment[ApprovalTransport.serverTokenEnvironmentKey])
 }

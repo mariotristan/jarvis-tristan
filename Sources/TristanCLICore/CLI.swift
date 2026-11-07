@@ -18,9 +18,9 @@ package enum CLI {
     /// The whole program. `--mcp-permission <endpoint>` (Claude Code starting this program as its approval shim) is
     /// handled before any argument parsing, exactly as the Mac app does; its two tokens come from the environment.
     package static func main(_ arguments: [String] = CommandLine.arguments) async -> Never {
-        if let flag = arguments.firstIndex(of: "--mcp-permission"), arguments.indices.contains(flag + 1) {
+        if let endpoint = shimEndpoint(arguments) {
             let environment = ProcessInfo.processInfo.environment
-            PermissionShim.run(endpoint: arguments[flag + 1],
+            PermissionShim.run(endpoint: endpoint,
                                token: environment[ApprovalTransport.tokenEnvironmentKey],
                                serverToken: environment[ApprovalTransport.serverTokenEnvironmentKey])
         }
@@ -39,6 +39,13 @@ package enum CLI {
             if code == .ok { Terminal.writeOutput(message + "\n") } else { Terminal.writeError(message + "\n") }
             exit(code.rawValue)
         }
+    }
+
+    /// The endpoint when this process was started as the approval shim: `--mcp-permission <endpoint>` as the very
+    /// first arguments (how Claude Code starts it). Anywhere else, e.g. among a task's words, it is not the shim.
+    static func shimEndpoint(_ arguments: [String]) -> String? {
+        guard arguments.count >= 3, arguments[1] == "--mcp-permission" else { return nil }
+        return arguments[2]
     }
 
     enum Parsed {

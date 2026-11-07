@@ -36,7 +36,8 @@ let package = Package(
             path: "Sources/TristanCLICore"
         ),
         .executableTarget(name: "TristanCLI", dependencies: ["TristanCLICore"], path: "Sources/TristanCLI"),
-        .testTarget(name: "TristanCLITests", dependencies: ["TristanCLI", "TristanCLICore", "TristanCore"],
+        // Not on the executable target: some Windows toolchains cannot link one into a test bundle.
+        .testTarget(name: "TristanCLITests", dependencies: ["TristanCLICore", "TristanCore"],
                     path: "Tests/TristanCLITests"),
     ]
 )

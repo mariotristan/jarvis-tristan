@@ -13,8 +13,10 @@ struct RunCommand: ParsableCommand, CLICommand {
         commandName: "run",
         abstract: "Run a mission and answer its approvals in this terminal.",
         discussion: """
-            Without --yes-routine or --yolo every action that needs approval is asked about here. With no terminal \
-            attached (input piped or redirected) those actions are denied and tristan exits with status 3.
+            Without --yes-routine or --yolo every action that needs approval is asked about here; answering \
+            [a]lways saves a rule that later runs in a terminal apply without asking. With no terminal attached \
+            (input piped or redirected) saved always-allow rules are ignored, every action that needs approval is \
+            denied, and tristan exits with status 3.
             Exit status: 0 done, 1 failed, 2 usage error, 3 finished with something denied, 130 cancelled (Ctrl+C).
             """)
 

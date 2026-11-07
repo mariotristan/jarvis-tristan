@@ -247,28 +247,47 @@ package final class ProcessBox: @unchecked Sendable {
         return true
     }
 
+    /// Pruning keeps a cancelled box until its process is gone, so `terminateAll()` still reaches a tree whose
+    /// background kill has not finished.
     private var isRunning: Bool {
         lock.lock(); defer { lock.unlock() }
-        return !cancelled && (process?.isRunning ?? false)
+        return process?.isRunning ?? false
     }
 
-    /// Stops the process and its descendants (or keeps it from ever starting).
+    /// Stops the process and its descendants (or keeps it from ever starting). Returns at once: the tree is killed
+    /// on a background queue, because cancels arrive on the caller's thread (the Mac app's main thread on Abort).
     package func terminate() {
-        lock.lock()
+        guard let process = cancel() else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            ProcessTree.terminate(process)
+            self.unregister()
+        }
+    }
+
+    /// Like `terminate()`, but returns only once the tree has been stopped. For paths that exit the process next.
+    package func terminateAndWait() {
+        guard let process = cancel() else { return }
+        ProcessTree.terminate(process)
+        unregister()
+    }
+
+    private func cancel() -> Process? {
+        lock.lock(); defer { lock.unlock() }
         cancelled = true
-        let process = self.process
-        lock.unlock()
+        return process
+    }
+
+    private func unregister() {
         Self.registryLock.lock()
         Self.live[ObjectIdentifier(self)] = nil
         Self.registryLock.unlock()
-        if let process { ProcessTree.terminate(process) }
     }
 
-    /// Stops every running box (the command-line tool's Ctrl+C backstop).
+    /// Stops every running box and waits until their trees are gone (the command-line tool's Ctrl+C, before exiting).
     package static func terminateAll() {
         registryLock.lock()
         let boxes = Array(live.values)
         registryLock.unlock()
-        for box in boxes { box.terminate() }
+        for box in boxes { box.terminateAndWait() }
     }
 }

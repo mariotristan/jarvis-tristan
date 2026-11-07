@@ -122,6 +122,26 @@ final class ProcessTreeTests: XCTestCase {
         XCTAssertTrue(eventually { !self.isAlive(child) }, "claude's child survived the cancel")
     }
 
+    /// Abort in the Mac app cancels from the main thread: `terminate()` must not block while the tree dies.
+    func testTerminateReturnsQuicklyAndTheTreeStillDies() throws {
+        let box = ProcessBox()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        let pidFile = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-tree-\(UUID().uuidString).pid")
+        defer { try? FileManager.default.removeItem(at: pidFile) }
+        // The parent ignores SIGTERM, so a synchronous kill would wait out the whole grace period.
+        process.arguments = ["-c", "trap '' TERM; sleep 30 & echo $! > '\(pidFile.path)'; wait; wait"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        XCTAssertTrue(try box.start(process))
+        XCTAssertTrue(eventually { ((try? String(contentsOf: pidFile, encoding: .utf8)) ?? "").hasSuffix("\n") })
+        let child = Int32(((try? String(contentsOf: pidFile, encoding: .utf8)) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        let start = Date()
+        box.terminate()
+        XCTAssertLessThan(Date().timeIntervalSince(start), 0.1, "terminate() blocked its caller")
+        XCTAssertTrue(eventually(4) { !process.isRunning && !self.isAlive(child) })
+    }
+
     func testTerminateAllStopsLiveBoxes() throws {
         let box = ProcessBox()
         let process = Process()
@@ -131,6 +151,62 @@ final class ProcessTreeTests: XCTestCase {
         XCTAssertTrue(try box.start(process))
         ProcessBox.terminateAll()
         XCTAssertTrue(eventually { !process.isRunning })
+    }
+}
+#endif
+
+#if os(Windows)
+import WinSDK
+
+final class ProcessTreeWindowsTests: XCTestCase {
+    /// True while `tasklist` lists the pid.
+    private func isAlive(_ pid: Int32) -> Bool {
+        let root = ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows"
+        let tasklist = Process()
+        tasklist.executableURL = URL(fileURLWithPath: root + "\\System32\\tasklist.exe")
+        tasklist.arguments = ["/FI", "PID eq \(pid)", "/NH", "/FO", "CSV"]
+        let out = Pipe()
+        tasklist.standardOutput = out
+        tasklist.standardError = FileHandle.nullDevice
+        tasklist.standardInput = FileHandle.nullDevice
+        guard (try? tasklist.run()) != nil else { return false }
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        tasklist.waitUntilExit()
+        return String(decoding: data, as: UTF8.self).contains("\"\(pid)\"")
+    }
+
+    private func eventually(_ seconds: Double = 5, _ condition: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if condition() { return true }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        return condition()
+    }
+
+    /// Brief Step 4 on Windows: a PowerShell parent starts a sleeping PowerShell child; cancelling through the box
+    /// must stop both (taskkill /T).
+    func testCancelTerminatesProcessTreeOnWindows() throws {
+        let pidFile = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-tree-\(UUID().uuidString).pid")
+        defer { try? FileManager.default.removeItem(at: pidFile) }
+        let script = "$c = Start-Process -FilePath powershell.exe -ArgumentList '-NoProfile','-Command','Start-Sleep -Seconds 30' "
+            + "-NoNewWindow -PassThru; Set-Content -LiteralPath '\(pidFile.path)' -Value $c.Id; Wait-Process -Id $c.Id"
+        let process = try ProcessLauncher.prepare("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script],
+                                                  directory: nil, extraEnvironment: [:])
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        let box = ProcessBox()
+        XCTAssertTrue(try box.start(process))
+        func childPid() -> Int32? {
+            guard let text = try? String(contentsOf: pidFile, encoding: .utf8) else { return nil }
+            return Int32(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        XCTAssertTrue(eventually(15) { childPid() != nil }, "the child never wrote its pid")
+        let child = try XCTUnwrap(childPid())
+        XCTAssertTrue(isAlive(child))
+        box.terminate()
+        XCTAssertTrue(eventually { !process.isRunning && !self.isAlive(child) }, "parent or child still running")
     }
 }
 #endif

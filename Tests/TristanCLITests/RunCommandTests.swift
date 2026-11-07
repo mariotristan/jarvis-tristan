@@ -140,6 +140,19 @@ final class RunCommandTests: XCTestCase {
         XCTAssertTrue(command is ProvidersCommand)
     }
 
+    func testShimOnlyWhenFirstArgument() {
+        XCTAssertEqual(CLI.shimEndpoint(["tristan", "--mcp-permission", "tcp:127.0.0.1:5000"]), "tcp:127.0.0.1:5000")
+        XCTAssertNil(CLI.shimEndpoint(["tristan", "run", "explain", "--mcp-permission", "foo"]))
+        XCTAssertNil(CLI.shimEndpoint(["tristan", "--mcp-permission"]))
+        XCTAssertNil(CLI.shimEndpoint(["tristan"]))
+    }
+
+    func testRunHelpStatesNoTerminalRule() {
+        guard case .stop(_, let message) = CLI.parse(["run", "--help"]) else { return XCTFail() }
+        let flat = message.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        XCTAssertTrue(flat.contains("saved always-allow rules are ignored"), flat)
+    }
+
     func testEveryProviderIsMade() {
         XCTAssertEqual(CLIProvider.allCases.map(\.rawValue), ["claude", "copilot", "bedrock", "azure", "ollama"])
         XCTAssertTrue(CLIProvider.claude.make(mode: .ask) is ClaudeCodeProvider)
