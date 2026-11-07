@@ -90,6 +90,17 @@ final class ShellRunnerTests: XCTestCase {
         #endif
     }
 
+    /// The approval prompt names the shell that will run the command, the same name the saved rule is keyed by.
+    func testApprovalSummaryNamesTheShell() {
+        XCTAssertEqual(AgentLoop.approvalSummary(forShell: .posix), "Allow Bash?")
+        XCTAssertEqual(AgentLoop.approvalSummary(forShell: .powershell), "Allow PowerShell?")
+        #if os(Windows)
+        XCTAssertEqual(AgentLoop.approvalSummary(forShell: .current), "Allow PowerShell?")
+        #else
+        XCTAssertEqual(AgentLoop.approvalSummary(forShell: .current), "Allow Bash?")
+        #endif
+    }
+
     func testPrepareWithoutToolPathsKeepsInheritedEnvironment() throws {
         let inherited = try ProcessLauncher.prepare("echo", ["hi"], directory: nil, extraEnvironment: [:], addToolPaths: false)
         XCTAssertNil(inherited.environment)

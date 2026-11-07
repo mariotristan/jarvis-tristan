@@ -49,6 +49,12 @@ package struct AgentLoop {
     let backend: ChatBackend
     var maxTurns = 25
 
+    /// The question above a shell command: it names the shell that will run it ("Allow Bash?" on the Mac,
+    /// "Allow PowerShell?" on Windows), the same name the saved rule is keyed by.
+    static func approvalSummary(forShell shell: ShellFlavor) -> String {
+        "Allow \(shell.ruleToolName)?"
+    }
+
     /// `nil` means the device has no shell (iOS).
     static func systemPrompt(for shell: ShellFlavor?) -> String {
         switch shell {
@@ -179,7 +185,7 @@ package struct AgentLoop {
             let command = input["command"] as? String ?? ""
             let rule = ApprovalRule.make(tool: ShellFlavor.current.ruleToolName, input: ["command": command], workingDirectory: sandbox.root)
             let allowed = policy.needsApproval(tool: call.name, rule: rule)
-                ? await approve(ApprovalRequest(summary: "Allow Bash?", detail: command, rule: rule))
+                ? await approve(ApprovalRequest(summary: Self.approvalSummary(forShell: .current), detail: command, rule: rule))
                 : true
             #if !os(iOS)
             if allowed {
