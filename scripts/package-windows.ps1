@@ -1,5 +1,6 @@
 # Builds tristan.exe (release) and packages it for Windows:
-#   dist\Tristan-<version>-windows-x64.zip   tristan.exe, the DLLs it needs that Windows does not have, LICENSE, README.txt
+#   dist\Tristan-<version>-windows-x64.zip   tristan.exe, the DLLs it needs that Windows does not have, LICENSE.txt,
+#                                            THIRD-PARTY-NOTICES.txt, README.txt
 #   dist\Tristan-<version>-windows-x64.zip.sha256   "<sha256>  <zip name>", like the Mac DMG's
 # The version (for example 1.2.3, from the tag v1.2.3; release.yml turns any tag into letters, digits, dots and dashes) is
 # stamped into Sources\TristanCLICore\BuildVersion.swift for the
@@ -96,6 +97,11 @@ New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item $exe $stage
 foreach ($entry in $ship.GetEnumerator()) { Copy-Item $entry.Value (Join-Path $stage $entry.Key) }
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $stage 'LICENSE.txt')
+# The licences of the Swift runtime, Foundation, ICU, curl, zlib, Brotli, Swift Crypto/BoringSSL and Argument Parser
+# (copied verbatim; sources and versions are named inside). Windows line endings so Notepad shows it properly.
+$notices = [System.IO.File]::ReadAllText((Join-Path $root 'scripts\THIRD-PARTY-NOTICES.windows.txt'))
+if ($notices.Length -lt 1000) { throw 'scripts\THIRD-PARTY-NOTICES.windows.txt is missing or empty' }
+[System.IO.File]::WriteAllText((Join-Path $stage 'THIRD-PARTY-NOTICES.txt'), ($notices -replace "`r?`n", "`r`n"))
 $readme = @"
 Tristan $Version for Windows (x64): the ``tristan`` command
 

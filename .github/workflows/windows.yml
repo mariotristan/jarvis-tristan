@@ -177,7 +177,12 @@ jobs:
           $clean = Join-Path $env:RUNNER_TEMP "clean-$(Get-Random)"
           Expand-Archive $zip -DestinationPath $clean
           Get-ChildItem $clean | ForEach-Object { Write-Host ("  {0,12:N0}  {1}" -f $_.Length, $_.Name) }
-          foreach ($file in 'tristan.exe', 'LICENSE.txt', 'README.txt') { Check "zip has $file" (Test-Path (Join-Path $clean $file)) }
+          foreach ($file in 'tristan.exe', 'LICENSE.txt', 'README.txt', 'THIRD-PARTY-NOTICES.txt') { Check "zip has $file" (Test-Path (Join-Path $clean $file)) }
+          $notices = Get-Content (Join-Path $clean 'THIRD-PARTY-NOTICES.txt') -Raw
+          Check "THIRD-PARTY-NOTICES.txt is not empty ($($notices.Length) characters)" ($notices.Length -gt 1000)
+          foreach ($text in 'Runtime Library Exception', 'UNICODE LICENSE V3', 'Daniel Stenberg', 'Jean-loup Gailly', 'Brotli', 'BoringSSL') {
+            Check "THIRD-PARTY-NOTICES.txt mentions '$text'" ($notices.Contains($text))
+          }
           $env:Path = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
           Write-Host "PATH=$env:Path"
           Check 'swift is not on PATH' (-not (Get-Command swift -ErrorAction SilentlyContinue))
@@ -204,7 +209,7 @@ jobs:
             if (-not $version) { $version = '0.0.0' }
             pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            # The extracted exe reports the version and the checksum matches.
+            # The extracted exe reports the version, the checksum matches and the third-party notices are there.
             $zip = "dist/Tristan-$version-windows-x64.zip"
             $clean = Join-Path $env:RUNNER_TEMP "release-check-$version"
             Expand-Archive $zip -DestinationPath $clean
@@ -212,6 +217,8 @@ jobs:
             if ($printed -ne $version) { throw "tristan --version printed '$printed', expected '$version'" }
             $expected = ((Get-Content "$zip.sha256" -Raw) -split '\s+')[0]
             if ((Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant() -ne $expected) { throw "The sha256 of $zip does not match" }
+            $notices = Join-Path $clean 'THIRD-PARTY-NOTICES.txt'
+            if (-not (Test-Path $notices) -or (Get-Item $notices).Length -lt 1000) { throw "$zip has no THIRD-PARTY-NOTICES.txt" }
             if ($version -ne $case.Want) { throw "$ref gave version '$version', expected '$($case.Want)'" }
             if (-not (Test-Path "dist/Tristan-$($case.Want)-windows-x64.zip")) { throw "No dist/Tristan-$($case.Want)-windows-x64.zip" }
             Write-Host "PASS: $ref -> $version, $zip, tristan --version $printed, sha256 $expected"
