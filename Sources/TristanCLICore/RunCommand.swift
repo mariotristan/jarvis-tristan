@@ -63,7 +63,7 @@ struct RunCommand: ParsableCommand, CLICommand {
     func execute(environment: CLIEnvironment) async -> ExitCode {
         if let refusal = kidsRefusal(environment) { return refusal }
         let approver = TerminalApprover(interactive: environment.interactive, mode: mode,
-                                        input: { readLine() }, output: Terminal.writeError)
+                                        input: environment.readAnswer, output: Terminal.writeError)
         let task = taskText, folder = folderURL
         let pid = ProcessInfo.processInfo.processIdentifier
         environment.sessions.register(pid: pid, task: task, provider: provider.rawValue, folder: folder.path)

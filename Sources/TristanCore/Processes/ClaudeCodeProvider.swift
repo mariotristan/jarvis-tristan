@@ -8,6 +8,8 @@ package struct ClaudeCodeProvider: AgentProvider {
     var transport: ApprovalTransportKind = .platformDefault
     /// The program started as Claude Code (tests point this at a stand-in).
     var claudeTool = "claude"
+    /// The program Claude Code starts as the approval shim; nil means this program (tests point it at a built `tristan`).
+    var shimCommand: String?
 
     package init(mode: ApprovalMode = .ask) { self.mode = mode }
 
@@ -23,7 +25,7 @@ package struct ClaudeCodeProvider: AgentProvider {
                                  "--permission-mode", mode.claudeFlag]
                 if mode == .ask {
                     // Route every permission prompt back to the operator through the MCP shim.
-                    guard server.start(), let endpoint = server.endpoint, let executable = Self.shimExecutable() else {
+                    guard server.start(), let endpoint = server.endpoint, let executable = shimCommand ?? Self.shimExecutable() else {
                         c.yield(.failed("Could not start the approval bridge"))
                         server.stop(); c.finish(); return
                     }
@@ -33,7 +35,7 @@ package struct ClaudeCodeProvider: AgentProvider {
                         c.yield(.failed("Could not write the MCP config"))
                         server.stop(); c.finish(); return
                     }
-                    arguments += ["--mcp-config", configURL.path, "--permission-prompt-tool", "mcp__tristan__approve"]
+                    arguments += ["--mcp-config", ProcessLauncher.nativePath(configURL), "--permission-prompt-tool", "mcp__tristan__approve"]
                 } else {
                     c.yield(.log("Approval mode \(mode.rawValue): no per-action prompts"))
                 }
@@ -42,7 +44,7 @@ package struct ClaudeCodeProvider: AgentProvider {
                 do {
                     process = try ProcessLauncher.prepare(claudeTool, arguments, directory: workingDirectory, extraEnvironment: [:])
                 } catch {
-                    c.yield(.failed("Could not launch claude: \(error.localizedDescription)"))
+                    c.yield(.failed(Self.launchFailure(error)))
                     server.stop(); c.finish(); return
                 }
                 let out = Pipe()
@@ -82,6 +84,19 @@ package struct ClaudeCodeProvider: AgentProvider {
                 server.stop()
             }
         }
+    }
+
+    /// Why `claude` could not be started. The Mac wording is unchanged; on Windows a missing CLI also names Git for
+    /// Windows, which Claude Code needs there, and a refused task says what to remove.
+    static func launchFailure(_ error: Error, windows: Bool = ProcessLauncher.isWindows) -> String {
+        if windows, error is ToolNotFound {
+            return "Could not launch claude: \(error.localizedDescription). Install Claude Code (`npm install -g @anthropic-ai/claude-code`) "
+                + "and Git for Windows (`winget install -e --id Git.Git`), which Claude Code needs on Windows, then open a new terminal."
+        }
+        if windows, error is UnsafeArguments {
+            return "Could not launch claude safely: \(error.localizedDescription). Remove those characters from the task and retry."
+        }
+        return "Could not launch claude: \(error.localizedDescription)"
     }
 
     /// Writes `<directory>/mcp.json`, which makes Claude Code start `executable --mcp-permission <endpoint>` as an MCP
@@ -139,8 +154,9 @@ package struct ClaudeCodeProvider: AgentProvider {
 }
 
 package enum ClaudeStream {
+    /// One line of `--output-format stream-json`. A line ending left on it (CR LF on Windows) is ignored.
     static func parse(_ line: String) -> [AgentEvent] {
-        guard let data = line.data(using: .utf8),
+        guard let data = line.trimmingCharacters(in: .whitespacesAndNewlines).data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = obj["type"] as? String else { return [] }
         switch type {

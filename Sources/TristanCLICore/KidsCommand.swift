@@ -19,6 +19,8 @@ struct CLIEnvironment {
     var historyURL: URL
     /// The running-missions registry behind `tristan sessions`.
     var sessions: SessionRegistry
+    /// Reads one answer to an approval prompt (a line from stdin); tests script the answers.
+    var readAnswer: () -> String? = { readLine() }
 
     static var live: CLIEnvironment {
         CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: PINPrompt.read,
