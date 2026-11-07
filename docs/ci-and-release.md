@@ -62,7 +62,7 @@ Each job runs only when the files it builds changed. CI and Windows always start
 | `ci.yml` | yes | yes | |
 | `Sources/TristanCore/`, `Package.swift`, `Package.resolved`, `VERSION`, the classifier scripts, anything else | yes | yes | yes |
 
-A job skipped this way shows as skipped and counts as passing. It is fail safe: if the `changes-*` job fails, its self-test (`scripts/ci/test-changed-paths.sh`, run first) fails, the event is not a pull request or a single-commit push, or no files are found, every job runs. `gitleaks` always runs. `windows-spike` runs only when started by hand (Actions, Windows, Run workflow), and a newer push to a pull request cancels its older runs, never runs on `main`.
+A job skipped this way shows as skipped and counts as passing. Docs-only changes run only the secret scan and the two classifier jobs; the three build jobs are skipped. It is fail safe: if the `changes-*` job fails, its self-test (`scripts/ci/test-changed-paths.sh`, run first) fails, the event is not a pull request or a single-commit push, or no files are found, every job runs. `gitleaks` always runs. `windows-spike` runs only when started by hand (Actions, Windows, Run workflow), and a newer push to a pull request cancels its older runs, never runs on `main`.
 
 ## Publishing a release
 
