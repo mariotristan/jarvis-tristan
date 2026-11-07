@@ -164,7 +164,12 @@ package enum ClaudeStream {
                     events.append(.log(describe(tool: name, input: input)))
                     if let path = input["file_path"] as? String {
                         if let body = (input["content"] ?? input["new_string"]) as? String {
-                            events.append(.code(CodeFence.block(path: (path as NSString).abbreviatingWithTildeInPath, content: body)))
+                            #if canImport(Darwin)
+                            let shown = (path as NSString).abbreviatingWithTildeInPath
+                            #else
+                            let shown = path   // no `~` abbreviation outside Apple's Foundation
+                            #endif
+                            events.append(.code(CodeFence.block(path: shown, content: body)))
                         }
                     }
                 default: break

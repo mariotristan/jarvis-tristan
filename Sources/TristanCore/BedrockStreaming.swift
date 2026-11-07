@@ -230,7 +230,7 @@ package protocol CredentialProvider: Sendable {
     func credentials() async throws -> AWSCredentials
 }
 
-#if os(macOS)
+#if !os(iOS)   // needs ProcessLauncher (Sources/TristanCore/Processes), which the iOS app does not compile
 /// Uses `aws configure export-credentials`, which resolves the whole AWS chain (env, profiles, SSO, SAML helpers).
 package final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
     private let profile: String
