@@ -149,6 +149,36 @@ final class ProcessLauncherTests: XCTestCase {
         XCTAssertEqual(plan.executable.lowercased(), "c:\\npm\\node.exe")
     }
 
+    func testNodeIsNeverACmdShimEvenWhenOneComesFirstOnPath() throws {
+        let files: Set<String> = ["c:\\npm\\copilot.cmd", "c:\\wrappers\\node.cmd", "c:\\program files\\nodejs\\node.exe"]
+        let plan = try ProcessLauncher.plan("copilot", ["-p", "fix&calc"],
+                                            environment: ["Path": "C:\\wrappers;C:\\npm;C:\\Program Files\\nodejs", "PATHEXT": ".COM;.EXE;.BAT;.CMD"],
+                                            windows: true, isFile: { files.contains($0.lowercased()) }, readFile: { _ in Self.npmShim })
+        XCTAssertEqual(plan.executable.lowercased(), "c:\\program files\\nodejs\\node.exe")
+    }
+
+    func testOnlyACmdNodeFallsBackToTheGuard() {
+        let files: Set<String> = ["c:\\npm\\copilot.cmd", "c:\\wrappers\\node.cmd", "c:\\wrappers\\node.bat"]
+        XCTAssertThrowsError(try ProcessLauncher.plan("copilot", ["-p", "fix&calc"],
+                                                      environment: ["Path": "C:\\wrappers;C:\\npm", "PATHEXT": ".COM;.EXE;.BAT;.CMD"],
+                                                      windows: true, isFile: { files.contains($0.lowercased()) }, readFile: { _ in Self.npmShim })) { error in
+            XCTAssertEqual(error as? UnsafeArguments, UnsafeArguments(tool: "copilot"))
+        }
+        let safe = try? ProcessLauncher.plan("copilot", ["-p", "fix the login bug"],
+                                             environment: ["Path": "C:\\wrappers;C:\\npm", "PATHEXT": ".COM;.EXE;.BAT;.CMD"],
+                                             windows: true, isFile: { files.contains($0.lowercased()) }, readFile: { _ in Self.npmShim })
+        XCTAssertEqual(safe?.executable.lowercased(), "c:\\npm\\copilot.cmd", "safe arguments run the shim itself")
+    }
+
+    func testWindowsIgnoresRelativePathEntries() throws {
+        XCTAssertEqual(ProcessLauncher.searchPath(".;bin;..\\x;C:relative;C:\\npm;\\\\server\\share\\tools;D:/tools", windows: true),
+                       ["C:\\npm", "\\\\server\\share\\tools", "D:/tools"])
+        let plan = try ProcessLauncher.plan("aws", [], environment: ["Path": ".;bin;C:\\aws", "PATHEXT": ".EXE"], windows: true,
+                                            isFile: { $0.lowercased().hasSuffix("aws.exe") }, readFile: { _ in nil })
+        XCTAssertEqual(plan.executable, "C:\\aws\\aws.exe", "a tool planted in the current folder is never picked")
+        XCTAssertEqual(ProcessLauncher.searchPath(".:bin:/usr/bin", windows: false), [".", "bin", "/usr/bin"], "Mac unchanged")
+    }
+
     func testUnparsableShimRefusesUnsafeArguments() {
         XCTAssertThrowsError(try ProcessLauncher.plan("az", ["account", "show", "--query", "a&b"], environment: ["PATH": "C:\\az", "PATHEXT": ".EXE;.CMD"],
                                                       windows: true, isFile: { $0.lowercased() == "c:\\az\\az.cmd" },

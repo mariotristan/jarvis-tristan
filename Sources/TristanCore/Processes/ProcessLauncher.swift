@@ -141,11 +141,12 @@ package enum ProcessLauncher {
         guard ext == ".cmd" || ext == ".bat" else { return Plan(executable: executable, arguments: arguments, environment: environment) }
 
         if let text = readFile(executable), let script = CmdShim.nodeScript(shimText: text, shimPath: executable) {
+            // node itself must be a real program: a node.cmd/node.bat earlier on PATH would put cmd.exe back in the middle.
             let local = CmdShim.folder(of: executable) + "\\node.exe"
             let node = isFile(local) ? local
-                : ExecutableResolver.resolve("node", searchPath: search, pathExt: extensions, isFile: isFile, windows: true)
-            guard let node else { throw ToolNotFound(name: "node") }
-            return Plan(executable: node, arguments: [script] + arguments, environment: environment)
+                : ExecutableResolver.resolve("node", searchPath: search, pathExt: [".EXE", ".COM"], isFile: isFile, windows: true)
+            if let node { return Plan(executable: node, arguments: [script] + arguments, environment: environment) }
+            // No real node: the shim finds its own (or fails), so treat it like any other batch file.
         }
         guard CmdShimGuard.isSafe(arguments) else { throw UnsafeArguments(tool: tool) }
         return Plan(executable: executable, arguments: arguments, environment: environment)
@@ -155,12 +156,20 @@ package enum ProcessLauncher {
         "/opt/homebrew/bin:/usr/local/bin:" + (inherited ?? "/usr/bin:/bin")
     }
 
+    /// On Windows only absolute folders are kept (`C:\x`, `C:/x`, `\\server\share`): a relative entry such as `.` or `bin`
+    /// would let a tool planted in the working folder be picked.
     static func searchPath(_ path: String, windows: Bool) -> [String] {
         path.split(separator: windows ? ";" : ":", omittingEmptySubsequences: true).map { entry in
             var folder = String(entry)
             if windows, folder.count >= 2, folder.hasPrefix("\""), folder.hasSuffix("\"") { folder = String(folder.dropFirst().dropLast()) }
             return folder
-        }.filter { !$0.isEmpty }
+        }.filter { !$0.isEmpty && (!windows || isAbsoluteWindowsPath($0)) }
+    }
+
+    static func isAbsoluteWindowsPath(_ path: String) -> Bool {
+        if path.hasPrefix("\\\\") || path.hasPrefix("//") { return true }
+        let chars = Array(path)
+        return chars.count >= 3 && chars[0].isASCII && chars[0].isLetter && chars[1] == ":" && (chars[2] == "\\" || chars[2] == "/")
     }
 
     static func pathExtensions(_ value: String?) -> [String] {

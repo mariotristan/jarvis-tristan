@@ -43,10 +43,12 @@ enum LocalModelLauncher {
         guard let script = scriptURL() else { return .failed }
         let status: Int32 = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/bash")
+                process.arguments = [script.path, "--start-only"]
+                process.standardOutput = FileHandle.nullDevice
+                process.standardError = FileHandle.nullDevice
                 do {
-                    let process = try ProcessLauncher.prepare("/bin/bash", [script.path, "--start-only"], directory: nil, extraEnvironment: [:])
-                    process.standardOutput = FileHandle.nullDevice
-                    process.standardError = FileHandle.nullDevice
                     try process.run()
                     process.waitUntilExit()
                     continuation.resume(returning: process.terminationStatus)
