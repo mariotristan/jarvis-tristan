@@ -91,6 +91,119 @@ jobs:
           if ($failures -gt 0) { exit 1 }
           exit 0
 
+      # Plan Task 12: the built tristan.exe against scripts/ci/mock-ollama.ps1 (127.0.0.1 only, two streamed chunks
+      # 700 ms apart), configured only through `tristan config`.
+      - name: tristan.exe against a mocked Ollama
+        run: |
+          $ErrorActionPreference = 'Continue'   # tristan writes status lines to stderr; exit codes are checked below
+          $exe = Join-Path (swift build --show-bin-path) 'tristan.exe'
+          $port = 11500
+          $log = Join-Path $env:RUNNER_TEMP 'mock-ollama.log'
+          $mock = Start-Process pwsh -ArgumentList '-NoProfile', '-File', 'scripts/ci/mock-ollama.ps1', '-Port', $port -PassThru -RedirectStandardOutput $log
+          $failures = 0
+          function Check($label, $ok) {
+            if ($ok) { Write-Host "PASS: $label" } else { Write-Host "FAIL: $label"; $script:failures++ }
+          }
+          try {
+            $up = $false
+            foreach ($i in 1..60) {
+              try { $client = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port); $client.Close(); $up = $true; break } catch { Start-Sleep -Milliseconds 500 }
+            }
+            Check 'mock listens on 127.0.0.1' $up
+            Write-Host (Invoke-WebRequest "http://127.0.0.1:$port/api/tags" -UseBasicParsing).Content
+            & $exe config set ollama.host "http://127.0.0.1:$port"
+            Check 'config set ollama.host exits 0' ($LASTEXITCODE -eq 0)
+            & $exe config set ollama.model mock
+            Check 'config set ollama.model exits 0' ($LASTEXITCODE -eq 0)
+            & $exe config set ollama.host 'http://example.com:11434'
+            Check 'config set refuses a non-loopback host (exit 2)' ($LASTEXITCODE -eq 2)
+            & $exe config set kidsMode false
+            Check 'config set refuses kidsMode (exit 2)' ($LASTEXITCODE -eq 2)
+            & $exe config list
+            & $exe secret status
+            Check 'secret status exits 0' ($LASTEXITCODE -eq 0)
+            $null | & $exe secret set azure-openai-key 2>&1 | Out-Host
+            Check 'secret set without a terminal exits 2' ($LASTEXITCODE -eq 2)
+            $providers = & $exe providers 2>&1 | Out-String
+            Write-Host $providers
+            Check 'providers: ollama ready' ($providers -match '(?m)^ollama\s+ready')
+            $folder = Join-Path $env:RUNNER_TEMP "mock-ollama-$(Get-Random)"
+            New-Item -ItemType Directory $folder | Out-Null
+            $started = Get-Date
+            $output = $null | & $exe run --provider ollama --folder $folder hello 2>&1 | Out-String
+            $code = $LASTEXITCODE
+            Write-Host $output
+            Check "run --provider ollama exits 0 (got $code)" ($code -eq 0)
+            Check 'output has the streamed answer' ($output.Contains('Hello from the mock Ollama.'))
+            Check 'the run waited for the second chunk' (((Get-Date) - $started).TotalMilliseconds -ge 700)
+          } finally {
+            Stop-Process -Id $mock.Id -Force -ErrorAction SilentlyContinue
+            Write-Host '== mock log'
+            Get-Content $log -ErrorAction SilentlyContinue
+          }
+          Check 'mock saw GET /api/tags and POST /v1/chat/completions' ((Get-Content $log -Raw).Contains('GET /api/tags') -and (Get-Content $log -Raw).Contains('POST /v1/chat/completions'))
+          & $exe config unset ollama.host
+          & $exe config unset ollama.model
+          if ($failures -gt 0) { exit 1 }
+          exit 0
+
+      # Plan Task 12 + ruling R11: the zip the release attaches, built the way release.yml builds it.
+      - name: Package tristan.exe (0.0.0-ci)
+        run: pwsh -NoProfile -File scripts/package-windows.ps1 -Version 0.0.0-ci
+
+      - name: Upload the zip
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tristan-windows
+          path: |
+            dist/Tristan-0.0.0-ci-windows-x64.zip
+            dist/Tristan-0.0.0-ci-windows-x64.zip.sha256
+          if-no-files-found: error
+
+      # The extracted zip on a PATH without the Swift toolchain: it must run on a Windows machine that has no Swift.
+      - name: Verify the zip on a clean PATH
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $failures = 0
+          function Check($label, $ok) {
+            if ($ok) { Write-Host "PASS: $label" } else { Write-Host "FAIL: $label"; $script:failures++ }
+          }
+          $zip = (Resolve-Path dist\Tristan-0.0.0-ci-windows-x64.zip).Path
+          $expected = ((Get-Content "$zip.sha256" -Raw) -split '\s+')[0]
+          $actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+          Check "sha256 matches ($actual)" ($expected -eq $actual)
+          Check 'sha256 file names the zip' ((Get-Content "$zip.sha256" -Raw).Contains('  Tristan-0.0.0-ci-windows-x64.zip'))
+          $clean = Join-Path $env:RUNNER_TEMP "clean-$(Get-Random)"
+          Expand-Archive $zip -DestinationPath $clean
+          Get-ChildItem $clean | ForEach-Object { Write-Host ("  {0,12:N0}  {1}" -f $_.Length, $_.Name) }
+          foreach ($file in 'tristan.exe', 'LICENSE.txt', 'README.txt') { Check "zip has $file" (Test-Path (Join-Path $clean $file)) }
+          $env:Path = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+          Write-Host "PATH=$env:Path"
+          Check 'swift is not on PATH' (-not (Get-Command swift -ErrorAction SilentlyContinue))
+          $exe = Join-Path $clean 'tristan.exe'
+          $version = (& $exe --version 2>&1 | Out-String).Trim()
+          Check "tristan --version prints 0.0.0-ci (got '$version', exit $LASTEXITCODE)" ($version -eq '0.0.0-ci' -and $LASTEXITCODE -eq 0)
+          & $exe providers
+          Check "providers exits 0 (got $LASTEXITCODE)" ($LASTEXITCODE -eq 0)
+          if ($failures -gt 0) { exit 1 }
+          exit 0
+
+      # release.yml's Windows job derives the version from the tag with exactly these lines (there the tag is
+      # $env:GITHUB_REF_NAME); a made-up tag proves the derivation, the stamping and the zip name.
+      - name: Package as a release would (tag v9.9.9-test)
+        run: |
+          $tag = 'v9.9.9-test'
+          if ($tag -notmatch '\Av[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?\z') { throw "The tag '$tag' is not like v1.2.3" }
+          $version = $tag.Substring(1)
+          pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $clean = Join-Path $env:RUNNER_TEMP "release-$(Get-Random)"
+          Expand-Archive dist\Tristan-9.9.9-test-windows-x64.zip -DestinationPath $clean
+          $printed = (& (Join-Path $clean 'tristan.exe') --version | Out-String).Trim()
+          Write-Host "tristan --version: $printed"
+          if ($printed -ne '9.9.9-test') { throw "expected 9.9.9-test, got '$printed'" }
+          Get-Content dist\Tristan-9.9.9-test-windows-x64.zip.sha256
+
   # Plan Task 0 (spike): facts about this runner that later tasks rely on. Diagnostic only, so every check may fail
   # without failing the run; read the log. Notes: docs/superpowers/specs/2026-11-06-windows-spike-notes.md
   windows-spike:
