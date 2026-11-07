@@ -27,7 +27,15 @@ package struct PortableAsyncBytes: AsyncSequence, Sendable {
                 try Task.checkCancellation()
                 // A cancelled consumer ends the stream early; like Apple's AsyncBytes, report that as cancellation
                 // rather than as a normal end of the body.
-                guard let chunk = try await chunks.next() else {
+                let next: Data?
+                do {
+                    next = try await chunks.next()
+                } catch {
+                    // Cancelling also cancels the transfer, whose own error (URLError.cancelled) would surface here.
+                    try Task.checkCancellation()
+                    throw error
+                }
+                guard let chunk = next else {
                     try Task.checkCancellation()
                     return nil
                 }

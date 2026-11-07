@@ -129,31 +129,37 @@ package final class PermissionServer: @unchecked Sendable {
     }
 
     #if os(Windows)
-    /// Removes inherited entries and leaves one: full control for the current user, inherited by what is created inside.
-    /// The user is named by the SID of this process's token (`*S-1-5-…`), not `%USERDOMAIN%\%USERNAME%`: those
-    /// variables can name another account (on GitHub's Windows runners USERNAME is SYSTEM while the process runs as
-    /// runneradmin, and icacls then fails). Only the folder path and the SID are on icacls's command line.
+    /// Replaces the folder's access list with exactly one entry: full control for the current user, inherited by what
+    /// is created inside, with inheritance from the parent blocked (a protected DACL).
+    ///
+    /// The user is the SID of this process's token, not `%USERDOMAIN%\%USERNAME%`: those variables can name another
+    /// account (on GitHub's Windows runners USERNAME is SYSTEM while the process runs as runneradmin). The list is set
+    /// through the Win32 API rather than icacls, because `icacls /inheritance:r /grant:r` left explicit full-control
+    /// entries for SYSTEM and Administrators on the runner.
     private static func restrictToCurrentUser(_ directory: URL) -> Bool {
-        guard let sid = currentUserSID() else { return false }
-        let account = "*" + sid
-        let environment = ProcessInfo.processInfo.environment
-        let systemRoot = ProcessLauncher.value(of: "SystemRoot", in: environment, windows: true) ?? "C:\\Windows"
         let path = directory.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? directory.path
-        do {
-            let process = try ProcessLauncher.prepare(systemRoot + "\\System32\\icacls.exe",
-                                                      [path, "/inheritance:r", "/grant:r", account + ":(OI)(CI)F"],
-                                                      directory: nil, extraEnvironment: [:], addToolPaths: false)
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
-            process.standardInput = FileHandle.nullDevice
-            try process.run()
-            process.waitUntilExit()
-            return process.terminationStatus == 0
-        } catch { return false }
+        return withCurrentUserSID { sid -> Bool? in
+            var access = EXPLICIT_ACCESS_W()
+            access.grfAccessPermissions = DWORD(0x001F_01FF)   // FILE_ALL_ACCESS
+            access.grfAccessMode = SET_ACCESS
+            access.grfInheritance = DWORD(0x3)                  // SUB_CONTAINERS_AND_OBJECTS_INHERIT
+            access.Trustee.TrusteeForm = TRUSTEE_IS_SID
+            access.Trustee.TrusteeType = TRUSTEE_IS_USER
+            access.Trustee.ptstrName = sid.assumingMemoryBound(to: WCHAR.self)
+            var acl: PACL? = nil
+            guard SetEntriesInAclW(1, &access, nil, &acl) == 0, let acl else { return false }
+            defer { _ = LocalFree(UnsafeMutableRawPointer(acl)) }
+            // DACL_SECURITY_INFORMATION (0x4) | PROTECTED_DACL_SECURITY_INFORMATION (0x80000000)
+            let result = path.withCString(encodedAs: UTF16.self) { name in
+                SetNamedSecurityInfoW(UnsafeMutablePointer(mutating: name), SE_FILE_OBJECT, DWORD(0x8000_0004),
+                                      nil, nil, acl, nil)
+            }
+            return result == 0
+        } ?? false
     }
 
-    /// The string SID (`S-1-5-21-…`) of the user this process runs as, from its access token.
-    static func currentUserSID() -> String? {
+    /// Calls `body` with the SID of the user this process runs as, from its access token.
+    private static func withCurrentUserSID<T>(_ body: (UnsafeMutableRawPointer) -> T?) -> T? {
         var token: HANDLE? = nil
         guard OpenProcessToken(GetCurrentProcess(), DWORD(0x0008) /* TOKEN_QUERY */, &token), let token else { return nil }
         defer { CloseHandle(token) }
@@ -162,12 +168,19 @@ package final class PermissionServer: @unchecked Sendable {
         guard size > 0 else { return nil }
         let buffer = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<TOKEN_USER>.alignment)
         defer { buffer.deallocate() }
-        guard GetTokenInformation(token, TokenUser, buffer, size, &size) else { return nil }
-        let user = buffer.assumingMemoryBound(to: TOKEN_USER.self).pointee
-        var text: LPWSTR? = nil
-        guard ConvertSidToStringSidW(user.User.Sid, &text), let text else { return nil }
-        defer { _ = LocalFree(UnsafeMutableRawPointer(text)) }
-        return String(decodingCString: text, as: UTF16.self)
+        guard GetTokenInformation(token, TokenUser, buffer, size, &size),
+              let sid = buffer.assumingMemoryBound(to: TOKEN_USER.self).pointee.User.Sid else { return nil }
+        return body(sid)
+    }
+
+    /// The string SID (`S-1-5-21-…`) of the user this process runs as.
+    static func currentUserSID() -> String? {
+        withCurrentUserSID { sid -> String? in
+            var text: LPWSTR? = nil
+            guard ConvertSidToStringSidW(sid, &text), let text else { return nil }
+            defer { _ = LocalFree(UnsafeMutableRawPointer(text)) }
+            return String(decodingCString: text, as: UTF16.self)
+        }
     }
     #endif
 
