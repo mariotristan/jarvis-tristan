@@ -8,7 +8,7 @@ struct ProvidersCommand: ParsableCommand, CLICommand {
         commandName: "providers",
         abstract: "Show which providers are ready to run a mission.")
 
-    func execute() async -> ExitCode {
+    func execute(environment: CLIEnvironment) async -> ExitCode {
         for provider in CLIProvider.allCases {
             Terminal.writeOutput(Self.line(provider, problem: await Self.problem(provider)))
         }

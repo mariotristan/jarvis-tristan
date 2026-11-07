@@ -12,7 +12,10 @@ package enum ParentPIN {
     nonisolated(unsafe) private static var memoryHash: String?
 
     private static func stored() -> String? { inMemory ? memoryHash : KeychainStore.get(account) }
-    static let minimumLength = 4
+    package static let minimumLength = 4
+
+    /// Test hook: forgets the in-memory PIN (only meaningful with `inMemory`).
+    package static func clearInMemory() { memoryHash = nil }
 
     static func hash(_ pin: String) -> String {
         SHA256.hash(data: Data(("tristan-kids:" + pin).utf8)).map { String(format: "%02x", $0) }.joined()

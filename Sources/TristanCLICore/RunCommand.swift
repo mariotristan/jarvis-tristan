@@ -4,7 +4,11 @@ import TristanCore
 
 /// A command `CLI.main` runs after parsing; it returns the process exit status.
 protocol CLICommand {
-    func execute() async -> ExitCode
+    func execute(environment: CLIEnvironment) async -> ExitCode
+}
+
+extension CLICommand {
+    func execute() async -> ExitCode { await execute(environment: .live) }
 }
 
 /// `tristan run [--provider <name>] [--folder <path>] [--yes-routine | --yolo] "<task>"`
@@ -32,6 +36,10 @@ struct RunCommand: ParsableCommand, CLICommand {
     @Flag(help: "YOLO mode: nothing asks. Use only in a folder you can afford to lose.")
     var yolo = false
 
+    @Flag(name: .customLong("allow-cloud"),
+          help: "Kids mode only: a parent allows this one run on a cloud provider by typing the parent PIN.")
+    var allowCloud = false
+
     @Argument(help: "What to do, in plain words (quote it).")
     var task: [String] = []
 
@@ -52,26 +60,20 @@ struct RunCommand: ParsableCommand, CLICommand {
         }
     }
 
-    func execute() async -> ExitCode {
-        if Settings.bool("kidsMode") {
-            // Same promise as the Mac app: in kids mode only the local model answers, and every action asks.
-            guard provider == .ollama, mode == .ask else {
-                Terminal.writeError("Kids mode is on: only Ollama answers, and --yes-routine and --yolo are off.\n")
-                return .failed
-            }
-        }
-        let approver = TerminalApprover(interactive: Terminal.inputIsTerminal, mode: mode,
+    func execute(environment: CLIEnvironment) async -> ExitCode {
+        if let refusal = kidsRefusal(environment) { return refusal }
+        let approver = TerminalApprover(interactive: environment.interactive, mode: mode,
                                         input: { readLine() }, output: Terminal.writeError)
-        let agent = provider.make(mode: mode)
+        let agent = environment.makeProvider(provider, mode)
         let task = taskText, folder = folderURL
         Terminal.writeError("tristan: \(provider.rawValue) in \(folder.path) (approvals: \(mode.rawValue.lowercased()))\n")
         let work = Task {
             await Mission.run(provider: agent, task: task, folder: folder, approver: approver,
                               stdout: Terminal.writeOutput, stderr: Terminal.writeError)
         }
-        Interrupt.install { work.cancel() }
+        if environment.installInterrupt { Interrupt.install { work.cancel() } }
         let code = await work.value
-        Interrupt.missionEnded()
+        if environment.installInterrupt { Interrupt.missionEnded() }
         return code
     }
 }

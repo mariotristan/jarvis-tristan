@@ -52,7 +52,7 @@ final class MissionSession: ObservableObject, Identifiable {
     /// With no internet a cloud provider cannot work, so the mission falls back to Ollama (`fallback` is true then).
     private func route(_ hub: Session) -> (kind: ProviderKind, local: Bool, fallback: Bool) {
         // The scripted DEMO provider never leaves the Mac, so it is already as local as Ollama.
-        if hub.kidsMode, !cloudOnce, provider != .demo { return (.ollama, true, false) }
+        if KidsRouting.mustStayLocal(kidsMode: hub.kidsMode, cloudOnce: cloudOnce), provider != .demo { return (.ollama, true, false) }
         if hub.offline, Self.cloudKinds.contains(provider) { return (.ollama, true, true) }
         return (provider, provider == .ollama, false)
     }
