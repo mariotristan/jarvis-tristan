@@ -35,7 +35,7 @@ package struct AzureConfig {
         }
         let name = deployment.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw AzureError(message: "Set the Azure OpenAI deployment name in Configuration.") }
-        guard name.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil else {
+        guard name.range(of: #"\A[A-Za-z0-9._-]+\z"#, options: .regularExpression) != nil else {
             throw AzureError(message: "The deployment name may only contain letters, digits, dots, dashes and underscores.")
         }
         components.path = "/openai/deployments/\(name)/chat/completions"

@@ -128,7 +128,7 @@ extension ShellFlavor {
     /// `_` or dot puts PowerShell in expression mode (`-join ...`, `1..9`) or dot-sources a script (`. x.ps1`).
     /// Names ending with a dot (`rm.`) are refused.
     static func programName(_ word: String, windowsRules: Bool) -> String? {
-        guard word.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil else { return nil }
+        guard word.range(of: #"\A[A-Za-z0-9._-]+\z"#, options: .regularExpression) != nil else { return nil }
         guard windowsRules else { return word }
         guard let first = word.unicodeScalars.first, ("a"..."z").contains(first) || ("A"..."Z").contains(first) else {
             return nil

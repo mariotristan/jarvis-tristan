@@ -80,6 +80,12 @@ final class WindowsSafetyTests: XCTestCase {
 
     func testJunctionOutOfTheRootIsOutside() throws {
         guard let junction = link("junction", flag: "/J") else { throw XCTSkip("mklink /J failed on this machine") }
+        // The junction exists and SafePath follows it to `other` (so the refusals below are for the right reason).
+        XCTAssertTrue(FileManager.default.fileExists(atPath: native(junction) + "\\secret.txt"))
+        let followed = try XCTUnwrap(SafePath.real(junction.appendingPathComponent("secret.txt")))
+        XCTAssertTrue(PathContainment.contains(root: native(base.appendingPathComponent("other")), path: followed, flavor: .windows)
+                      || PathContainment.contains(root: try XCTUnwrap(SafePath.real(base.appendingPathComponent("other"))), path: followed, flavor: .windows),
+                      "resolved to \(followed)")
         let sandbox = ToolSandbox(root: proj)
         XCTAssertNil(sandbox.resolve("junction\\secret.txt"), "a junction to a folder outside the root must not count as inside")
         XCTAssertNil(sandbox.resolve("junction\\new.txt"))

@@ -215,6 +215,25 @@ final class ProcessLauncherTests: XCTestCase {
 
     // MARK: launching for real on the Mac
 
+    #if os(Windows)
+    func testPrepareRunsPowerShellWithEnvironmentAndDirectory() throws {
+        let directory = FileManager.default.temporaryDirectory
+        let process = try ProcessLauncher.prepare("powershell", ["-NoProfile", "-NonInteractive", "-Command",
+                                                                 "Write-Output \"hi $env:TRISTAN_LAUNCHER_TEST\"; (Get-Location).ProviderPath"],
+                                                  directory: directory, extraEnvironment: ["TRISTAN_LAUNCHER_TEST": "there"])
+        XCTAssertFalse(process.isRunning, "prepare configures but never starts")
+        let out = Pipe()
+        process.standardOutput = out
+        try process.run()
+        let text = String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        process.waitUntilExit()
+        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
+        XCTAssertEqual(lines.first, "hi there")
+        let native = directory.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? directory.path
+        XCTAssertEqual(lines.last.map { PathContainment.contains(root: native, path: $0, flavor: .windows) && PathContainment.contains(root: $0, path: native, flavor: .windows) }, true,
+                       "ran in \(lines.last ?? "?"), expected \(native)")
+    }
+    #else   // /bin/sh and `pwd -P`; the Windows twin is above
     func testPrepareRunsEchoWithEnvironmentAndDirectory() throws {
         let directory = FileManager.default.temporaryDirectory
         let process = try ProcessLauncher.prepare("sh", ["-c", "echo hi $TRISTAN_LAUNCHER_TEST; pwd -P"], directory: directory,
@@ -230,6 +249,7 @@ final class ProcessLauncherTests: XCTestCase {
         XCTAssertEqual(lines.last.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().path }, directory.resolvingSymlinksInPath().path)
         XCTAssertTrue(process.environment?["PATH"]?.hasPrefix("/opt/homebrew/bin:/usr/local/bin:") == true)
     }
+    #endif
 
     func testPrepareEcho() throws {
         let process = try ProcessLauncher.prepare("echo", ["hi"], directory: nil, extraEnvironment: [:])

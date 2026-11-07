@@ -147,6 +147,7 @@ final class AzureTests: XCTestCase {
         XCTAssertThrowsError(try url("https://user:pw@my-res.openai.azure.com"))
         XCTAssertThrowsError(try url("https://my-res.openai.azure.com", deployment: "../admin"))
         XCTAssertThrowsError(try url("https://my-res.openai.azure.com", deployment: ""))
+        XCTAssertThrowsError(try url("https://my-res.openai.azure.com", deployment: "gpt4o\n"), "a trailing newline is not a name")
         XCTAssertThrowsError(try url(""))
     }
 

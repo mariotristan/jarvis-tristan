@@ -2,9 +2,16 @@ import XCTest
 @testable import TristanCore
 
 final class CopilotTests: XCTestCase {
-    private func run(mode: ApprovalMode, script: String, allow: Bool = true) async -> (events: [AgentEvent], prompts: [ApprovalRequest]) {
+    /// `script` runs in /bin/sh; on Windows `windows` runs in Windows PowerShell instead.
+    private func run(mode: ApprovalMode, script: String, windows: String? = nil, allow: Bool = true) async -> (events: [AgentEvent], prompts: [ApprovalRequest]) {
         var provider = CopilotProvider(mode: mode, model: "")
+        #if os(Windows)
+        let shell = ProcessLauncher.locate("powershell") ?? "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        let command = windows ?? script
+        provider.launchOverride = { _ in (URL(fileURLWithPath: shell), ["-NoProfile", "-NonInteractive", "-Command", command]) }
+        #else
         provider.launchOverride = { _ in (URL(fileURLWithPath: "/bin/sh"), ["-c", script]) }
+        #endif
         let prompts = PromptLog()
         let stream = provider.run(task: "t", workingDirectory: FileManager.default.temporaryDirectory) { request in
             await prompts.add(request); return allow
@@ -67,7 +74,8 @@ final class CopilotTests: XCTestCase {
     }
 
     func testOutputStreamsAndSuccessFinishes() async {
-        let (events, prompts) = await run(mode: .yolo, script: "echo first; echo; echo final answer")
+        let (events, prompts) = await run(mode: .yolo, script: "echo first; echo; echo final answer",
+                                             windows: "Write-Output first; Write-Output ''; Write-Output 'final answer'")
         XCTAssertTrue(prompts.isEmpty)
         let code = events.compactMap { event -> String? in if case .code(let text) = event { return text } else { return nil } }.joined()
         XCTAssertTrue(code.contains("first") && code.contains("final answer"))
@@ -75,7 +83,8 @@ final class CopilotTests: XCTestCase {
     }
 
     func testNonZeroExitReportsStderr() async {
-        let (events, _) = await run(mode: .yolo, script: "echo 'not logged in' 1>&2; exit 3")
+        let (events, _) = await run(mode: .yolo, script: "echo 'not logged in' 1>&2; exit 3",
+                                      windows: "[Console]::Error.WriteLine('not logged in'); exit 3")
         if case .failed(let message)? = events.last { XCTAssertTrue(message.contains("not logged in")) } else { XCTFail("expected failure") }
     }
 }

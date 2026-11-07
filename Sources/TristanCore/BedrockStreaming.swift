@@ -308,7 +308,7 @@ package struct BedrockStreamingClient: ConverseClient {
     var now: @Sendable () -> Date = { Date() }
 
     static func isValidRegion(_ region: String) -> Bool {
-        region.range(of: #"^[a-z]{2}(-[a-z]+)+-\d$"#, options: .regularExpression) != nil
+        region.range(of: #"\A[a-z]{2}(-[a-z]+)+-[0-9]\z"#, options: .regularExpression) != nil
     }
 
     package func converse(_ request: [String: Any]) async throws -> [String: Any] {

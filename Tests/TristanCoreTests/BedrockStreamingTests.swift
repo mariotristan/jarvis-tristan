@@ -85,7 +85,7 @@ final class SigV4Tests: XCTestCase {
         XCTAssertTrue(BedrockStreamingClient.isValidRegion("us-east-1"))
         XCTAssertTrue(BedrockStreamingClient.isValidRegion("eu-central-1"))
         XCTAssertTrue(BedrockStreamingClient.isValidRegion("us-gov-west-1"))
-        for bad in ["", "evil.com/", "us-east-1.evil.com", "us east 1", "US-EAST-1", "us-east-1\n"] {
+        for bad in ["", "evil.com/", "us-east-1.evil.com", "us east 1", "US-EAST-1", "us-east-1\n", "us-east-1\r\n", "us-east-\u{0661}"] {
             XCTAssertFalse(BedrockStreamingClient.isValidRegion(bad), "\"\(bad)\"")
         }
     }

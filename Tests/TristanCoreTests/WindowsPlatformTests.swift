@@ -107,31 +107,45 @@ final class WindowsPlatformTests: XCTestCase {
         XCTAssertTrue(sid?.hasPrefix("S-1-5-") == true, sid ?? "nil")
     }
 
-    /// SO_EXCLUSIVEADDRUSE: while the host holds the approval port, no other socket can bind it, even one that asks to
-    /// share the address.
+    /// A socket asking to share the address (SO_REUSEADDR) on `host`:`port`, listening if the bind worked.
+    private func rogueBind(host: UInt32, port: UInt16) -> (socket: SOCKET, bound: Bool) {
+        let other = WinSDK.socket(AF_INET, SOCK_STREAM, 0)
+        var one: Int32 = 1
+        _ = withUnsafePointer(to: &one) {
+            $0.withMemoryRebound(to: CChar.self, capacity: 4) { setsockopt(other, SOL_SOCKET, SO_REUSEADDR, $0, 4) }
+        }
+        var address = sockaddr_in()
+        address.sin_family = ADDRESS_FAMILY(AF_INET)
+        address.sin_port = port.bigEndian
+        address.sin_addr.S_un.S_addr = host.bigEndian
+        let rc = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { WinSDK.bind(other, $0, Int32(MemoryLayout<sockaddr_in>.size)) }
+        }
+        if rc == 0 { _ = WinSDK.listen(other, 4) }
+        return (other, rc == 0)
+    }
+
+    /// SO_EXCLUSIVEADDRUSE: while the host holds 127.0.0.1:port, no other socket can bind that address, even one that
+    /// asks to share it. Windows does let another socket bind the wildcard address on the same port (observed on the
+    /// runner), but connections to 127.0.0.1 still reach the more specific binding, the host's.
     func testLoopbackPortCannotBeTakenWhileHeld() throws {
         let listener = try XCTUnwrap(LoopbackListener())
         defer { listener.close() }
         var data = WSADATA()
         XCTAssertEqual(WSAStartup(WORD(0x0202), &data), 0)
         defer { WSACleanup() }
-        for host: UInt32 in [0x7F00_0001, 0] {   // 127.0.0.1, then any address
-            let other = WinSDK.socket(AF_INET, SOCK_STREAM, 0)
-            XCTAssertNotEqual(other, ~SOCKET(0))
-            defer { closesocket(other) }
-            var one: Int32 = 1
-            _ = withUnsafePointer(to: &one) {
-                $0.withMemoryRebound(to: CChar.self, capacity: 4) { setsockopt(other, SOL_SOCKET, SO_REUSEADDR, $0, 4) }
-            }
-            var address = sockaddr_in()
-            address.sin_family = ADDRESS_FAMILY(AF_INET)
-            address.sin_port = listener.port.bigEndian
-            address.sin_addr.S_un.S_addr = host.bigEndian
-            let rc = withUnsafePointer(to: &address) {
-                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { WinSDK.bind(other, $0, Int32(MemoryLayout<sockaddr_in>.size)) }
-            }
-            XCTAssertNotEqual(rc, 0, "bound the held port on \(host == 0 ? "0.0.0.0" : "127.0.0.1")")
-        }
+
+        let exact = rogueBind(host: 0x7F00_0001, port: listener.port)
+        defer { closesocket(exact.socket) }
+        XCTAssertFalse(exact.bound, "another socket bound the held 127.0.0.1 port")
+
+        let wildcard = rogueBind(host: 0, port: listener.port)
+        defer { closesocket(wildcard.socket) }
+        print("wildcard bind on the held port: \(wildcard.bound ? "allowed" : "refused")")
+        let client = ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token,
+                                               serverToken: listener.serverToken, handshakeTimeout: 5, replyTimeout: 5)
+        XCTAssertNotNil(client, "the shim must still reach the real host")
+        client?.close()
     }
 }
 #endif

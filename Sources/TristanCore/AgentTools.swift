@@ -80,7 +80,11 @@ package enum SafePath {
             existing = up
         }
         if !fm.fileExists(atPath: existing.path), existing.path != "/" { return nil }   // dangling symlink
-        return ([existing.resolvingSymlinksInPath().path] + tail).joined(separator: "/")
+        let resolved = ([existing.resolvingSymlinksInPath().path] + tail).joined(separator: "/")
+        // A `..` that survived resolution (Foundation on Windows can leave one, e.g. for `D:/..`) means the walk
+        // did not end on a real folder: refuse rather than guess.
+        guard !resolved.split(whereSeparator: { $0 == "/" || $0 == "\\" }).contains("..") else { return nil }
+        return resolved
     }
 }
 

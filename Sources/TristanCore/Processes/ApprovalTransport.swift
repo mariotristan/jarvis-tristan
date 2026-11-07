@@ -223,7 +223,7 @@ final class LineConnection: ApprovalConnection, @unchecked Sendable {
 /// Listens on 127.0.0.1 (never any other address) on a port the system picks. Hands out only connections whose first
 /// line is the client token, after answering them with the server token.
 ///
-/// A background thread accepts clients and checks each one's token on its own task, at most `maxPendingHandshakes` at
+/// A background thread accepts clients and checks each one's token on a thread of its own, at most `maxPendingHandshakes` at
 /// a time; when all slots are taken the oldest unfinished handshake is cut off. A silent client therefore costs one
 /// slot for at most `handshakeTimeout`, never the whole line, and a real shim (which sends its token at once) gets
 /// through even while others stall.
@@ -241,13 +241,16 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     private let secret: [UInt8]
     private let answer: String
     private let handshakeTimeout: TimeInterval
-    private let handshakes = DispatchQueue(label: "tristan.approval.handshake", attributes: .concurrent)
+    /// Handshake threads alive at once, evicted ones included (an evicted read may only end at its timeout). Past
+    /// this, new clients are closed at once.
+    static let maxHandshakeThreads = 32
     private let condition = NSCondition()
     // Guarded by `condition`.
     private var closed = false
     private var ready: [LineConnection] = []
     private var pending: [(id: Int, socket: Socket)] = []
     private var nextID = 0
+    private var handshakeThreads = 0
 
     /// `handshakeTimeout` bounds how long one client may take to send its token line.
     package init?(handshakeTimeout: TimeInterval = 5) {
@@ -302,15 +305,30 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
                 client.shutdownAndClose()
                 break
             }
+            if handshakeThreads >= Self.maxHandshakeThreads {
+                condition.unlock()
+                client.shutdownAndClose()
+                continue
+            }
             if pending.count >= Self.maxPendingHandshakes {
-                // Wakes that handshake's read; its own task closes the socket.
+                // Wakes that handshake's read; its own thread closes the socket.
                 pending.removeFirst().socket.shutdownBoth()
             }
             let id = nextID
             nextID += 1
             pending.append((id, client))
+            handshakeThreads += 1
             condition.unlock()
-            handshakes.async { [self] in handshake(client, id: id) }
+            // A thread of its own, not a shared queue: a blocked read must never hold up another client's handshake
+            // (on Windows the dispatch pool ran out of threads behind silent clients).
+            let thread = Thread { [self] in
+                handshake(client, id: id)
+                condition.lock()
+                handshakeThreads -= 1
+                condition.unlock()
+            }
+            thread.name = "tristan.approval.handshake"
+            thread.start()
         }
         condition.lock()
         closed = true

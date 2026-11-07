@@ -370,6 +370,7 @@ final class ApprovalTransportTests: XCTestCase {
 
     // MARK: - Unix
 
+    #if !os(Windows)   // Windows has no Unix-socket transport (listen/connect return nil there by design)
     func testUnixTransportStillRoundTrips() throws {
         let folder = try makeFolder()
         let listener = try XCTUnwrap(ApprovalTransport.listen(directory: folder, kind: .unix))
@@ -386,6 +387,7 @@ final class ApprovalTransportTests: XCTestCase {
         wait(for: [served], timeout: 5)
         XCTAssertEqual(box.all, ["ping"])
     }
+    #endif
 
     func testPlatformDefaultTransport() throws {
         #if os(Windows)
@@ -447,9 +449,11 @@ final class ApprovalTransportTests: XCTestCase {
         try checkServer(kind: .loopback)
     }
 
+    #if !os(Windows)   // no Unix-socket transport on Windows
     func testPermissionServerOverUnix() throws {
         try checkServer(kind: .unix)
     }
+    #endif
 
     func testShimWithWrongTokenIsDeniedAndNeverReachesTheOperator() throws {
         let calls = Calls()
@@ -518,6 +522,7 @@ final class ApprovalTransportTests: XCTestCase {
         XCTAssertEqual(ApprovalTransport.serverTokenEnvironmentKey, "TRISTAN_APPROVAL_SERVER_TOKEN")
     }
 
+    #if !os(Windows)   // the platform default is loopback on Windows, covered by the env-block test above
     func testMCPConfigOnTheMacDefaultHasNoEnvBlock() throws {
         let folder = try makeFolder()
         let listener = try XCTUnwrap(ApprovalTransport.listen(directory: folder))
@@ -530,6 +535,7 @@ final class ApprovalTransportTests: XCTestCase {
         XCTAssertNil(server["env"])
         XCTAssertEqual(server.keys.sorted(), ["args", "command"])
     }
+    #endif
 
     func testShimExecutableIsAbsolute() {
         let isFile: (String) -> Bool = { $0 == "/usr/local/bin/tristan" }
@@ -558,6 +564,9 @@ final class ApprovalTransportTests: XCTestCase {
     /// A zsh stand-in for `claude`: reads the MCP config it was given, connects to the endpoint the way the shim does
     /// (token line first for TCP), sends one Bash request and reports the decision as a stream-json result.
     private func fakeClaude(in folder: URL) throws -> URL {
+        #if os(Windows)
+        return try fakeClaudeForWindows(in: folder)
+        #else
         let script = folder.appendingPathComponent("fake-claude")
         let text = #"""
         #!/bin/zsh
@@ -591,13 +600,60 @@ final class ApprovalTransportTests: XCTestCase {
         try text.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         return script
+        #endif
     }
+
+    #if os(Windows)
+    /// The Windows stand-in has the shape of the real `claude.cmd`: an npm-style shim in front of a node script, so the
+    /// launcher runs node on the script directly. The script plays the shim's part over loopback TCP.
+    private func fakeClaudeForWindows(in folder: URL) throws -> URL {
+        let shim = folder.appendingPathComponent("fake-claude.cmd")
+        try Data("@ECHO off\r\nnode \"%~dp0\\fake-claude.js\" %*\r\n".utf8).write(to: shim)
+        let script = #"""
+        const fs = require('fs'), net = require('net');
+        const args = process.argv.slice(2);
+        const out = o => process.stdout.write(JSON.stringify(o) + '\n');
+        const i = args.indexOf('--mcp-config');
+        if (i < 0) { out({type: 'result', result: 'no config', is_error: true}); process.exit(2); }
+        const server = JSON.parse(fs.readFileSync(args[i + 1], 'utf8')).mcpServers.tristan;
+        const env = server.env || {};
+        const m = /^tcp:127\.0\.0\.1:(\d+)$/.exec(server.args[1]);
+        if (!m) { out({type: 'result', result: 'not tcp: ' + server.args[1], is_error: true}); process.exit(3); }
+        const token = env.TRISTAN_APPROVAL_TOKEN || '', expected = env.TRISTAN_APPROVAL_SERVER_TOKEN || '';
+        const socket = net.connect(Number(m[1]), '127.0.0.1', () => socket.write(token + '\n'));
+        let buffer = '', proven = false;
+        socket.on('data', data => {
+          buffer += data;
+          let n;
+          while ((n = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, n); buffer = buffer.slice(n + 1);
+            if (!proven) {
+              if (expected.length !== 64 || line !== expected) {
+                out({type: 'result', result: 'host did not prove itself', is_error: true}); process.exit(4);
+              }
+              proven = true;
+              socket.write(JSON.stringify({tool_name: 'Bash', input: {command: 'ls'}, tool_use_id: 't1'}) + '\n');
+            } else {
+              socket.end();
+              const r = line.includes('"behavior":"allow"') ? 'allowed' : 'denied';
+              out({type: 'result', result: r + ' token=' + token.length, is_error: false});
+              process.exit(0);
+            }
+          }
+        });
+        socket.on('error', e => { out({type: 'result', result: 'socket: ' + e.message, is_error: true}); process.exit(5); });
+        """#
+        try Data(script.utf8).write(to: folder.appendingPathComponent("fake-claude.js"))
+        return shim
+    }
+    #endif
 
     private func runProvider(kind: ApprovalTransportKind, allow: Bool) async throws -> (String?, [String]) {
         let folder = try makeFolder()
         var provider = ClaudeCodeProvider(mode: .ask)
         provider.transport = kind
-        provider.claudeTool = try fakeClaude(in: folder).path
+        let tool = try fakeClaude(in: folder)
+        provider.claudeTool = tool.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? tool.path
         let calls = Calls()
         var result: String?
         for await event in provider.run(task: "list files", workingDirectory: folder, approve: { request in
@@ -621,6 +677,7 @@ final class ApprovalTransportTests: XCTestCase {
         XCTAssertEqual(denied, "denied token=64")
     }
 
+    #if !os(Windows)   // no Unix-socket transport on Windows
     func testProviderApprovalFlowOverUnix() async throws {
         let (allowed, calls) = try await runProvider(kind: .unix, allow: true)
         XCTAssertEqual(allowed, "allowed token=4")
@@ -628,4 +685,5 @@ final class ApprovalTransportTests: XCTestCase {
         let (denied, _) = try await runProvider(kind: .unix, allow: false)
         XCTAssertEqual(denied, "denied token=4")
     }
+    #endif
 }
