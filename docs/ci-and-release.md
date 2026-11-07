@@ -47,6 +47,23 @@ In `release.yml` the `windows` job (read-only token) runs the same tests through
 
 `main` is protected: changes land only by pull request, and the checks `build-and-test`, `ios`, `windows` and `gitleaks` are required.
 
+### Which jobs run
+
+Each job runs only when the files it builds changed. CI and Windows always start (a workflow skipped by a path filter would leave its required checks waiting forever); their first job, `changes-ci` or `changes-windows` (ubuntu, about 15 seconds), lists the files the change brings (`git diff HEAD^1 HEAD` of the pull request's merge commit, or of a push that added one commit) and runs `scripts/ci/changed-paths.sh`. Its rules are a table at the top of that script; in short:
+
+| Changed | `build-and-test` | `ios` | `windows` |
+|---------|:-:|:-:|:-:|
+| `docs/`, top-level `*.md`, `.gitignore` | | | |
+| `Sources/Tristan/` (not `Shared/`), `Tests/TristanTests/`, `scripts/*.sh` | yes | | |
+| `Sources/Tristan/Shared/` | yes | yes | |
+| `ios/` | | yes | |
+| `Sources/TristanCLICore/`, `Sources/TristanCLI/`, `Tests/TristanCoreTests/`, `Tests/TristanCLITests/` | yes | | yes |
+| `scripts/*.ps1`, `scripts/ci/`, `scripts/windows/`, the Windows notices, `LICENSE`, `windows.yml`, `release.yml` | | | yes |
+| `ci.yml` | yes | yes | |
+| `Sources/TristanCore/`, `Package.swift`, `Package.resolved`, `VERSION`, the classifier scripts, anything else | yes | yes | yes |
+
+A job skipped this way shows as skipped and counts as passing. It is fail safe: if the `changes-*` job fails, its self-test (`scripts/ci/test-changed-paths.sh`, run first) fails, the event is not a pull request or a single-commit push, or no files are found, every job runs. `gitleaks` always runs. `windows-spike` runs only when started by hand (Actions, Windows, Run workflow), and a newer push to a pull request cancels its older runs, never runs on `main`.
+
 ## Publishing a release
 
 ```bash
