@@ -35,16 +35,11 @@ struct ProvidersCommand: ParsableCommand, CLICommand {
             if value("azure.endpoint").isEmpty || value("azure.deployment").isEmpty {
                 return "set azure.endpoint and azure.deployment first"
             }
-            #if os(macOS)
-            // On the Mac the provider also signs in with `az`. Checked first, so a present CLI avoids a Keychain prompt.
+            // The provider also signs in with `az` (`az.cmd` on Windows). Checked first, so a present CLI avoids a
+            // Keychain prompt on the Mac.
             if locate("az") != nil { return nil }
-            #endif
             if let key = KeychainStore.get(AzureConfig.keychainAccount), !key.isEmpty { return nil }
-            #if os(macOS)
             return "no API key is stored and the Azure CLI (az) was not found"
-            #else
-            return "no API key is stored"
-            #endif
         case .ollama:
             guard let installed = await OllamaStatus.installedModels() else {
                 return "Ollama is not running (start it with `ollama serve`)"

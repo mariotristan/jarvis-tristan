@@ -17,7 +17,17 @@ enum WindowsCredentialStore {
         defer { CredFree(UnsafeMutableRawPointer(credential)) }
         let size = Int(credential.pointee.CredentialBlobSize)
         guard size > 0, let blob = credential.pointee.CredentialBlob else { return nil }
-        return String(decoding: UnsafeBufferPointer(start: blob, count: size), as: UTF8.self)
+        return decode(Array(UnsafeBufferPointer(start: blob, count: size)))
+    }
+
+    /// `set` writes UTF-8. Windows' own tools (`cmdkey`, the Credential Manager window) store the password as UTF-16LE,
+    /// so a blob whose every second byte is zero (an ASCII or Latin-1 key typed there) is read as UTF-16LE.
+    static func decode(_ bytes: [UInt8]) -> String {
+        if bytes.count >= 2, bytes.count % 2 == 0, stride(from: 1, to: bytes.count, by: 2).allSatisfy({ bytes[$0] == 0 }) {
+            let units = stride(from: 0, to: bytes.count, by: 2).map { UInt16(bytes[$0]) | UInt16(bytes[$0 + 1]) << 8 }
+            return String(decoding: units, as: UTF16.self)
+        }
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     /// Creates or replaces the credential. False when Windows refuses it (for example a value over 2,560 bytes).

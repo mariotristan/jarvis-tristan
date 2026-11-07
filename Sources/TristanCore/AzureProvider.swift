@@ -51,13 +51,13 @@ package protocol ChatCompletionsClient: Sendable {
     func complete(_ body: [String: Any], onText: @escaping @Sendable (String) -> Void) async throws -> [String: Any]
 }
 
-/// Chooses between an API key (from the Keychain) and the Azure CLI login (Entra ID).
+/// Chooses between an API key (from the Keychain, or Credential Manager on Windows) and the Azure CLI login (Entra ID).
 package final class AzureAuth: @unchecked Sendable {
     private var cachedToken: (value: String, expires: Date)?
 
     func headers() async throws -> [String: String] {
         if let key = KeychainStore.get(AzureConfig.keychainAccount), !key.isEmpty { return ["api-key": key] }
-        #if os(macOS)
+        #if !os(iOS)
         if let cached = cachedToken, cached.expires > Date() { return ["Authorization": "Bearer \(cached.value)"] }
         let token = try await Self.azureCLIToken()
         cachedToken = (token, Date().addingTimeInterval(20 * 60))
@@ -67,41 +67,53 @@ package final class AzureAuth: @unchecked Sendable {
         #endif
     }
 
-    #if os(macOS)
-    private static func azureCLIToken() async throws -> String {
-        #if os(Windows)
-        let notFound = "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `winget install Microsoft.AzureCLI`."
-        #else
-        let notFound = "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `brew install azure-cli`."
-        #endif
+    #if !os(iOS)   // needs ProcessLauncher (Sources/TristanCore/Processes), which the iOS app does not compile
+    /// Runs a tool to the end and returns its exit status and standard output; throws when it cannot be started.
+    typealias ToolRunner = @Sendable (_ tool: String, _ arguments: [String]) throws -> (status: Int32, output: Data)
+
+    static let tokenArguments = ["account", "get-access-token", "--resource", "https://cognitiveservices.azure.com",
+                                 "--query", "accessToken", "-o", "tsv"]
+
+    /// What to say when there is no API key and `az` cannot be started.
+    static func cliNotFoundMessage(windows: Bool) -> String {
+        windows
+            ? "No API key is set and the Azure CLI was not found. Store an API key in Windows Credential Manager (a generic credential named `com.tristan.app/azure-openai-key`) or install the Azure CLI with `winget install -e --id Microsoft.AzureCLI`, then open a new terminal."
+            : "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `brew install azure-cli`."
+    }
+
+    /// An Entra ID token from `az account get-access-token`. `az` is found through `ProcessLauncher` (on Windows it is
+    /// `az.cmd`); the token is trimmed of the line ending (`\r\n` on Windows).
+    static func azureCLIToken(windows: Bool = ProcessLauncher.isWindows,
+                              run: @escaping ToolRunner = AzureAuth.runTool) async throws -> String {
+        let notFound = cliNotFoundMessage(windows: windows)
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async {
-                let process: Process
-                do {
-                    process = try ProcessLauncher.prepare("az", ["account", "get-access-token", "--resource", "https://cognitiveservices.azure.com",
-                                                                 "--query", "accessToken", "-o", "tsv"], directory: nil, extraEnvironment: [:])
-                } catch {
+                let result: (status: Int32, output: Data)
+                do { result = try run("az", tokenArguments) } catch {
                     continuation.resume(throwing: AzureError(message: notFound))
                     return
                 }
-                let out = Pipe()
-                process.standardOutput = out
-                process.standardError = FileHandle.nullDevice
-                process.standardInput = FileHandle.nullDevice
-                do { try process.run() } catch {
-                    continuation.resume(throwing: AzureError(message: notFound))
-                    return
-                }
-                let data = out.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                let token = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-                if process.terminationStatus == 0, !token.isEmpty {
+                let token = String(decoding: result.output, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+                if result.status == 0, !token.isEmpty {
                     continuation.resume(returning: token)
                 } else {
                     continuation.resume(throwing: AzureError(message: "No API key is set and the Azure CLI is not logged in. Run `az login`, or add an API key in Configuration."))
                 }
             }
         }
+    }
+
+    /// Starts `tool` through `ProcessLauncher` with no input and stderr discarded, and waits for it.
+    static func runTool(_ tool: String, _ arguments: [String]) throws -> (status: Int32, output: Data) {
+        let process = try ProcessLauncher.prepare(tool, arguments, directory: nil, extraEnvironment: [:])
+        let out = Pipe()
+        process.standardOutput = out
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        try process.run()
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return (process.terminationStatus, data)
     }
     #endif
 }

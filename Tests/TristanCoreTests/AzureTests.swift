@@ -158,4 +158,83 @@ final class AzureTests: XCTestCase {
         XCTAssertTrue(AzureHTTPClient.explain(status: 429, body: body).contains("rate"))
         XCTAssertTrue(AzureHTTPClient.explain(status: 500, body: Data()).contains("500"))
     }
+
+    // MARK: the HTTP client end to end, against a stub server
+
+    func testProviderStreamsOverHTTPWithTheStoredKey() async throws {
+        NoKeychain.enabled = true
+        defer { KeychainStore.set("", account: AzureConfig.keychainAccount); NoKeychain.enabled = false }
+        KeychainStore.set("stub-api-key", account: AzureConfig.keychainAccount)
+        let stub = AzureStub.start()
+        defer { AzureStub.stop() }
+        let (events, prompts) = await run(stub, task: "write hello.txt")
+        XCTAssertEqual(prompts.count, 1)
+        XCTAssertEqual(try String(contentsOf: folder.appendingPathComponent("hello.txt"), encoding: .utf8), "hi from azure")
+        XCTAssertEqual(last(events), "done")
+        let requests = AzureStub.requests
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertEqual(requests.first?.value(forHTTPHeaderField: "api-key"), "stub-api-key")
+        XCTAssertNil(requests.first?.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertEqual(requests.first?.url?.path, "/openai/deployments/gpt-stub/chat/completions")
+    }
+
+    private func run(_ client: AzureHTTPClient, task: String, allow: Bool = true) async -> (events: [AgentEvent], prompts: [ApprovalRequest]) {
+        let prompts = PromptLog()
+        let stream = AzureOpenAIProvider(mode: .ask, client: client).run(task: task, workingDirectory: folder) { request in
+            await prompts.add(request); return allow
+        }
+        var events: [AgentEvent] = []
+        for await event in stream { events.append(event) }
+        return (events, await prompts.all)
+    }
+
+    // MARK: Azure CLI sign-in (plan Task 13)
+
+    private final class ToolCalls: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [(String, [String])] = []
+        func add(_ tool: String, _ arguments: [String]) { lock.lock(); items.append((tool, arguments)); lock.unlock() }
+        var all: [(String, [String])] { lock.lock(); defer { lock.unlock() }; return items }
+    }
+
+    func testAzureCLITokenUsesLauncher() async throws {
+        let calls = ToolCalls()
+        let token = try await AzureAuth.azureCLIToken(windows: true) { tool, arguments in
+            calls.add(tool, arguments)
+            return (0, Data("eyJ0eXAi.token\r\n".utf8))   // az on Windows ends its output with CR LF
+        }
+        XCTAssertEqual(token, "eyJ0eXAi.token")
+        XCTAssertEqual(calls.all.map(\.0), ["az"])
+        XCTAssertEqual(calls.all.first?.1, ["account", "get-access-token", "--resource", "https://cognitiveservices.azure.com",
+                                            "--query", "accessToken", "-o", "tsv"])
+    }
+
+    func testAzureCLINotLoggedInIsExplained() async {
+        do {
+            _ = try await AzureAuth.azureCLIToken(windows: true) { _, _ in (1, Data()) }
+            XCTFail("expected an error")
+        } catch {
+            XCTAssertEqual(error.localizedDescription,
+                           "No API key is set and the Azure CLI is not logged in. Run `az login`, or add an API key in Configuration.")
+        }
+    }
+
+    func testMissingAzureMessageMentionsWinget() async {
+        for windows in [true, false] {
+            do {
+                _ = try await AzureAuth.azureCLIToken(windows: windows) { tool, _ in throw ToolNotFound(name: tool) }
+                XCTFail("expected an error")
+            } catch {
+                let message = error.localizedDescription
+                if windows {
+                    XCTAssertTrue(message.contains("winget install -e --id Microsoft.AzureCLI"), message)
+                    XCTAssertTrue(message.contains("com.tristan.app/azure-openai-key"), message)
+                    XCTAssertFalse(message.contains("brew"), message)
+                } else {
+                    // The Mac wording is unchanged.
+                    XCTAssertEqual(message, "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `brew install azure-cli`.")
+                }
+            }
+        }
+    }
 }
