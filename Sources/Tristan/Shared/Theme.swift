@@ -56,6 +56,18 @@ enum OrbEffects: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// The six colors of the pride flag, brightened to read on the dark Pride theme. Only the Pride theme uses them: the
+/// reactor's rings become a color wheel and the backdrop gets a faint wash.
+enum Rainbow {
+    static let colors: [Color] = [Hex(0xFF5B5B).color, Hex(0xFF9A3D).color, Hex(0xFFE14D).color,
+                                  Hex(0x4DDE7A).color, Hex(0x4DA3FF).color, Hex(0xB07CFF).color]
+
+    /// A rainbow around the circle while the Pride theme is on, otherwise the given style.
+    static func style(or normal: Color) -> AnyShapeStyle {
+        ThemeStore.isPride ? AnyShapeStyle(AngularGradient(colors: colors + [colors[0]], center: .center)) : AnyShapeStyle(normal)
+    }
+}
+
 /// Spinning arc reactor. Spins faster and pulses harder while the agent is working, and with effects on it also sends
 /// out pulse rings, a breathing halo and orbiting sparks.
 struct ReactorView: View {
@@ -88,12 +100,12 @@ struct ReactorView: View {
                     }
                 }
                 Circle()
-                    .stroke(tint.opacity(0.9), style: StrokeStyle(lineWidth: 2, dash: [4, 6]))
+                    .stroke(Rainbow.style(or: tint.opacity(0.9)), style: StrokeStyle(lineWidth: 2, dash: [4, 6]))
                     .rotationEffect(.degrees(t * 60 * speed))
                 Circle()
                     .inset(by: size * 0.12)
                     .trim(from: 0, to: 0.75)
-                    .stroke(tint.opacity(0.75), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .stroke(Rainbow.style(or: tint.opacity(0.75)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
                     .rotationEffect(.degrees(-t * 95 * speed))
                 if fancy, effects == .full {
                     Circle()
@@ -133,6 +145,9 @@ struct Backdrop: View {
         ZStack {
             RadialGradient(colors: [Theme.glow, Theme.deep],
                            center: .center, startRadius: 0, endRadius: 700)
+            if ThemeStore.isPride {
+                LinearGradient(colors: Rainbow.colors.map { $0.opacity(0.10) }, startPoint: .top, endPoint: .bottom)
+            }
             Canvas { ctx, size in
                 var path = Path()
                 var x: CGFloat = 0

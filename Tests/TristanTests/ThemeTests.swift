@@ -15,6 +15,20 @@ final class ThemeTests: XCTestCase {
         }
     }
 
+    func testThePrideThemeExistsWithAWelcomeAndSixRainbowColors() {
+        let pride = ThemeStore.palette(for: ThemeStore.prideKey)
+        XCTAssertNotNil(pride)
+        XCTAssertEqual(pride?.group, "Pride")
+        XCTAssertEqual(Rainbow.colors.count, 6, "the six colors of the flag")
+        XCTAssertGreaterThanOrEqual(ThemeStore.welcomes[ThemeStore.prideKey]?.count ?? 0, 2)
+        let saved = ThemeStore.palette
+        defer { ThemeStore.palette = saved }
+        ThemeStore.palette = pride!
+        XCTAssertTrue(ThemeStore.isPride)
+        ThemeStore.palette = ThemeStore.all[0]
+        XCTAssertFalse(ThemeStore.isPride)
+    }
+
     func testDarkFlagMatchesBackground() {
         for palette in ThemeStore.all {
             XCTAssertEqual(palette.dark, palette.deep.luminance < 0.4, palette.name)

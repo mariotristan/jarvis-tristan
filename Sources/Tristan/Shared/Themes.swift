@@ -46,7 +46,10 @@ struct ThemePalette: Identifiable, Equatable {
 enum ThemeStore {
     static let autoKey = "auto"
     static let defaultKey = "tristan"
-    static let groups = ["Everyday", "Pop culture", "Dark classics", "Light classics"]
+    static let groups = ["Everyday", "Pride", "Pop culture", "Dark classics", "Light classics"]
+    /// The rainbow theme paints the orb and a faint wash in the six pride colors (see `Rainbow`).
+    static let prideKey = "pride"
+    static var isPride: Bool { palette.id == prideKey }
 
     static let all: [ThemePalette] = [
         ThemePalette("tristan", "Tristan", "Everyday", primary: 0x1AD4F0, accent: 0xFFB347, good: 0x9EFFB0, bad: 0xFF5252,
@@ -59,6 +62,8 @@ enum ThemeStore {
                      deep: 0xF3F6FB, glow: 0xFFFFFF, panel: 0xFFFFFF, prose: 0x1A1F2E),
         ThemePalette("contrast", "High contrast", "Everyday", dark: false, primary: 0x002FAF, accent: 0x7A3E00, good: 0x006B2D, bad: 0xB00020,
                      deep: 0xFFFFFF, glow: 0xFFFFFF, panel: 0xFFFFFF, prose: 0x000000),
+        ThemePalette("pride", "Pride", "Pride", primary: 0xFF7AC8, accent: 0xFFD23F, good: 0x4DF2A6, bad: 0xFF6B6B,
+                     deep: 0x140B22, glow: 0x2E1650, panel: 0x1D1033, prose: 0xFBF3FF),
         ThemePalette("tron", "Tron", "Pop culture", primary: 0x00E5FF, accent: 0xFF8A1F, good: 0x7CFFB2, bad: 0xFF4D4D,
                      deep: 0x02070B, glow: 0x0A1F2B, panel: 0x061219, prose: 0xE6FCFF),
         ThemePalette("wargames", "WarGames", "Pop culture", primary: 0x7FDBFF, accent: 0xFFD166, good: 0x7CFFB2, bad: 0xFF5A50,
@@ -120,6 +125,7 @@ enum ThemeStore {
         "graphite": ["Quiet and ready.", "No distractions. What's the task?"],
         "light": ["Good day. What shall we work on?", "A fresh page. Where do we start?"],
         "contrast": ["Ready. Give me a task.", "Clear and plain. What's next?"],
+        "pride": ["Love is love. What shall we build?", "Be yourself. Ship anything.", "Everyone is welcome here. What's the task?"],
         "tron": ["Greetings, program. Enter your task.", "The grid is online."],
         "wargames": ["Shall we play a game? Or write some code?", "Awaiting input, Professor."],
         "matrix": ["Wake up. The code is waiting.", "Follow the white rabbit. What's the task?"],
