@@ -145,6 +145,22 @@ final class TerminalApproverTests: XCTestCase {
         XCTAssertTrue(printed.contains("Allow Bash?\n    [y]es"), printed)
     }
 
+    /// [a]lways with a settings file that cannot be read: allowed this once, the file is left exactly as it is.
+    func testAlwaysWithUnreadableSettingsAllowsOnceAndKeepsTheFile() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("approver-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent("settings.json")
+        let garbage = Data(#"{"allowRules": "#.utf8)
+        try garbage.write(to: url)
+        Settings.backend = JSONFileBackend(url: url)
+        var printed = ""
+        let approver = TerminalApprover(interactive: true, mode: .ask, input: { "a" }, output: { printed += $0 })
+        XCTAssertTrue(approver.approve(request))
+        XCTAssertTrue(printed.contains("not saved"), printed)
+        XCTAssertEqual(try Data(contentsOf: url), garbage)
+    }
+
     func testAlwaysWithoutRuleAllowsOnce() {
         let approver = TerminalApprover(interactive: true, mode: .ask, input: { "a" }, output: { _ in })
         XCTAssertTrue(approver.approve(ApprovalRequest(summary: "Allow Write?", detail: "x")))

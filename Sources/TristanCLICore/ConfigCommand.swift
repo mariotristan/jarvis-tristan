@@ -128,7 +128,7 @@ struct ConfigSet: ParsableCommand, CLICommand {
         guard let found = ConfigKey.lookup(key) else { return .usage }
         guard let accepted = found.accept(value) else { return .usage }
         if let stop = Kids.guardChange(environment, purpose: "to change settings while kids mode is on") { return stop }
-        Settings.set(accepted, forKey: found.name)
+        if let stop = Kids.save(accepted, forKey: found.name) { return stop }
         Terminal.writeOutput("\(found.name) = \(TerminalApprover.visible(accepted))\n")
         return .ok
     }
@@ -142,7 +142,7 @@ struct ConfigUnset: ParsableCommand, CLICommand {
     func execute(environment: CLIEnvironment) async -> ExitCode {
         guard let found = ConfigKey.lookup(key) else { return .usage }
         if let stop = Kids.guardChange(environment, purpose: "to change settings while kids mode is on") { return stop }
-        Settings.set(nil, forKey: found.name)
+        if let stop = Kids.save(nil, forKey: found.name) { return stop }
         Terminal.writeOutput("\(found.name) is back to its default.\n")
         return .ok
     }

@@ -245,6 +245,79 @@ final class KidsCommandTests: XCTestCase {
         XCTAssertEqual(calls.approvalModes, [.yolo])
     }
 
+    // MARK: - A settings file that cannot be read: kids mode counts as on and the file is never rewritten
+
+    /// Points `Settings` at a settings file holding `contents` (corrupt), and returns its URL.
+    private func corruptSettings(_ contents: Data) throws -> URL {
+        let url = scratch.appendingPathComponent("settings-\(UUID().uuidString).json")
+        try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+        try contents.write(to: url)
+        Settings.backend = JSONFileBackend(url: url)
+        return url
+    }
+
+    private static let corrupt: [Data] = [Data([0xFF, 0x00, 0x1B, 0x9B, 0x42]), Data(#"{"kidsMode": fal"#.utf8)]
+
+    func testCorruptSettingsRefuseCloudProviders() async throws {
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        for contents in Self.corrupt {
+            let url = try corruptSettings(contents)
+            for provider in ["claude", "copilot", "bedrock", "azure"] {
+                let calls = Calls()
+                let code = try await exec(["run", "--provider", provider, "hi"], calls)
+                XCTAssertEqual(code, .usage, provider)
+                XCTAssertEqual(calls.providers, [], "\(provider) must never be constructed")
+            }
+            for flag in ["--yolo", "--yes-routine"] {
+                let calls = Calls()
+                let code = try await exec(["run", flag, "hi"], calls)
+                XCTAssertEqual(code, .usage, flag)
+                XCTAssertEqual(calls.providers, [])
+            }
+            // --allow-cloud needs a parent PIN, and none is set.
+            let cloud = Calls(answers: ["1234"])
+            let cloudCode = try await exec(["run", "--provider", "claude", "--allow-cloud", "hi"], cloud)
+            XCTAssertEqual(cloudCode, .usage)
+            XCTAssertEqual(cloud.providers, [])
+            let local = Calls()
+            let localCode = try await exec(["run", "hi"], local)
+            XCTAssertEqual(localCode, .ok)
+            XCTAssertEqual(local.providers, [.ollama])
+            XCTAssertEqual(try Data(contentsOf: url), contents, "the file must not be rewritten")
+        }
+    }
+
+    func testCorruptSettingsAreNeverOverwritten() async throws {
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        XCTAssertTrue(ParentPIN.set("1234"))
+        for contents in Self.corrupt {
+            let url = try corruptSettings(contents)
+            // The right PIN is not enough: the write itself is refused.
+            let off = try await exec(["kids", "off"], Calls(answers: ["1234"]))
+            XCTAssertEqual(off, .failed)
+            let on = try await exec(["kids", "on"], Calls())
+            XCTAssertEqual(on, .failed)
+            let set = try await exec(["config", "set", "ollama.model", "llama3"], Calls(answers: ["1234"]))
+            XCTAssertEqual(set, .failed)
+            let unset = try await exec(["config", "unset", "ollama.model"], Calls(answers: ["1234"]))
+            XCTAssertEqual(unset, .failed)
+            XCTAssertEqual(try Data(contentsOf: url), contents, "the file must not be rewritten")
+            XCTAssertTrue(Kids.isOn)
+        }
+    }
+
+    func testCorruptSettingsStatusSaysOn() async throws {
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        _ = try corruptSettings(Self.corrupt[0])
+        let out = Sink(), err = Sink()
+        Terminal.capture = { out.add($0) }
+        Terminal.captureError = { err.add($0) }
+        defer { Terminal.capture = nil; Terminal.captureError = nil }
+        _ = try await exec(["kids", "status"], Calls(), interactive: false)
+        XCTAssertEqual(out.value, "Kids mode: on\nParent PIN: not set\n")
+        XCTAssertTrue(err.value.contains("cannot be read"), err.value)
+    }
+
     func testStatusPrintsState() async throws {
         let out = Sink()
         Terminal.capture = { out.add($0) }

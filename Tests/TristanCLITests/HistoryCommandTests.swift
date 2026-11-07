@@ -224,6 +224,20 @@ final class HistoryCommandTests: XCTestCase {
         XCTAssertEqual(store.load().count, 1)
     }
 
+    /// A settings file that cannot be read counts as kids mode on for a rerun too.
+    func testRerunIsRefusedForCloudProviderWhenSettingsAreCorrupt() async throws {
+        let url = scratch.appendingPathComponent("settings.json")
+        let garbage = Data([0xFF, 0x00, 0x7B, 0x22])
+        try garbage.write(to: url)
+        Settings.backend = JSONFileBackend(url: url)
+        let seen = Seen()
+        store.save([record("task", provider: "claude", folder: scratch.path)])
+        let (code, _) = try await exec(["history", "--rerun", "1"], env { p, m in seen.add(p, m); return Scripted(events: [.done("ok")]) })
+        XCTAssertEqual(code, .usage)
+        XCTAssertTrue(seen.value.isEmpty)
+        XCTAssertEqual(try Data(contentsOf: url), garbage)
+    }
+
     func testHistoryStatusAndProviderFieldsAreSanitised() async throws {
         store.save([record("t", status: "do\u{1B}[2Kne", provider: "pro\u{1B}[2Kv")])
         let (_, out) = try await exec(["history"], env())

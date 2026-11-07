@@ -50,8 +50,12 @@ final class TerminalApprover: @unchecked Sendable {
             return true
         case "a", "always":
             if let rule = request.rule, let label {
-                Self.store(rule)
-                output("Allowed, and always from now on: \(label)\n")
+                do {
+                    try Self.store(rule)
+                    output("Allowed, and always from now on: \(label)\n")
+                } catch {
+                    output("Allowed this once; the rule was not saved: \(error.localizedDescription)\n")
+                }
             } else {
                 output("Allowed (this action cannot be allowed always)\n")
             }
@@ -114,10 +118,12 @@ final class TerminalApprover: @unchecked Sendable {
         return rules
     }
 
-    static func store(_ rule: ApprovalRule) {
+    /// Adds `rule` to the saved rules; throws when the settings cannot be saved (an unreadable settings file is never
+    /// overwritten).
+    static func store(_ rule: ApprovalRule) throws {
         var rules = storedRules()
         guard !rules.contains(where: { $0.key == rule.key }) else { return }
         rules.append(rule)
-        if let data = try? JSONEncoder().encode(rules) { Settings.set(data, forKey: "allowRules") }
+        try Settings.write(try JSONEncoder().encode(rules), forKey: "allowRules")
     }
 }

@@ -81,11 +81,29 @@ struct KidsCommand: ParsableCommand {
 enum Kids {
     static let key = "kidsMode"
     static let noPINMessage = "Kids mode is on without a PIN. Ask a parent to change it in the Tristan app."
-    static var isOn: Bool { Settings.bool(key) }
+    /// Every kids check in the CLI goes through here: on when the setting is on, and also when the settings file
+    /// exists but cannot be read (fail closed, `KidsRouting.kidsModeIsOn`).
+    static var isOn: Bool { KidsRouting.kidsModeIsOn }
 
     static func refuse(_ message: String, _ code: ExitCode = .usage) -> ExitCode {
         Terminal.writeError(message + "\n")
         return code
+    }
+
+    /// Says on stderr why kids mode counts as on when the settings file cannot be read; nothing otherwise.
+    static func explainUnreadableSettings() {
+        if let problem = Settings.unreadable { Terminal.writeError("tristan: \(problem.localizedDescription)\n") }
+    }
+
+    /// Saves a setting. Nil when saved, else the exit code to stop with after saying why (an unreadable settings
+    /// file is never overwritten).
+    static func save(_ value: Any?, forKey key: String) -> ExitCode? {
+        do {
+            try Settings.write(value, forKey: key)
+            return nil
+        } catch {
+            return refuse("tristan: \(error.localizedDescription) Nothing was changed.", .failed)
+        }
     }
 
     /// Asks for the parent PIN. Nil when it was entered correctly, else the exit code to stop with.
@@ -103,6 +121,7 @@ enum Kids {
     /// Nil to go ahead, else the exit code to stop with (nothing has been changed).
     static func guardChange(_ environment: CLIEnvironment, purpose: String) -> ExitCode? {
         guard isOn else { return nil }
+        explainUnreadableSettings()
         guard ParentPIN.isSet else { return refuse(noPINMessage) }
         return askParentPIN(environment, purpose: purpose)
     }
@@ -113,7 +132,7 @@ struct KidsOn: ParsableCommand, CLICommand {
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
         guard ParentPIN.isSet else { return Kids.refuse("Set a PIN first with `tristan kids set-pin`.") }
-        Settings.set(true, forKey: Kids.key)
+        if let stop = Kids.save(true, forKey: Kids.key) { return stop }
         Terminal.writeOutput("Kids mode is on.\n")
         return .ok
     }
@@ -124,9 +143,10 @@ struct KidsOff: ParsableCommand, CLICommand {
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
         guard Kids.isOn else { Terminal.writeOutput("Kids mode is off.\n"); return .ok }
+        Kids.explainUnreadableSettings()
         guard ParentPIN.isSet else { return Kids.refuse(Kids.noPINMessage) }
         if let stop = Kids.askParentPIN(environment, purpose: "to turn kids mode off") { return stop }
-        Settings.set(false, forKey: Kids.key)
+        if let stop = Kids.save(false, forKey: Kids.key) { return stop }
         Terminal.writeOutput("Kids mode is off.\n")
         return .ok
     }
@@ -160,6 +180,7 @@ struct KidsStatus: ParsableCommand, CLICommand {
     static let configuration = CommandConfiguration(commandName: "status", abstract: "Show whether kids mode is on and a PIN is set.")
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
+        Kids.explainUnreadableSettings()
         Terminal.writeOutput("Kids mode: \(Kids.isOn ? "on" : "off")\nParent PIN: \(ParentPIN.isSet ? "set" : "not set")\n")
         return .ok
     }
@@ -170,6 +191,7 @@ extension RunCommand {
     /// (nothing has been started by then).
     func kidsRefusal(_ environment: CLIEnvironment) -> ExitCode? {
         guard Kids.isOn else { return nil }
+        Kids.explainUnreadableSettings()
         if yolo || yesRoutine {
             return Kids.refuse("Kids mode is on: every action asks, so --yes-routine and --yolo are not allowed.")
         }
