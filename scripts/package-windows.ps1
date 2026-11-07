@@ -5,6 +5,8 @@
 # The version (for example 1.2.3, from the tag v1.2.3; release.yml turns any tag into letters, digits, dots and dashes) is
 # stamped into Sources\TristanCLICore\BuildVersion.swift for the
 # build, so `tristan --version` prints it; the file is restored afterwards.
+# The staging folder dist\Tristan-<version>-windows-x64 is left in place: scripts\package-windows-installer.ps1 builds
+# the installer from it, so the zip and the installer carry exactly the same files.
 # Usage: pwsh -File scripts\package-windows.ps1 -Version 1.2.3 [-OutDir dist]
 param(
     [Parameter(Mandatory = $true)][string]$Version,

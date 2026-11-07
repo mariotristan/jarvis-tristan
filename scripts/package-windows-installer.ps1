@@ -1,0 +1,128 @@
+# Builds the Windows installer from the staging folder that scripts\package-windows.ps1 made the zip from, so the
+# installer and the zip carry exactly the same files:
+#   dist\Tristan-<version>-windows-x64-setup.exe          Inno Setup 6 installer (scripts\windows\tristan.iss)
+#   dist\Tristan-<version>-windows-x64-setup.exe.sha256   "<sha256>  <installer name>", like the zip's
+# Run package-windows.ps1 with the same version first. Uses Inno Setup 6.7.3 exactly: an ISCC.exe of that version
+# under Program Files is used as it is; otherwise the official 6.7.3 installer is downloaded from the Inno Setup
+# GitHub release, its SHA-256 checked against the pinned value below, and installed into a private folder.
+# Usage: pwsh -File scripts\package-windows-installer.ps1 -Version 1.2.3 [-StageDir <folder>] [-OutDir dist]
+param(
+    [Parameter(Mandatory = $true)][string]$Version,
+    [string]$StageDir,
+    [string]$OutDir = 'dist'
+)
+$ErrorActionPreference = 'Stop'
+# The same allowlist as package-windows.ps1 (case-sensitive, so a non-ASCII letter such as U+212A cannot pass).
+if ($Version -cnotmatch '\A[0-9A-Za-z][0-9A-Za-z.-]*\z') {
+    throw "Version '$Version' may only contain letters, digits, dots and dashes, and must start with a letter or digit"
+}
+
+# Pinned compiler. To move to a newer 6.x: change all three values, taking the SHA-256 from the release page (GitHub
+# shows each asset's digest) and checking it against a download of your own.
+$innoVersion = '6.7.3'
+$innoUrl = 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe'
+$innoSha256 = '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732'
+
+$root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+Set-Location $root
+$name = "Tristan-$Version-windows-x64"
+$OutDir = [System.IO.Path]::GetFullPath((Join-Path $root $OutDir))
+if (-not $StageDir) { $StageDir = Join-Path $OutDir $name }
+$StageDir = [System.IO.Path]::GetFullPath((Join-Path $root $StageDir))
+$iss = Join-Path $root 'scripts\windows\tristan.iss'
+$setupName = "$name-setup.exe"
+$setup = Join-Path $OutDir $setupName
+
+# 1. The staging folder: the files the zip was made from.
+foreach ($file in 'tristan.exe', 'LICENSE.txt', 'README.txt', 'THIRD-PARTY-NOTICES.txt') {
+    if (-not (Test-Path -LiteralPath (Join-Path $StageDir $file))) {
+        throw "$StageDir has no $file; run scripts\package-windows.ps1 -Version $Version first"
+    }
+}
+$staged = @(Get-ChildItem -LiteralPath $StageDir -Recurse -File)
+# When the zip is next to the staging folder, the two must hold the same files, byte for byte.
+$zip = Join-Path $OutDir "$name.zip"
+if (Test-Path -LiteralPath $zip) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+    try {
+        $inZip = @{}
+        foreach ($entry in $archive.Entries) {
+            if ($entry.FullName.EndsWith('/') -or $entry.FullName.EndsWith('\')) { continue }
+            $stream = $entry.Open()
+            try {
+                $sha = [System.Security.Cryptography.SHA256]::Create()
+                $inZip[$entry.FullName.Replace('/', '\')] = [System.Convert]::ToHexString($sha.ComputeHash($stream))
+            } finally { $stream.Dispose() }
+        }
+    } finally { $archive.Dispose() }
+    $inStage = @{}
+    foreach ($file in $staged) {
+        $inStage[$file.FullName.Substring($StageDir.TrimEnd('\').Length + 1)] = (Get-FileHash -Algorithm SHA256 -LiteralPath $file.FullName).Hash
+    }
+    $different = @(@($inZip.Keys) + @($inStage.Keys) | Sort-Object -Unique | Where-Object { $inZip[$_] -ne $inStage[$_] })
+    if ($different.Count -gt 0) { throw "The staging folder and $name.zip differ: $($different -join ', ')" }
+    Write-Host "The staging folder holds the same $($inStage.Count) files as $name.zip (names and SHA-256)."
+} else {
+    Write-Warning "$zip is not there, so the staging folder could not be compared with it"
+}
+
+# 2. Inno Setup 6.7.3.
+function Get-InnoVersion([string]$iscc) {
+    $info = (Get-Item -LiteralPath $iscc).VersionInfo
+    return "$($info.FileMajorPart).$($info.FileMinorPart).$($info.FileBuildPart)"
+}
+# On a CI runner RUNNER_TEMP is a short path without spaces; elsewhere the user's temp folder.
+$tempRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { [System.IO.Path]::GetTempPath() }
+$privateDir = Join-Path $tempRoot "innosetup-$innoVersion"
+$candidates = @(
+    (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+    (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe'),
+    (Join-Path $privateDir 'ISCC.exe')
+)
+$iscc = $null
+foreach ($candidate in $candidates) {
+    if (-not (Test-Path -LiteralPath $candidate)) { continue }
+    $found = Get-InnoVersion $candidate
+    if ($found -eq $innoVersion) { $iscc = $candidate; break }
+    Write-Host "Not used: $candidate is Inno Setup $found, not $innoVersion"
+}
+if (-not $iscc) {
+    $download = Join-Path $tempRoot "innosetup-$innoVersion-$([System.Guid]::NewGuid().ToString('N')).exe"
+    Write-Host "Downloading $innoUrl"
+    Invoke-WebRequest -Uri $innoUrl -OutFile $download -UseBasicParsing
+    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $download).Hash.ToLowerInvariant()
+    if ($actual -ne $innoSha256) {
+        Remove-Item -LiteralPath $download -Force
+        throw "The Inno Setup download has SHA-256 $actual, expected $innoSha256; not running it"
+    }
+    Write-Host "SHA-256 matches the pinned value: $actual"
+    $signature = Get-AuthenticodeSignature -LiteralPath $download
+    Write-Host "Authenticode: $($signature.Status), signer: $($signature.SignerCertificate.Subject)"
+    $log = Join-Path $tempRoot "innosetup-$innoVersion-install.log"
+    $arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /NOICONS /DIR=`"$privateDir`" /LOG=`"$log`""
+    $process = Start-Process -FilePath $download -ArgumentList $arguments -Wait -PassThru
+    Remove-Item -LiteralPath $download -Force
+    if ($process.ExitCode -ne 0) {
+        if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 40 | ForEach-Object { Write-Host "  $_" } }
+        throw "The Inno Setup installer failed (exit $($process.ExitCode))"
+    }
+    $iscc = Join-Path $privateDir 'ISCC.exe'
+    if (-not (Test-Path -LiteralPath $iscc)) { throw "No ISCC.exe in $privateDir after installing Inno Setup" }
+    $found = Get-InnoVersion $iscc
+    if ($found -ne $innoVersion) { throw "Installed Inno Setup is $found, expected $innoVersion" }
+}
+Write-Host "Inno Setup compiler: $iscc (version $(Get-InnoVersion $iscc), file version $((Get-Item -LiteralPath $iscc).VersionInfo.FileVersion))"
+
+# 3. Compile and hash. A setup or checksum left from an earlier run must never be mistaken for this one.
+foreach ($stale in $setup, "$setup.sha256") { if (Test-Path -LiteralPath $stale) { Remove-Item -LiteralPath $stale -Force } }
+& $iscc "/DAppVersion=$Version" "/DStageDir=$StageDir" "/O$OutDir" $iss
+if ($LASTEXITCODE -ne 0) { throw "ISCC.exe failed ($LASTEXITCODE)" }
+if (-not (Test-Path -LiteralPath $setup)) { throw "ISCC.exe did not write $setup" }
+$size = (Get-Item -LiteralPath $setup).Length
+if ($size -le 0) { throw "$setup is empty" }
+$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setup).Hash.ToLowerInvariant()
+[System.IO.File]::WriteAllText("$setup.sha256", "$hash  $setupName`n")
+Write-Host ("{0}: {1:N0} bytes" -f $setupName, $size)
+Get-Content -LiteralPath "$setup.sha256"
