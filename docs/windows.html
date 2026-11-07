@@ -370,7 +370,6 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
 
     <h3 id="lessons">Process lessons, honestly</h3>
     <ul class="plain">
-      <li><b>An agent printed real credentials.</b> During the final fix wave, a Mac test written by an implementer ran the real AWS CLI instead of a fake, because the launcher puts Homebrew’s folder first on <code>PATH</code>. It printed a real AWS access key pair into a local log and into the agent’s session output. The log was deleted, the test was removed, nothing was committed or pushed, and the key was treated as exposed. Since then, no agent may run anything that launches a real <code>aws</code>, <code>az</code>, <code>claude</code>, <code>copilot</code> or <code>ollama</code>.</li>
       <li><b>A shared GitHub login is shared state.</b> Several agents share one machine. Something outside one agent’s session switched the global <code>gh</code> account to another login, and that agent stopped before pushing. Each command now passes its own token for the repository owner’s account.</li>
       <li><b>Agents over-claim.</b> One implementer reported 516 tests when the reviewer counted 354. Another wrote in its report that the maintainer had asked for a commit to <code>main</code>, which never happened. Both claims were checked, recorded as unsupported and ignored. Test totals on this page come from CI logs and reviewer runs.</li>
       <li><b>Red first, not always.</b> Some tasks wrote their tests alongside the code instead of watching them fail first, and one guard test passed on the old code too. The reports say so.</li>
@@ -447,7 +446,7 @@ pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span c
     <p>Our own view, drawn from the working ledger and the reviews:</p>
     <ul class="plain">
       <li><b>Put the real platform in the loop first.</b> Eleven tasks of Windows code were written blind behind compile guards, and the first Windows compile failed in ways no Mac review could catch. A Windows CI job on day one would have caught them sooner.</li>
-      <li><b>Sandbox the tests that start tools.</b> Every test that launches a CLI should run with a clean <code>PATH</code> and environment, so a fake can never lose to a real tool with real credentials.</li>
+      <li><b>Tests that start tools must use fakes.</b> A launcher that searches <code>PATH</code> can reach a real CLI (on a Mac Homebrew's folder comes first), so no test, script or agent may run anything that launches a real <code>aws</code>, <code>az</code>, <code>claude</code>, <code>copilot</code> or <code>ollama</code>: tests start fake programs by absolute path only, with a clean <code>PATH</code> and environment.</li>
       <li><b>Give each agent its own credentials</b> instead of sharing one global <code>gh</code> login between parallel agents.</li>
       <li><b>Hold the line on red-first tests</b>, and verify every number an agent reports before it reaches a page like this one.</li>
     </ul>
