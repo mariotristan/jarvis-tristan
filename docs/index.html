@@ -34,6 +34,7 @@
         <a href="#offline">Offline</a>
         <a href="#guides">Guides</a>
         <a href="#install">Install</a>
+        <a href="windows.html">Windows</a>
         <a href="#status">What’s tested</a>
         <a href="#roadmap">Roadmap</a>
       </nav>
@@ -118,7 +119,7 @@
 
     <div class="facts" role="list">
       <div role="listitem"><b>5</b><span>AI providers in one window</span></div>
-      <div role="listitem"><b>207</b><span>automated tests</span></div>
+      <div role="listitem"><b>424</b><span>automated tests on the Mac</span></div>
       <div role="listitem"><b>0</b><span>accounts needed to try the demo</span></div>
       <div role="listitem"><b>MIT</b><span>license, free to use and change</span></div>
     </div>
@@ -288,6 +289,7 @@
       <a class="card" href="iphone-ipad.html"><h3>iPhone and iPad</h3><p>Pair with a QR code, how the link is secured, standalone mode and its limits.</p><p class="more">Read the guide →</p></a>
       <a class="card" href="audio-crackle.html"><h3>The crackling voice</h3><p>A bug report: six causes, how each was measured, what fixed it and what is still unproven.</p><p class="more">Read the report →</p></a>
       <a class="card" href="install.html"><h3>Install</h3><p>Requirements, the download, building from source and every script in the repo.</p><p class="more">Read the guide →</p></a>
+      <a class="card" href="windows.html"><h3>Windows</h3><p>The <code>tristan</code> terminal command: install, providers, approvals, what is verified, what is next, and how we build it in the open.</p><p class="more">Read the guide →</p></a>
     </div>
   </div>
 </section>
@@ -296,7 +298,7 @@
   <div class="wrap">
     <span class="eyebrow">Install</span>
     <h2>Up and running in a few minutes.</h2>
-    <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task.</p>
+    <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task. On Windows there is a terminal version instead, not released yet: see the <a href="windows.html">Windows guide</a>.</p>
 
     <ol class="steps">
       <li><b>Download.</b> Get <code>Tristan-0.5.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
@@ -359,6 +361,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
         <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
         <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
         <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>
+        <tr><th scope="row">Windows terminal version</th><td><span class="pill">Windows CI only</span></td><td>Built and tested on a Windows machine in GitHub Actions, against fake provider CLIs and a mocked Ollama. Not released yet, and no provider has run against a live account on Windows. <a href="windows.html#support">What is verified</a></td></tr>
         <tr><th scope="row">Voice, wake word, notifications, Spotify</th><td><span class="pill">Stand-in only</span></td><td>The logic is tested; nobody has used them end to end yet. <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">Issue 4</a></td></tr>
       </tbody>
     </table>
@@ -383,7 +386,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/9">Intel Mac support</a><small>Universal build</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/24">A command-line version</a><small>Run and approve from the terminal</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/22">Linux support, starting with Omarchy</a><small>Arch and Hyprland</small></li>
-      <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/23">Windows support</a><small>Shares its first step with Linux</small></li>
+      <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/23">Windows support</a><small>A terminal version is built and tested in CI, not released yet (<a href="windows.html">Windows guide</a>)</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/16">Apple Music support</a><small>Alongside Spotify</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/17">Different trust level per session</a><small>Ask in one folder, auto in another</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/25">Individual user profiles</a><small>Settings and history per person</small></li>
@@ -405,6 +408,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
       <a href="kids-mode.html">Kids mode</a>
       <a href="iphone-ipad.html">iPhone and iPad</a>
       <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download</a>

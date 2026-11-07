@@ -31,6 +31,7 @@
         <a href="kids-mode.html">Kids safe mode</a>
         <a href="iphone-ipad.html">iPhone and iPad</a>
         <a href="install.html" aria-current="page">Install</a>
+        <a href="windows.html">Windows</a>
       </nav>
     </div>
     <div class="titlebox">
@@ -51,6 +52,7 @@
       <li><b>To build from source:</b> the full Xcode, not just the command line tools, because SwiftUI’s macros need the full toolchain. <code>scripts/bundle.sh</code> finds <code>/Applications/Xcode.app</code> even if <code>xcode-select</code> points elsewhere.</li>
       <li><b>For the Claude provider:</b> the Claude Code CLI, installed and signed in.</li>
       <li><b>Nothing else</b> to try it: pick DEMO and type any task.</li>
+      <li><b>On Windows 10 or 11 (x64):</b> there is no app, but there is a <code>tristan</code> terminal command. It is not released yet. See <a href="#windows">Windows</a> below.</li>
     </ul>
   </div>
 </section>
@@ -98,6 +100,14 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
     <p>Maintainers: <code>scripts/make-dmg.sh</code> builds the disk image, and <code>git tag vX.Y.Z &amp;&amp; git push origin vX.Y.Z</code> publishes a release. See <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/ci-and-release.md">docs/ci-and-release.md</a>.</p>
   </div>
 </section>
+<section class="soft">
+  <div class="wrap">
+    <h2 id="windows">Windows: the <code>tristan</code> command</h2>
+    <p>On Windows, T.R.I.S.T.A.N. is a terminal command, not a window. You run a mission on any of the five providers and answer each approval in Windows Terminal, PowerShell or cmd. It is built and tested on a Windows machine in CI, but <b>it has not been released yet</b> and no provider has run against a live account on Windows. The <a href="windows.html">Windows guide</a> covers installing from the zip or from source, setting up each provider with <code>tristan config</code> and <code>tristan secret</code>, approvals, kids mode, what is verified and what is not, and how it was built.</p>
+    <pre data-copy>tristan providers                         <span class="c"># which providers are ready</span>
+tristan run --provider ollama "add a README"</pre>
+  </div>
+</section>
 <section>
   <div class="wrap">
     <h2 id="uninstall">Uninstall, and removing test versions</h2>
@@ -120,6 +130,8 @@ scripts/uninstall.sh --purge --build      <span class="c"># also settings, histo
 <tr><th scope="row"><code>scripts/bundle.sh</code></th><td>Builds a release binary and wraps it into <code>Tristan.app</code>.</td></tr>
 <tr><th scope="row"><code>scripts/make-dmg.sh</code></th><td>Builds <code>dist/Tristan-&lt;version&gt;.dmg</code> and a checksum next to it.</td></tr>
 <tr><th scope="row"><code>scripts/setup-ollama.sh</code></th><td>Installs and starts Ollama and pulls a model. With <code>--start-only</code> it only starts an installed Ollama (the app runs this for the <a href="local-models.html#offline">offline fallback</a>). See <a href="local-models.html">Local models</a>.</td></tr>
+<tr><th scope="row"><code>scripts/setup-ollama.ps1</code></th><td>Windows: checks for Ollama (with a <code>winget</code> hint if it is missing), starts it, pulls a model and sets it for <code>tristan</code>. With <code>-StartOnly</code> it only starts an installed Ollama. See <a href="windows.html#configure">Windows</a>.</td></tr>
+<tr><th scope="row"><code>scripts/package-windows.ps1</code></th><td>Windows: builds <code>tristan.exe</code> and writes <code>dist\Tristan-&lt;version&gt;-windows-x64.zip</code> with its DLLs, licence notices and a checksum. See <a href="windows.html#build-from-source">Windows</a>.</td></tr>
 <tr><th scope="row"><code>scripts/install-voices.sh</code></th><td>Opens System Settings so you can download an Enhanced voice, waits for it and plays a sample. Fixes crackly speech. See the <a href="audio-crackle.html">crackle report</a>.</td></tr>
 <tr><th scope="row"><code>scripts/uninstall.sh</code></th><td>Quits the app and removes installed copies and mounted disk images. <code>--purge</code> also removes settings, history and Keychain items, <code>--build</code> removes build output, <code>--dry-run</code> only lists.</td></tr>
 <tr><th scope="row"><code>scripts/record-demo.sh</code></th><td>Films the built-in demo (<code>Tristan --demo</code>) for the videos: the window and the app’s own sound, via <code>scripts/record-window.swift</code>.</td></tr>
@@ -142,7 +154,7 @@ scripts/uninstall.sh --purge --build      <span class="c"># also settings, histo
     <p>Shortcuts: <kbd>⌥ Space</kbd> opens the window, <kbd>⌥ ⇧ Space</kbd> held is push-to-talk, <kbd>⌘T</kbd> opens a new session, <kbd>⌘1</kbd>…<kbd>⌘9</kbd> switch, <kbd>⌘W</kbd> closes.</p>
   </div>
 </section>
-  <div class="wrap"><div class="pager"><a href="iphone-ipad.html">← iPhone and iPad</a><a href="index.html">Home →</a></div></div>
+  <div class="wrap"><div class="pager"><a href="iphone-ipad.html">← iPhone and iPad</a><a href="windows.html">Windows →</a></div></div>
 </main>
 
 <footer>
@@ -155,6 +167,7 @@ scripts/uninstall.sh --purge --build      <span class="c"># also settings, histo
       <a href="kids-mode.html">Kids safe mode</a>
       <a href="iphone-ipad.html">iPhone and iPad</a>
       <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>

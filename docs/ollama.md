@@ -11,6 +11,19 @@ scripts/setup-ollama.sh qwen2.5-coder   # or pull a different model by name
 
 Then open T.R.I.S.T.A.N., pick `OLLAMA` along the bottom and give it a task. In **Configuration > OLLAMA** you can see the installed models, click one to choose it, and press **REFRESH** to rescan. Leave the model blank to use the first installed one.
 
+## On Windows
+
+`scripts/setup-ollama.ps1` does the same job for the `tristan` command (see [Windows](https://mariotristan.github.io/jarvis-tristan/windows.html)):
+
+```powershell
+pwsh -File scripts\setup-ollama.ps1                 # checks for Ollama, starts it, pulls llama3.1, sets it for tristan
+pwsh -File scripts\setup-ollama.ps1 qwen2.5-coder   # another model
+pwsh -File scripts\setup-ollama.ps1 -StartOnly      # only start an installed Ollama; without Ollama it says so and exits 0
+pwsh -File scripts\setup-ollama.ps1 -NoPin          # do not run `tristan config set ollama.model`
+```
+
+It never installs Ollama by itself: when Ollama is missing it prints `winget install -e --id Ollama.Ollama` and exits 2. Windows CI checks that it parses, the `-StartOnly` and missing-Ollama paths, and its refusal of bad arguments; the start, pull and check steps have not yet run on a Windows machine with Ollama.
+
 ## What `scripts/setup-ollama.sh` does
 
 The script is plain bash (`set -euo pipefail`), safe to run again, and prints each step. Read it before you run it: it is about 50 lines.
@@ -40,9 +53,9 @@ Small models are more likely to fumble tool calls than a cloud model, so expect 
 
 ## How it works inside T.R.I.S.T.A.N.
 
-- `Shared/OllamaProvider.swift` talks to Ollama's OpenAI-compatible endpoint (`/v1/chat/completions`, streaming) and reuses the same agent loop as Azure OpenAI.
+- `Sources/TristanCore/OllamaProvider.swift` talks to Ollama's OpenAI-compatible endpoint (`/v1/chat/completions`, streaming) and reuses the same agent loop as Azure OpenAI.
 - Model discovery uses `GET /api/tags` with a 2-second timeout. A blank model means "the first one in Ollama's list", which is the one added or used most recently, so downloading another model can change which one is used. Pick a model in Configuration to pin it; that also decides the model for the offline fallback and kids mode. A short name such as `qwen` matches `qwen:7b`.
-- **Local only.** The host must be `localhost`, `127.0.0.1` or `::1` over plain `http`. Anything else is refused before a prompt is sent. Change the host with the `ollama.host` default if you use another port.
+- **Local only.** The host must be `localhost`, `127.0.0.1` or `::1` over plain `http`. Anything else is refused before a prompt is sent. Change the host with the `ollama.host` setting if you use another port (`tristan config set ollama.host http://127.0.0.1:<port>` in the terminal version).
 - Errors are readable: server not running, no model installed, model not found, model without tool support.
 
 ## Kids safe mode
@@ -59,7 +72,7 @@ Not built yet: a child-safe system prompt and screening of the model's answers.
 
 ## Testing it
 
-`swift test` covers the host check, model resolution, the provider on a scripted model, and the kids-mode routing, refusal and one-time parent approval (`Tests/TristanTests/OllamaTests.swift`). Building needs the full Xcode toolchain (`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test`). `llama3.1`'s streamed tool-call format was checked by hand against a real Ollama; a full mission in the HUD on a local model has not been recorded yet.
+`swift test` covers the host check, model resolution, the provider on a scripted model, and the kids-mode routing, refusal and one-time parent approval (`Tests/TristanCoreTests/OllamaTests.swift` and, for kids mode in the app, `Tests/TristanTests/KidsLocalOnlyTests.swift`). Building needs the full Xcode toolchain (`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test`). `llama3.1`'s streamed tool-call format was checked by hand against a real Ollama; a full mission in the HUD on a local model has not been recorded yet.
 
 ## Troubleshooting
 

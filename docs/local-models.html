@@ -31,6 +31,7 @@
         <a href="kids-mode.html">Kids safe mode</a>
         <a href="iphone-ipad.html">iPhone and iPad</a>
         <a href="install.html">Install</a>
+        <a href="windows.html">Windows</a>
       </nav>
     </div>
     <div class="titlebox">
@@ -50,6 +51,12 @@
 scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or pull a different model by name</span></pre>
     <p>Then open T.R.I.S.T.A.N., pick <b>OLLAMA</b> along the bottom and give it a task. In <b>Configuration &gt; OLLAMA</b> you can see the installed models, click one to choose it and press <b>REFRESH</b> to rescan. Leave the model blank to use the first installed one.</p>
     <p class="note">Nothing is sent over the internet while you work. The only download is the model itself, from Ollama’s registry, when you pull it.</p>
+    <h3 id="windows">On Windows</h3>
+    <p>For the <code>tristan</code> terminal command, <code>scripts\setup-ollama.ps1</code> checks for Ollama, starts it, pulls the model, checks it answers and can use tools, and sets it with <code>tristan config set ollama.model</code>. It never installs Ollama by itself: if Ollama is missing, it prints <code>winget install -e --id Ollama.Ollama</code> and stops.</p>
+    <pre data-copy>pwsh -File scripts\setup-ollama.ps1                 <span class="c"># llama3.1</span>
+pwsh -File scripts\setup-ollama.ps1 qwen2.5-coder   <span class="c"># or another model</span>
+pwsh -File scripts\setup-ollama.ps1 -StartOnly      <span class="c"># only start an installed Ollama</span></pre>
+    <p class="note warn">Windows CI checks that the script parses, the missing-Ollama paths and its refusal of bad arguments. The start, pull and check steps have not yet run on a Windows machine with Ollama. See <a href="windows.html">Windows</a>.</p>
   </div>
 </section>
 <section class="soft">
@@ -133,6 +140,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or pull a different mo
       <a href="kids-mode.html">Kids safe mode</a>
       <a href="iphone-ipad.html">iPhone and iPad</a>
       <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
