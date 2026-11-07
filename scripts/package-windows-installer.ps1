@@ -26,9 +26,10 @@ $innoSha256 = '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $root
 $name = "Tristan-$Version-windows-x64"
-$OutDir = [System.IO.Path]::GetFullPath((Join-Path $root $OutDir))
+# Path.Combine (unlike Join-Path) keeps an absolute second path as it is.
+$OutDir = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($root, $OutDir))
 if (-not $StageDir) { $StageDir = Join-Path $OutDir $name }
-$StageDir = [System.IO.Path]::GetFullPath((Join-Path $root $StageDir))
+$StageDir = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($root, $StageDir))
 $iss = Join-Path $root 'scripts\windows\tristan.iss'
 $setupName = "$name-setup.exe"
 $setup = Join-Path $OutDir $setupName
