@@ -51,6 +51,7 @@ package struct ClaudeCodeProvider: AgentProvider {
                 process.standardOutput = out
                 process.standardError = FileHandle.nullDevice
                 process.standardInput = FileHandle.nullDevice
+                let exit = ExitWatch(process)   // never waitUntilExit: it can miss the exit and never return
 
                 do {
                     guard try box.start(process) else { server.stop(); c.finish(); return }
@@ -58,6 +59,7 @@ package struct ClaudeCodeProvider: AgentProvider {
                     c.yield(.failed("Could not launch claude: \(error.localizedDescription)"))
                     server.stop(); c.finish(); return
                 }
+                exit.started(process)
                 c.yield(.status("ONLINE"))
                 var finished = false
                 do {
@@ -71,9 +73,9 @@ package struct ClaudeCodeProvider: AgentProvider {
                         }
                     }
                 } catch {}
-                process.waitUntilExit()
+                let status = exit.wait(for: process)
                 if !finished {
-                    c.yield(process.terminationStatus == 0 ? .done("Complete") : .failed("claude exited with status \(process.terminationStatus)"))
+                    c.yield(status == 0 ? .done("Complete") : .failed("claude exited with status \(status)"))
                 }
                 server.stop()
                 c.finish()

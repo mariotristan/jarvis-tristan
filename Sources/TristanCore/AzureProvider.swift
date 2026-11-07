@@ -120,10 +120,11 @@ package final class AzureAuth: @unchecked Sendable {
         process.standardOutput = out
         process.standardError = FileHandle.nullDevice
         process.standardInput = FileHandle.nullDevice
+        let exit = ExitWatch(process)   // never waitUntilExit: it can miss the exit and never return
         try process.run()
+        exit.started(process)
         let data = out.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return (process.terminationStatus, data)
+        return (exit.wait(for: process), data)
     }
     #endif
 }

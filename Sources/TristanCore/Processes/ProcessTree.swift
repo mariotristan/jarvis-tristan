@@ -16,7 +16,12 @@ package enum ProcessTree {
         killer.standardOutput = FileHandle.nullDevice
         killer.standardError = FileHandle.nullDevice
         killer.standardInput = FileHandle.nullDevice
-        if (try? killer.run()) != nil { killer.waitUntilExit() }
+        // Waited for with ExitWatch, never waitUntilExit (which can miss the exit and never return).
+        let killed = ExitWatch(killer)
+        if (try? killer.run()) != nil {
+            killed.started(killer)
+            _ = killed.wait(for: killer)
+        }
         if process.isRunning { process.terminate() }
         #else
         let root = process.processIdentifier
@@ -68,8 +73,9 @@ package enum ProcessTree {
         process.standardError = FileHandle.nullDevice
         process.standardInput = FileHandle.nullDevice
         guard (try? process.run()) != nil else { return [] }
+        // End of output is all that is needed (its exit status is not used). No waitUntilExit: it can miss the exit
+        // and never return, which here would leave a frozen (SIGSTOPped) tree and the caller stuck.
         let data = out.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
         return String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { line in
             let fields = line.split(separator: " ", omittingEmptySubsequences: true)
             guard fields.count == 2, let pid = Int32(fields[0]), let ppid = Int32(fields[1]) else { return nil }

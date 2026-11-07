@@ -265,14 +265,15 @@ package final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
                 process.standardOutput = out
                 process.standardError = err
                 process.standardInput = FileHandle.nullDevice
+                let exit = ExitWatch(process)   // never waitUntilExit: it can miss the exit and never return
                 do { try process.run() } catch {
                     continuation.resume(throwing: BedrockError(message: AWSCLIConverseClient.notInstalled))
                     return
                 }
+                exit.started(process)
                 let data = out.fileHandleForReading.readDataToEndOfFile()
                 let errorText = String(decoding: err.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-                process.waitUntilExit()
-                guard process.terminationStatus == 0 else {
+                guard exit.wait(for: process) == 0 else {
                     continuation.resume(throwing: BedrockError(message: AWSCLIConverseClient.explain(stderr: errorText)))
                     return
                 }

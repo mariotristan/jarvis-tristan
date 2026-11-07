@@ -45,8 +45,21 @@ final class ProcessTreeTests: XCTestCase {
     func testCancelTerminatesProcessTree() throws {
         let (process, child) = try shellWithChild()
         XCTAssertTrue(isAlive(child))
+        // Bounded: the grace (1 s) plus two `ps` listings, which are never waited on with waitUntilExit.
+        let start = Date()
         ProcessTree.terminate(process)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 5, "terminate did not return in time")
         XCTAssertTrue(eventually { !process.isRunning && !self.isAlive(child) }, "parent or child still running")
+    }
+
+    /// Listing the processes returns promptly every time (it used to wait on `ps` with waitUntilExit).
+    func testProcessTableIsListedPromptly() {
+        for _ in 0..<20 {
+            let start = Date()
+            let table = ProcessTree.processTable()
+            XCTAssertLessThan(Date().timeIntervalSince(start), 3)
+            XCTAssertTrue(table.contains { $0.pid == getpid() })
+        }
     }
 
     func testBoxTerminateStopsTheWholeTree() throws {
@@ -207,6 +220,23 @@ final class ProcessTreeWindowsTests: XCTestCase {
         XCTAssertTrue(isAlive(child))
         box.terminate()
         XCTAssertTrue(eventually { !process.isRunning && !self.isAlive(child) }, "parent or child still running")
+    }
+
+    /// `ProcessTree.terminate` (taskkill /T, waited for through ExitWatch) returns in bounded time.
+    func testTerminateReturnsInBoundedTimeOnWindows() throws {
+        let process = try ProcessLauncher.prepare("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "Start-Sleep -Seconds 30"],
+                                                  directory: nil, extraEnvironment: [:])
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = FileHandle.nullDevice
+        try process.run()
+        Thread.sleep(forTimeInterval: 1)
+        let start = Date()
+        ProcessTree.terminate(process)
+        let seconds = Date().timeIntervalSince(start)
+        print("ProcessTree.terminate on Windows took \(seconds) s")
+        XCTAssertLessThan(seconds, 10)
+        XCTAssertTrue(eventually { !self.isAlive(process.processIdentifier) })
     }
 }
 #endif

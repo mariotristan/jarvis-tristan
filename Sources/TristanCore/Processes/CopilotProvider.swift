@@ -116,6 +116,7 @@ package struct CopilotProvider: AgentProvider {
                 process.standardOutput = out
                 process.standardError = (try? FileHandle(forWritingTo: errFile)) ?? FileHandle.nullDevice
                 process.standardInput = FileHandle.nullDevice
+                let exit = ExitWatch(process)   // never waitUntilExit: it can miss the exit and never return
 
                 do {
                     guard try box.start(process) else { c.finish(); return }
@@ -123,6 +124,7 @@ package struct CopilotProvider: AgentProvider {
                     c.yield(.failed(Self.launchFailure(error)))
                     c.finish(); return
                 }
+                exit.started(process)
                 c.yield(.status("ONLINE"))
                 c.yield(.log("Copilot CLI started"))
 
@@ -135,15 +137,15 @@ package struct CopilotProvider: AgentProvider {
                         c.yield(.code(line + "\n"))
                     }
                 } catch {}
-                process.waitUntilExit()
+                let status = exit.wait(for: process)
 
                 if Task.isCancelled { c.finish(); return }
-                if process.terminationStatus == 0 {
+                if status == 0 {
                     let summary = transcript.split(separator: "\n\n").last.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                     c.yield(.done(summary.isEmpty ? "Copilot finished" : String(summary.suffix(240))))
                 } else {
                     let stderr = ((try? String(contentsOf: errFile, encoding: .utf8)) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-                    c.yield(.failed(stderr.isEmpty ? "Copilot CLI exited with status \(process.terminationStatus). Is it logged in? Run `copilot` once to sign in."
+                    c.yield(.failed(stderr.isEmpty ? "Copilot CLI exited with status \(status). Is it logged in? Run `copilot` once to sign in."
                                                    : String(CopilotArguments.stripANSI(stderr).suffix(300))))
                 }
                 c.finish()
