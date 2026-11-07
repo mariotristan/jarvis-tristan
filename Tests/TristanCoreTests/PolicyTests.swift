@@ -92,4 +92,150 @@ final class PolicyTests: XCTestCase {
         XCTAssertNil(sandbox.resolve("../outside/s.txt"))
         XCTAssertNotNil(sandbox.resolve("inside.txt"))
     }
+
+    // MARK: - Windows inputs (Task 8). These run on the Mac.
+
+    private func powershell(_ command: String) -> ApprovalRule? {
+        ApprovalRule.make(tool: "PowerShell", input: ["command": command], workingDirectory: temp)
+    }
+
+    /// The never-generalise names exactly as the Task 8 brief lists them for PowerShell.
+    private static let briefPowerShellNames = [
+        "del", "erase", "rd", "rmdir", "remove-item", "ri", "invoke-expression", "iex", "invoke-webrequest", "iwr",
+        "invoke-restmethod", "irm", "curl", "curl.exe", "wget", "powershell", "pwsh", "cmd", "reg", "format",
+        "taskkill", "stop-process", "start-process", "set-executionpolicy", "net", "netsh", "schtasks", "sc",
+        "bitsadmin", "certutil", "mshta", "wscript", "cscript", "rundll32", "regsvr32", "ssh", "scp", "sh", "bash",
+        "env", "xargs",
+    ]
+
+    func testShellFlavorListsKeepThePosixValues() {
+        XCTAssertEqual(ShellFlavor.posix.neverGeneralise, [
+            "rm", "sudo", "dd", "chmod", "chown", "mv", "kill", "killall", "shred", "mkfs", "diskutil",
+            "launchctl", "curl", "wget", "sh", "bash", "zsh", "eval", "exec", "ssh", "scp", "env", "xargs",
+        ])
+        XCTAssertEqual(ShellFlavor.posix.operators, [";", "&", "|", ">", "<", "`", "$(", "\n", "\\"])
+        XCTAssertTrue(ShellFlavor.powershell.neverGeneralise.isSuperset(of: ShellFlavor.posix.neverGeneralise))
+        XCTAssertTrue(ShellFlavor.powershell.neverGeneralise.isSuperset(of: Self.briefPowerShellNames))
+        for op in ShellFlavor.posix.operators + ["$", "{", "}", "@(", "-encodedcommand", "\r"] {
+            XCTAssertTrue(ShellFlavor.powershell.operators.contains(op), "missing PowerShell operator \(op.debugDescription)")
+        }
+    }
+
+    func testPowerShellNeverGeneralise() {
+        XCTAssertNil(powershell("DEL.EXE x"))
+        XCTAssertNil(powershell("Remove-Item x"))
+        XCTAssertNil(powershell("iex"))
+        XCTAssertNil(powershell("Invoke-WebRequest u"))
+        for name in Self.briefPowerShellNames.sorted() + ShellFlavor.powershell.neverGeneralise.sorted() {
+            XCTAssertNil(powershell("\(name) x"), "should not generalise: \(name)")
+            XCTAssertNil(powershell(name), "should not generalise: \(name)")
+            XCTAssertNil(powershell("\(name.uppercased()) x"), "should not generalise: \(name.uppercased())")
+            for ext in [".exe", ".EXE", ".cmd", ".bat", ".ps1", ".com"] {
+                XCTAssertNil(powershell("\(name)\(ext) x"), "should not generalise: \(name)\(ext)")
+            }
+        }
+    }
+
+    func testPowerShellAdversarialProgramNames() {
+        let commands = [
+            "ReMoVe-ItEm x", "rm.exe x", "RM x", "Rm.Exe x", "curl.exe.exe u", "format.com C:", "rm.exe. x",
+            #".\evil.exe"#, #"C:\x\evil.exe"#, "./evil.exe", "C:/x/evil.exe", ". evil.ps1", ".. x", ".exe x",
+            "\"git\" status", "'git' status", "iex\tx", "iex\u{a0}x", "Microsoft.PowerShell.Management\\Remove-Item x",
+            "start evil.exe", "saps evil.exe", "wsl rm -rf /mnt/c", "ii evil.lnk", "icm { x }", "move a b",
+            "Move-Item a b", "spps 1", "Set-Content a b", "gsudo x", "runas x", "diskpart", "Add-Type x",
+        ]
+        for command in commands {
+            XCTAssertNil(powershell(command), "should not generalise: \(command)")
+        }
+    }
+
+    func testPowerShellOperatorsNeverGeneralise() {
+        let commands = [
+            "Get-Item $(x)", "Get-Item `x", "git { x }", "x -EncodedCommand y", "git -eNcOdEdCoMmAnD y", "a; b",
+            "git $env:PATH", "git @(1)", "git }", "git status\rdel x", "git (Remove-Item x)",
+            "git log | Out-File x", "git log > x", "git < x", "git & x", "git && x", "git \\x", "git\nx",
+        ]
+        for command in commands {
+            XCTAssertNil(powershell(command), "should not generalise: \(command.debugDescription)")
+        }
+        for op in ShellFlavor.powershell.operators {
+            XCTAssertNil(powershell("git \(op) x"), "operator should block: \(op.debugDescription)")
+            XCTAssertNil(powershell("git \(op.uppercased()) x"), "operator should block: \(op.uppercased().debugDescription)")
+        }
+    }
+
+    func testPowerShellPlainProgramGeneralises() {
+        XCTAssertEqual(powershell("git status")?.key, "PowerShell:git")
+        XCTAssertEqual(powershell("git status")?.label, "PowerShell: git …")
+        XCTAssertEqual(powershell("Git.exe status")?.key, "PowerShell:git", "case and extension fold into one rule")
+        XCTAssertEqual(powershell("  npm test  ")?.key, "PowerShell:npm")
+        XCTAssertEqual(powershell("Get-ChildItem -Force")?.key, "PowerShell:get-childitem")
+        // The PowerShell tool never produces a Bash key, and vice versa.
+        XCTAssertNotEqual(powershell("ls")?.key, bash("ls")?.key)
+    }
+
+    /// Claude Code on Windows runs its Bash tool through Git Bash, where the file system is case-insensitive,
+    /// `.exe` resolves, and `powershell`/`cmd` are one word away. On a Windows host, Bash commands use the
+    /// Windows name folding and the PowerShell list; on the Mac they keep today's behaviour.
+    func testBashOnWindowsHostUsesWindowsNames() {
+        func bashOn(_ host: PathFlavor, _ command: String) -> ApprovalRule? {
+            ApprovalRule.make(tool: "Bash", input: ["command": command], workingDirectory: temp, host: host)
+        }
+        for command in ["RM x", "rm.exe x", "powershell -c x", "cmd /c x", "Remove-Item x", "wsl x", "iex x"] {
+            XCTAssertNil(bashOn(.windows, command), "should not generalise on Windows: \(command)")
+        }
+        XCTAssertEqual(bashOn(.windows, "git status")?.key, "Bash:git")
+        XCTAssertEqual(bashOn(.windows, "Git.exe status")?.key, "Bash:git")
+        XCTAssertEqual(bashOn(.posix, "Git status")?.key, "Bash:Git", "the Mac keeps today's keys")
+        XCTAssertEqual(bashOn(.posix, "powershell x")?.key, "Bash:powershell", "the Mac keeps today's list")
+    }
+
+    func testAutoModeWithPowerShellRules() {
+        let auto = ToolPolicy(mode: .auto)
+        XCTAssertTrue(auto.needsApproval(tool: "run_command", rule: powershell("Remove-Item x")))
+        XCTAssertTrue(auto.needsApproval(tool: "run_command", rule: powershell("git $(iex x)")))
+        XCTAssertFalse(auto.needsApproval(tool: "run_command", rule: powershell("git status")))
+    }
+
+    /// `SafePath.real` walks up to the deepest existing ancestor. On Windows a missing drive (`Q:\`) is its own
+    /// parent and never equals "/", so the walk must stop when the parent stops changing.
+    func testSafePathRealTerminatesAtDriveRoot() throws {
+        let missing = URL(fileURLWithPath: "/no-such-drive-\(UUID().uuidString)", isDirectory: true)
+        let deep = missing.appendingPathComponent("a/b/c.txt")
+        // A parent function that behaves like Windows at a drive root: the root is its own parent.
+        let windowsLikeParent: (URL) -> URL = { url in
+            url.standardizedFileURL.path == missing.path ? url : url.deletingLastPathComponent()
+        }
+        let done = DispatchSemaphore(value: 0)
+        let box = ResultBox()
+        DispatchQueue.global().async {
+            box.value = SafePath.real(deep, parent: windowsLikeParent)
+            done.signal()
+        }
+        XCTAssertEqual(done.wait(timeout: .now() + 1), .success, "SafePath.real must return within a second")
+        XCTAssertNil(box.value, "a path on a missing drive root cannot be resolved")
+
+        // An existing root that is its own parent still resolves.
+        let root = try XCTUnwrap(SafePath.real(temp))
+        let existingRootParent: (URL) -> URL = { url in
+            url.standardizedFileURL.path == self.temp.standardizedFileURL.path ? url : url.deletingLastPathComponent()
+        }
+        XCTAssertEqual(SafePath.real(temp, parent: existingRootParent), root)
+        XCTAssertEqual(SafePath.real(temp.appendingPathComponent("x/y.txt"), parent: existingRootParent), root + "/x/y.txt")
+
+        // A parent function that never settles still terminates.
+        let runaway: (URL) -> URL = { $0.appendingPathComponent("..") }
+        let done2 = DispatchSemaphore(value: 0)
+        let box2 = ResultBox()
+        DispatchQueue.global().async {
+            box2.value = SafePath.real(missing.appendingPathComponent("z"), parent: runaway)
+            done2.signal()
+        }
+        XCTAssertEqual(done2.wait(timeout: .now() + 1), .success)
+        XCTAssertNil(box2.value)
+    }
+}
+
+private final class ResultBox: @unchecked Sendable {
+    var value: String?
 }

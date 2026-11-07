@@ -59,12 +59,22 @@ package enum SafePath {
     /// Resolves symlinks in the deepest existing ancestor, then appends the not-yet-existing tail.
     /// Returns nil if the path runs through a dangling symlink, whose target cannot be checked.
     static func real(_ url: URL) -> String? {
+        real(url, parent: { $0.deletingLastPathComponent() })
+    }
+
+    /// `parent` is a seam for tests: on Windows a drive root (`C:\`, or a missing `Q:\`) is its own parent and never
+    /// equals "/", so the walk stops when the parent stops changing, and gives up (nil) after a bounded number of steps.
+    static func real(_ url: URL, parent: (URL) -> URL) -> String? {
         let fm = FileManager.default
         var existing = url.standardizedFileURL
         var tail: [String] = []
+        var steps = 0
         while (try? fm.attributesOfItem(atPath: existing.path)) == nil, existing.path != "/" {
+            let up = parent(existing)
+            steps += 1
+            guard up.path != existing.path, steps < 4096 else { return nil }   // a root that does not exist
             tail.insert(existing.lastPathComponent, at: 0)
-            existing.deleteLastPathComponent()
+            existing = up
         }
         if !fm.fileExists(atPath: existing.path), existing.path != "/" { return nil }   // dangling symlink
         return ([existing.resolvingSymlinksInPath().path] + tail).joined(separator: "/")
@@ -79,8 +89,19 @@ package struct ToolSandbox {
     private var rootPath: String { SafePath.real(root) ?? root.standardizedFileURL.path }
 
     func resolve(_ path: String) -> URL? {
-        let url = path.hasPrefix("/") ? URL(fileURLWithPath: path) : root.appendingPathComponent(path)
-        guard let resolved = SafePath.real(url), resolved == rootPath || resolved.hasPrefix(rootPath + "/") else { return nil }
+        resolve(path, flavor: .current)
+    }
+
+    /// `flavor` is a seam for tests; callers use `.current`.
+    func resolve(_ path: String, flavor: PathFlavor) -> URL? {
+        let url: URL
+        switch PathContainment.form(of: path, flavor: flavor) {
+        case .absolute: url = URL(fileURLWithPath: path)
+        case .relative: url = root.appendingPathComponent(path)
+        case .rejected: return nil
+        }
+        guard let resolved = SafePath.real(url),
+              PathContainment.contains(root: rootPath, path: resolved, flavor: flavor) else { return nil }
         return URL(fileURLWithPath: resolved)
     }
 

@@ -14,28 +14,34 @@ package struct ApprovalRule: Codable, Hashable, Sendable, Identifiable {
     }
 
     private static let fileTools: Set<String> = ["Edit", "Write", "MultiEdit", "NotebookEdit"]
-    private static let neverGeneralise: Set<String> = [
-        "rm", "sudo", "dd", "chmod", "chown", "mv", "kill", "killall", "shred", "mkfs", "diskutil",
-        "launchctl", "curl", "wget", "sh", "bash", "zsh", "eval", "exec", "ssh", "scp", "env", "xargs",
-    ]
-
     /// File edits are allowed only inside the working folder; shell commands only by plain program name.
     static func make(tool: String, input: [String: Any], workingDirectory: URL) -> ApprovalRule? {
+        make(tool: tool, input: input, workingDirectory: workingDirectory, host: .current)
+    }
+
+    /// `host` is the platform the command runs on; tests pass `.windows` to check Windows rules on the Mac.
+    static func make(tool: String, input: [String: Any], workingDirectory: URL, host: PathFlavor) -> ApprovalRule? {
         if fileTools.contains(tool) {
             guard let path = (input["file_path"] ?? input["notebook_path"]) as? String else { return nil }
-            guard let root = SafePath.real(workingDirectory),
+            guard PathContainment.form(of: path, flavor: host) != .rejected,
+                  let root = SafePath.real(workingDirectory),
                   let file = SafePath.real(URL(fileURLWithPath: path)),
-                  file.hasPrefix(root + "/") else { return nil }
+                  PathContainment.isStrictlyInside(root: root, path: file, flavor: host) else { return nil }
             return ApprovalRule(key: "\(tool)@\(root)", label: "\(tool) inside \(workingDirectory.lastPathComponent)")
         }
-        if tool == "Bash", let command = input["command"] as? String {
+        if let flavor = ShellFlavor(ruleToolName: tool), let command = input["command"] as? String {
+            // PowerShell is case-insensitive throughout. Claude Code's Bash tool on Windows runs Git Bash on a
+            // case-insensitive file system where `.exe` resolves and `powershell`/`cmd` are a word away, so on a
+            // Windows host Bash commands use the Windows names too. On the Mac, Bash is exactly today's check.
+            let windowsRules = flavor == .powershell || host == .windows
             let text = command.trimmingCharacters(in: .whitespacesAndNewlines)
-            let operators = [";", "&", "|", ">", "<", "`", "$(", "\n", "\\"]
-            guard !operators.contains(where: text.contains) else { return nil }
+            let haystack = flavor == .powershell ? text.lowercased() : text
+            guard !flavor.operators.contains(where: haystack.contains) else { return nil }
+            let never = windowsRules ? ShellFlavor.powershell.neverGeneralise : flavor.neverGeneralise
             guard let first = text.split(separator: " ").first.map(String.init),
-                  first.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil,
-                  !neverGeneralise.contains(first) else { return nil }
-            return ApprovalRule(key: "Bash:\(first)", label: "Bash: \(first) …")
+                  let name = ShellFlavor.programName(first, windowsRules: windowsRules),
+                  !never.contains(name), !never.contains(windowsRules ? first.lowercased() : first) else { return nil }
+            return ApprovalRule(key: "\(tool):\(name)", label: "\(tool): \(name) …")
         }
         return nil
     }
