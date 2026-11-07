@@ -85,7 +85,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or pull a different mo
 
     <ul class="plain">
       <li><b>One endpoint.</b> It talks to Ollama’s OpenAI-compatible <code>/v1/chat/completions</code>, streaming, and reuses the same agent loop as Azure OpenAI.</li>
-      <li><b>Model discovery.</b> <code>GET /api/tags</code> with a two-second timeout. A blank model means the first installed one.</li>
+      <li><b>Model discovery.</b> <code>GET /api/tags</code> with a two-second timeout. A blank model means the first one in Ollama’s list, which is the one added or used most recently, so downloading another model can change which one T.R.I.S.T.A.N. uses. Choose a model in Configuration to pin it. This also decides which model the offline fallback and kids mode use. A short name such as <code>llama3.1</code> matches <code>llama3.1:latest</code>.</li>
       <li><b>This Mac only.</b> The host must be <code>localhost</code>, <code>127.0.0.1</code> or <code>::1</code> over plain <code>http</code>. Anything else is refused before a prompt is sent.</li>
       <li><b>Readable errors.</b> Server not running, no model installed, model not found, model without tool support.</li>
     </ul>

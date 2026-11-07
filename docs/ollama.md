@@ -41,7 +41,7 @@ Small models are more likely to fumble tool calls than a cloud model, so expect 
 ## How it works inside T.R.I.S.T.A.N.
 
 - `Shared/OllamaProvider.swift` talks to Ollama's OpenAI-compatible endpoint (`/v1/chat/completions`, streaming) and reuses the same agent loop as Azure OpenAI.
-- Model discovery uses `GET /api/tags` with a 2-second timeout. A blank model means "the first installed one"; a short name such as `qwen` matches `qwen:7b`.
+- Model discovery uses `GET /api/tags` with a 2-second timeout. A blank model means "the first one in Ollama's list", which is the one added or used most recently, so downloading another model can change which one is used. Pick a model in Configuration to pin it; that also decides the model for the offline fallback and kids mode. A short name such as `qwen` matches `qwen:7b`.
 - **Local only.** The host must be `localhost`, `127.0.0.1` or `::1` over plain `http`. Anything else is refused before a prompt is sent. Change the host with the `ollama.host` default if you use another port.
 - Errors are readable: server not running, no model installed, model not found, model without tool support.
 
