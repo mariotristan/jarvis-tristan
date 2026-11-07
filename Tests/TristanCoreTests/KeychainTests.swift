@@ -35,6 +35,17 @@ final class KeychainTests: XCTestCase {
         XCTAssertTrue(KeychainStore.set("", account: account), "removing nothing is not a failure")
     }
 
+    #if os(Windows)
+    /// Credential Manager holds at most 2,560 bytes per secret; a bigger value is refused and the old one stays.
+    func testCredentialManagerSizeLimit() {
+        let largest = String(repeating: "a", count: 2560)
+        XCTAssertTrue(KeychainStore.set(largest, account: account))
+        XCTAssertEqual(KeychainStore.get(account), largest)
+        XCTAssertFalse(KeychainStore.set(largest + "b", account: account), "2,561 bytes must be refused")
+        XCTAssertEqual(KeychainStore.get(account), largest, "a refused write leaves the old value")
+    }
+    #endif
+
     func testCredentialManagerTargetName() {
         XCTAssertEqual(KeychainStore.target("azure.apiKey"), "com.tristan.app/azure.apiKey")
     }

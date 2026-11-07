@@ -6,6 +6,11 @@ import Foundation
 #if canImport(FoundationNetworking)
 import FoundationNetworking
 #endif
+#if os(Windows)
+import WinSDK
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 /// A stream of bytes fed by chunks as they arrive.
 package struct PortableAsyncBytes: AsyncSequence, Sendable {
@@ -19,7 +24,13 @@ package struct PortableAsyncBytes: AsyncSequence, Sendable {
 
         package mutating func next() async throws -> UInt8? {
             while index >= buffer.count {
-                guard let chunk = try await chunks.next() else { return nil }
+                try Task.checkCancellation()
+                // A cancelled consumer ends the stream early; like Apple's AsyncBytes, report that as cancellation
+                // rather than as a normal end of the body.
+                guard let chunk = try await chunks.next() else {
+                    try Task.checkCancellation()
+                    return nil
+                }
                 buffer = [UInt8](chunk)
                 index = 0
             }
@@ -153,21 +164,54 @@ private final class StreamingReceiver: NSObject, URLSessionDataDelegate, @unchec
     }
 }
 
+/// A failed read in `FileHandle.bytes`.
+package struct FileReadError: Error, LocalizedError {
+    package let code: Int
+    package var errorDescription: String? { "reading from the process failed (error \(code))" }
+}
+
 extension FileHandle {
     /// Everything read from this handle until end of file, chunk by chunk, read on a thread of its own.
+    /// Each chunk is one system read (whatever has arrived), not `read(upToCount:)`, which waits for the full count;
+    /// `availableData` is not used because Foundation stops the program on a read error there.
     package var bytes: PortableAsyncBytes {
         let (chunks, continuation) = AsyncThrowingStream<Data, Error>.makeStream()
         let thread = Thread { [self] in
+            var buffer = [UInt8](repeating: 0, count: 64 * 1024)
             while true {
-                let data = availableData
-                if data.isEmpty { break }
-                continuation.yield(data)
+                switch readSome(into: &buffer) {
+                case .success(0):
+                    continuation.finish()
+                    return
+                case .success(let count):
+                    continuation.yield(Data(buffer[..<count]))
+                case .failure(let error):
+                    continuation.finish(throwing: error)
+                    return
+                }
             }
-            continuation.finish()
         }
         thread.name = "tristan.filehandle.bytes"
         thread.start()
         return PortableAsyncBytes(chunks: chunks)
+    }
+
+    /// One blocking read: the byte count (0 at end of file) or the error.
+    private func readSome(into buffer: inout [UInt8]) -> Result<Int, FileReadError> {
+        #if os(Windows)
+        var read: DWORD = 0
+        let ok = buffer.withUnsafeMutableBytes { ReadFile(_handle, $0.baseAddress, DWORD($0.count), &read, nil) }
+        if ok { return .success(Int(read)) }
+        let error = GetLastError()
+        return error == DWORD(109) /* ERROR_BROKEN_PIPE: the writer closed */ ? .success(0) : .failure(FileReadError(code: Int(error)))
+        #else
+        while true {
+            let count = buffer.withUnsafeMutableBytes { Glibc.read(fileDescriptor, $0.baseAddress, $0.count) }
+            if count >= 0 { return .success(count) }
+            if errno == EINTR { continue }
+            return .failure(FileReadError(code: Int(errno)))
+        }
+        #endif
     }
 }
 #endif

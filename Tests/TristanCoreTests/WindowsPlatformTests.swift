@@ -107,6 +107,38 @@ final class WindowsPlatformTests: XCTestCase {
         XCTAssertTrue(sid?.hasPrefix("S-1-5-") == true, sid ?? "nil")
     }
 
+    /// The approval folder's ACL as icacls shows it: no inherited entries and exactly one entry, full control for the
+    /// process token's SID, inherited by what is created inside.
+    func testApprovalFolderGrantsOnlyTheCurrentUser() throws {
+        let server = PermissionServer(workingDirectory: folder, transport: .loopback) { _, _, _ in false }
+        XCTAssertTrue(server.start())
+        defer { server.stop() }
+        let path = native(server.directory)
+        let icacls = (ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows") + "\\System32\\icacls.exe"
+
+        let show = Process()
+        show.executableURL = URL(fileURLWithPath: icacls)
+        show.arguments = [path]
+        let (text, status) = try output(of: show)
+        XCTAssertEqual(status, 0, text)
+        let listing = text.components(separatedBy: "Successfully processed").first ?? ""
+        var entries = listing.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+        if let first = entries.first, first.lowercased().hasPrefix(path.lowercased()) {
+            entries[0] = String(first.dropFirst(path.count)).trimmingCharacters(in: .whitespaces)
+        }
+        entries = entries.filter { !$0.isEmpty }
+        XCTAssertEqual(entries.count, 1, text)
+        XCTAssertFalse(text.contains("(I)"), "no inherited entries: \(text)")
+        XCTAssertTrue(entries.first?.hasSuffix(":(OI)(CI)(F)") == true, text)
+
+        let sid = try XCTUnwrap(PermissionServer.currentUserSID())
+        let find = Process()
+        find.executableURL = URL(fileURLWithPath: icacls)
+        find.arguments = [path, "/findsid", "*" + sid]
+        let (found, _) = try output(of: find)
+        XCTAssertTrue(found.contains("SID Found"), "the one entry is for \(sid): \(found)")
+    }
+
     /// A socket asking to share the address (SO_REUSEADDR) on `host`:`port`, listening if the bind worked.
     private func rogueBind(host: UInt32, port: UInt16) -> (socket: SOCKET, bound: Bool) {
         let other = WinSDK.socket(AF_INET, SOCK_STREAM, 0)

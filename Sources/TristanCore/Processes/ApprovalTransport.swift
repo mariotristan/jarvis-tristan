@@ -162,10 +162,15 @@ final class LineConnection: ApprovalConnection, @unchecked Sendable {
             .map { String(decoding: $0, as: UTF8.self) }
     }
 
+    /// How long one wait for data lasts before `shouldStop` is asked again.
+    static let waitSlice: TimeInterval = 0.2
+
     /// The next line's bytes. Nil (and the connection is done) on end of stream with nothing buffered, an error, a
-    /// receive timeout, the deadline passing or a line longer than `limit`; nil for an empty line (which is consumed).
-    /// With `requireNewline`, bytes cut off by the end of the stream do not count as a line.
-    func readLineBytes(limit: Int, deadline: Date?, requireNewline: Bool) -> [UInt8]? {
+    /// receive timeout, the deadline passing, `shouldStop` returning true or a line longer than `limit`; nil for an
+    /// empty line (which is consumed). With `requireNewline`, bytes cut off by the end of the stream do not count as a
+    /// line. With a deadline, the wait for data runs in `waitSlice` steps, so a stop request is seen within one slice
+    /// even where shutting a socket down does not wake a blocked read (Windows).
+    func readLineBytes(limit: Int, deadline: Date?, requireNewline: Bool, shouldStop: (() -> Bool)? = nil) -> [UInt8]? {
         guard !broken else { return nil }
         var chunk = [UInt8](repeating: 0, count: 64 * 1024)
         while true {
@@ -179,6 +184,13 @@ final class LineConnection: ApprovalConnection, @unchecked Sendable {
             scanned = buffer.count
             guard buffer.count <= limit else { return fail() }
             if let deadline {
+                while true {
+                    if shouldStop?() == true { return fail() }
+                    let remaining = deadline.timeIntervalSinceNow
+                    guard remaining > 0 else { return fail() }
+                    guard let readable = socket.waitReadable(min(remaining, Self.waitSlice)) else { return fail() }
+                    if readable { break }
+                }
                 let remaining = deadline.timeIntervalSinceNow
                 guard remaining > 0 else { return fail() }
                 socket.setReceiveTimeout(remaining)
@@ -223,10 +235,12 @@ final class LineConnection: ApprovalConnection, @unchecked Sendable {
 /// Listens on 127.0.0.1 (never any other address) on a port the system picks. Hands out only connections whose first
 /// line is the client token, after answering them with the server token.
 ///
-/// A background thread accepts clients and checks each one's token on a thread of its own, at most `maxPendingHandshakes` at
-/// a time; when all slots are taken the oldest unfinished handshake is cut off. A silent client therefore costs one
-/// slot for at most `handshakeTimeout`, never the whole line, and a real shim (which sends its token at once) gets
-/// through even while others stall.
+/// A background thread accepts clients and checks each one's token on a thread of its own, at most
+/// `maxPendingHandshakes` at a time; when all slots are taken the oldest unfinished handshake is cut off, and its
+/// thread notices within `LineConnection.waitSlice`. A silent client therefore costs one slot for at most
+/// `handshakeTimeout`, never the whole line. A real shim sends its token at once, so as soon as it is accepted its
+/// handshake completes, even while many silent clients keep connecting (they only delay accepting it by the time
+/// evicted threads need to stop).
 package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     package let port: UInt16
     package let token: String?
@@ -241,8 +255,8 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     private let secret: [UInt8]
     private let answer: String
     private let handshakeTimeout: TimeInterval
-    /// Handshake threads alive at once, evicted ones included (an evicted read may only end at its timeout). Past
-    /// this, new clients are closed at once.
+    /// Handshake threads alive at once, evicted ones included until they notice (within one wait slice). Reaching it
+    /// only slows accepting during a burst; no accepted client is dropped for it.
     static let maxHandshakeThreads = 32
     private let condition = NSCondition()
     // Guarded by `condition`.
@@ -305,10 +319,16 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
                 client.shutdownAndClose()
                 break
             }
-            if handshakeThreads >= Self.maxHandshakeThreads {
+            // Every accepted client gets its turn: at the thread cap, cut off the oldest unfinished handshake and wait
+            // for a thread to finish (an evicted one stops within one wait slice) rather than dropping this client.
+            while handshakeThreads >= Self.maxHandshakeThreads, !closed {
+                if !pending.isEmpty { pending.removeFirst().socket.shutdownBoth() }
+                _ = condition.wait(until: Date().addingTimeInterval(LineConnection.waitSlice))
+            }
+            if closed {
                 condition.unlock()
                 client.shutdownAndClose()
-                continue
+                break
             }
             if pending.count >= Self.maxPendingHandshakes {
                 // Wakes that handshake's read; its own thread closes the socket.
@@ -325,6 +345,7 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
                 handshake(client, id: id)
                 condition.lock()
                 handshakeThreads -= 1
+                condition.broadcast()
                 condition.unlock()
             }
             thread.name = "tristan.approval.handshake"
@@ -339,7 +360,13 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     private func handshake(_ client: Socket, id: Int) {
         let connection = LineConnection(socket: client)
         let deadline = Date().addingTimeInterval(handshakeTimeout)
-        let first = connection.readLineBytes(limit: Self.handshakeLimit, deadline: deadline, requireNewline: true)
+        // Evicted or closed: give the thread back within one wait slice.
+        let stop = { [self] () -> Bool in
+            condition.lock(); defer { condition.unlock() }
+            return closed || !pending.contains { $0.id == id }
+        }
+        let first = connection.readLineBytes(limit: Self.handshakeLimit, deadline: deadline, requireNewline: true,
+                                             shouldStop: stop)
         let authenticated = first.map { Self.constantTimeEqual($0, secret) } ?? false
         condition.lock()
         let evicted = !pending.contains { $0.id == id }
@@ -462,6 +489,10 @@ final class Socket: @unchecked Sendable {
     static let invalid: Handle = -1
     #endif
 
+    /// Pending connections the system queues before `accept`: enough that a burst of silent clients does not get a
+    /// real shim's connection refused while the accept loop catches up.
+    static let backlog: Int32 = 128
+
     private let lock = NSLock()
     private var handle: Handle
 
@@ -535,7 +566,10 @@ final class Socket: @unchecked Sendable {
 
     static func listenLoopback() -> Socket? {
         guard let handle = newStreamSocket() else { return nil }
-        // SO_EXCLUSIVEADDRUSE, `(int)(~SO_REUSEADDR)`: no other socket may bind this port while we hold it.
+        // SO_EXCLUSIVEADDRUSE, `(int)(~SO_REUSEADDR)`: no other socket may bind 127.0.0.1 on this port while we hold
+        // it, even with SO_REUSEADDR. Windows still lets another socket bind the wildcard address on the same port
+        // (seen on the CI runner); connections to 127.0.0.1 keep reaching this, more specific, binding. What protects
+        // the channel is the pair of one-time tokens, not the port.
         var one: Int32 = 1
         let exclusive = withUnsafePointer(to: &one) {
             $0.withMemoryRebound(to: CChar.self, capacity: MemoryLayout<Int32>.size) {
@@ -546,7 +580,7 @@ final class Socket: @unchecked Sendable {
         let bound = withUnsafePointer(to: &address) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { WinSDK.bind(handle, $0, Int32(MemoryLayout<sockaddr_in>.size)) }
         }
-        guard exclusive == 0, bound == 0, WinSDK.listen(handle, 16) == 0 else { closeHandle(handle); return nil }
+        guard exclusive == 0, bound == 0, WinSDK.listen(handle, Socket.backlog) == 0 else { closeHandle(handle); return nil }
         return Socket(handle: handle)
     }
 
@@ -583,6 +617,17 @@ final class Socket: @unchecked Sendable {
         guard let handle = current, let base = bytes.baseAddress else { return -1 }
         let count = Int32(clamping: bytes.count)
         return Int(WinSDK.send(handle, base.assumingMemoryBound(to: CChar.self), count, 0))
+    }
+
+    /// Waits up to `seconds` for data or end of stream: true when a read will not block, false on timeout, nil on an
+    /// error or a closed socket.
+    func waitReadable(_ seconds: TimeInterval) -> Bool? {
+        guard let handle = current else { return nil }
+        // POLLRDNORM (0x0100); WSAPoll rejects flags it does not support, so not POLLIN's POLLRDBAND part.
+        var entry = WSAPOLLFD(fd: handle, events: Int16(0x0100), revents: 0)
+        let rc = WSAPoll(&entry, 1, Self.milliseconds(seconds))
+        guard rc >= 0 else { return nil }
+        return rc > 0
     }
 
     /// nil: wait forever.
@@ -639,7 +684,7 @@ final class Socket: @unchecked Sendable {
         let bound = withUnsafePointer(to: &address) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
         }
-        guard bound == 0, posixListen(fd, 16) == 0 else { _ = posixClose(fd); return nil }
+        guard bound == 0, posixListen(fd, Socket.backlog) == 0 else { _ = posixClose(fd); return nil }
         return Socket(handle: fd)
     }
 
@@ -684,6 +729,19 @@ final class Socket: @unchecked Sendable {
         }
     }
 
+    /// Waits up to `seconds` for data or end of stream: true when a read will not block, false on timeout, nil on an
+    /// error or a closed socket.
+    func waitReadable(_ seconds: TimeInterval) -> Bool? {
+        guard let fd = current else { return nil }
+        var entry = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+        while true {
+            let rc = poll(&entry, 1, Self.milliseconds(seconds))
+            if rc < 0, errno == EINTR { continue }
+            guard rc >= 0 else { return nil }
+            return rc > 0
+        }
+    }
+
     /// nil: wait forever.
     func setReceiveTimeout(_ seconds: TimeInterval?) {
         guard let fd = current else { return }
@@ -708,6 +766,12 @@ final class Socket: @unchecked Sendable {
         return (Self.dotted(UInt32(bigEndian: address.sin_addr.s_addr)), UInt16(bigEndian: address.sin_port))
     }
     #endif
+
+    /// A poll timeout in whole milliseconds, at least 1 for any positive wait.
+    private static func milliseconds(_ seconds: TimeInterval) -> Int32 {
+        guard seconds > 0 else { return 0 }
+        return Int32(clamping: max(1, Int64((seconds * 1000).rounded(.up))))
+    }
 
     private static func dotted(_ address: UInt32) -> String {
         "\(address >> 24).\((address >> 16) & 0xFF).\((address >> 8) & 0xFF).\(address & 0xFF)"

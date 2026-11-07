@@ -205,6 +205,32 @@ final class ProcessLauncherTests: XCTestCase {
         XCTAssertEqual(plan.arguments, ["--profile", "a&b"], "CreateProcess passes arguments to an .exe without cmd.exe")
     }
 
+    /// Foundation.Process on Windows drops an empty argument from the command line, shifting the rest; refuse it.
+    func testWindowsRefusesEmptyArguments() throws {
+        let environment = ["PATH": "C:\\aws", "PATHEXT": ".EXE;.CMD"]
+        let isFile: (String) -> Bool = { $0.lowercased() == "c:\\aws\\aws.exe" }
+        XCTAssertThrowsError(try ProcessLauncher.plan("aws", ["--profile", ""], environment: environment, windows: true,
+                                                      isFile: isFile, readFile: { _ in nil })) { error in
+            XCTAssertEqual(error as? EmptyArgument, EmptyArgument(tool: "aws"))
+            XCTAssertTrue(error.localizedDescription.contains("empty argument"))
+        }
+        XCTAssertNoThrow(try ProcessLauncher.plan("aws", ["--profile", "x"], environment: environment, windows: true,
+                                                  isFile: isFile, readFile: { _ in nil }))
+        // The Mac passes empty arguments through as they are.
+        let mac = try ProcessLauncher.plan("aws", ["--profile", ""], environment: ["PATH": "/opt/aws"], windows: false,
+                                           isFile: { $0 == "/opt/aws/aws" }, readFile: { _ in nil })
+        XCTAssertEqual(mac.arguments, ["--profile", ""])
+    }
+
+    #if os(Windows)
+    func testPrepareRefusesEmptyArgumentsOnWindows() {
+        XCTAssertThrowsError(try ProcessLauncher.prepare("powershell", ["-NoProfile", "-Command", ""], directory: nil,
+                                                         extraEnvironment: [:])) { error in
+            XCTAssertTrue(error is EmptyArgument, "\(error)")
+        }
+    }
+    #endif
+
     func testMacPlanIsNeverGuarded() throws {
         let plan = try ProcessLauncher.plan("copilot", ["-p", "a & b %x%"], environment: ["PATH": "/usr/bin"], windows: false,
                                             isFile: { $0 == "/opt/homebrew/bin/copilot" }, readFile: { _ in nil })

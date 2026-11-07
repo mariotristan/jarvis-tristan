@@ -284,6 +284,26 @@ final class ApprovalTransportTests: XCTestCase {
         XCTAssertEqual(box.all, ["hello"])
     }
 
+    /// More silent clients than there are handshake threads: evicted handshakes stop within a wait slice and the
+    /// accept loop waits for them instead of dropping clients, so the real shim still completes its handshake.
+    func testFortySilentClientsStillLetTheRealShimThrough() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+        let silent = try (0..<40).map { _ in try raw(listener.port) }
+        defer { silent.forEach { $0.close() } }
+
+        let start = Date()
+        let client = try XCTUnwrap(connect(listener, token: listener.token), "handshake did not complete within 2 s")
+        XCTAssertLessThan(Date().timeIntervalSince(start), 2)
+        client.writeLine("through")
+        XCTAssertEqual(client.readLine(), "got:through")
+        client.close()
+        wait(for: [served], timeout: 5)
+        XCTAssertEqual(box.all, ["through"])
+    }
+
     /// Handshakes run side by side, so many silent clients (default 5 s handshake timeout) cost a slot each, not the line.
     func testManySilentClientsDoNotStallAValidOne() throws {
         let listener = try loopback()

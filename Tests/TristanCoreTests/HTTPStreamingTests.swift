@@ -49,6 +49,37 @@ final class HTTPStreamingTests: XCTestCase {
         await fulfillment(of: [done], timeout: 5)
     }
 
+    /// Off Apple platforms, a consumer cancelled in the middle of the body gets CancellationError, never a normal
+    /// (truncated) end of the stream.
+    func testCancellingTheConsumerThrows() async throws {
+        let (port, done) = try serve(status: "200 OK", contentType: "text/plain", chunks: ["one\n", "two\n"], pause: 1.5)
+        let first = expectation(description: "first line")
+        let task = Task { () -> String in
+            let (bytes, _) = try await URLSession.shared.bytes(for: URLRequest(url: URL(string: "http://127.0.0.1:\(port)/")!))
+            var lines: [String] = []
+            for try await line in bytes.lines {
+                lines.append(line)
+                if lines.count == 1 { first.fulfill() }
+            }
+            return "ended normally after \(lines)"
+        }
+        await fulfillment(of: [first], timeout: 5)
+        task.cancel()
+        #if canImport(Darwin)
+        // Observed: Apple's AsyncBytes ignores the cancel and delivers the rest of the body. Recorded, not asserted.
+        let outcome: String
+        do { outcome = try await task.value } catch { outcome = "threw \(error)" }
+        print("Apple AsyncBytes after cancel: \(outcome)")
+        #else
+        do {
+            XCTFail(try await task.value)
+        } catch {
+            XCTAssertTrue(error is CancellationError, "\(error)")
+        }
+        #endif
+        await fulfillment(of: [done], timeout: 5)
+    }
+
     func testReportsStatusAndErrorBody() async throws {
         let body = "{\"error\":{\"message\":\"bad key\"}}"
         let (port, done) = try serve(status: "401 Unauthorized", contentType: "application/json", chunks: [body], pause: 0)

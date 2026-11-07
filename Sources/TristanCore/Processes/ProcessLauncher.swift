@@ -17,6 +17,16 @@ package struct UnsafeArguments: Error, Equatable, LocalizedError {
     }
 }
 
+/// An argument is the empty string. Foundation.Process on Windows leaves it out of the command line, which would
+/// silently shift every argument after it, so the launch is refused instead.
+package struct EmptyArgument: Error, Equatable, LocalizedError {
+    package let tool: String
+    package init(tool: String) { self.tool = tool }
+    package var errorDescription: String? {
+        "refusing to start \(tool) with an empty argument: Windows would drop it and shift the arguments after it"
+    }
+}
+
 /// Finds a program on a search path. Pure, so Windows rules are testable anywhere.
 package enum ExecutableResolver {
     /// A name containing a path separator is returned as is. On Windows a name without one of the `pathExt` suffixes
@@ -110,7 +120,7 @@ package enum ProcessLauncher {
     #endif
 
     /// A configured process that has not been started. Callers attach pipes and call `run()`.
-    /// Throws `ToolNotFound` or (Windows only) `UnsafeArguments`.
+    /// Throws `ToolNotFound` or (Windows only) `UnsafeArguments` or `EmptyArgument`.
     /// `addToolPaths: false` leaves the environment inherited exactly as the parent has it (extra variables still apply).
     package static func prepare(_ tool: String, _ arguments: [String], directory: URL?, extraEnvironment: [String: String],
                                 addToolPaths: Bool = true) throws -> Process {
@@ -137,6 +147,7 @@ package enum ProcessLauncher {
     /// Resolves `tool` the way `prepare` does, with the file system passed in.
     static func plan(_ tool: String, _ arguments: [String], environment: [String: String], windows: Bool,
                      isFile: (String) -> Bool, readFile: (String) -> String?) throws -> Plan {
+        if windows, arguments.contains(where: \.isEmpty) { throw EmptyArgument(tool: tool) }
         var environment = environment
         if !windows {
             // Same PATH the app always gave its tools: an app started from the Dock has a short one.
