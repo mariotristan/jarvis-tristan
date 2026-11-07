@@ -18,7 +18,7 @@ Then open T.R.I.S.T.A.N., pick `OLLAMA` along the bottom and give it a task. In 
 ```powershell
 pwsh -File scripts\setup-ollama.ps1                 # checks for Ollama, starts it, pulls llama3.1, sets it for tristan
 pwsh -File scripts\setup-ollama.ps1 qwen2.5-coder   # another model
-pwsh -File scripts\setup-ollama.ps1 -StartOnly      # only start an installed Ollama; without Ollama it says so and exits 0
+pwsh -File scripts\setup-ollama.ps1 -StartOnly      # only start an installed Ollama; without Ollama it says so and exits 0 (setup-ollama.sh --start-only exits 2)
 pwsh -File scripts\setup-ollama.ps1 -NoPin          # do not run `tristan config set ollama.model`
 ```
 

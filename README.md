@@ -187,7 +187,7 @@ The full guide (pairing, security, limits, standalone mode, running the simulato
 ### Requirements
 
 - **The app:** an **Apple Silicon** Mac on macOS 14 or later. Building from source needs the full Xcode.
-- **The `tristan` command on Windows:** Windows 10 or 11, x64. Not released yet; build it from source with Swift 6.4.2 (see [Windows](#windows)).
+- **The `tristan` command on Windows:** the target is Windows 10 or 11, x64; so far CI has run it only on Windows Server 2025. Not released yet; build it from source with Swift 6.4.2 (see [Windows](#windows)).
 - **Providers:** the CLI or account for each provider you use (Claude Code, the Copilot CLI, the AWS CLI, an Azure OpenAI deployment, or Ollama). Nothing is needed for the `DEMO` provider in the app.
 
 The full guide, with every script and troubleshooting, is [Install](https://mariotristan.github.io/jarvis-tristan/install.html).
@@ -320,7 +320,7 @@ enum AgentEvent { case status(String), log(String), code(String), done(String), 
 
 ### How approvals work
 
-In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool that points at **its own binary** (`Tristan --mcp-permission <socket>`). Claude Code calls it, the helper forwards the request over a private Unix socket (a `0700` temp folder) to the running app, the app shows it in the HUD or notch, and your answer goes back as allow or deny. `AUTO` and `YOLO` skip the bridge. On Windows the same shim talks to the host over loopback TCP on `127.0.0.1` instead. Two random tokens, one for each side, reach it through the MCP config's `env` block, and the per-run folder can only be opened by the current user.
+In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool that points at **its own binary** (`Tristan --mcp-permission <socket>`). Claude Code calls it, the helper forwards the request over a private Unix socket (a `0700` temp folder) to the running app, the app shows it in the HUD or notch, and your answer goes back as allow or deny. `AUTO` and `YOLO` skip the bridge. On Windows the same shim talks to the host over loopback TCP on `127.0.0.1` instead. Two random tokens, one for each side, reach it through the MCP config's `env` block, and the per-run folder's access list has a single entry, for the current user (administrators and SYSTEM can still reach it).
 
 **Always allow rules are deliberately narrow.** They are offered only for file edits inside the working folder and for plain program names (for example `npm`), never for chained or redirected shell commands or risky programs such as `rm`, `sudo`, `curl` or `ssh`. The full explanation, with the table of what each rule remembers, is in the [Approvals guide](https://mariotristan.github.io/jarvis-tristan/approvals.html).
 
