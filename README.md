@@ -226,7 +226,7 @@ On Windows, T.R.I.S.T.A.N. is a terminal command, `tristan`, not a window. It ru
 
 ```powershell
 swift build --product tristan                          # Swift 6.4.2 with Visual Studio's C++ tools and a Windows SDK
-swift test --filter TristanCoreTests                   # 229 tests on the Windows runner
+swift test --filter TristanCoreTests                   # 230 tests on the Windows runner
 swift test --filter TristanCLITests                    # 109 tests on the Windows runner
 pwsh -File scripts\package-windows.ps1 -Version 1.2.3  # dist\Tristan-1.2.3-windows-x64.zip and .sha256
 tristan providers                                      # which providers are ready
@@ -296,7 +296,7 @@ Sources/Tristan/              The Mac app (macOS only)
 ├── Snapshot.swift, DemoAutopilot.swift   README screenshots and the recorded demo
 └── Shared/                   Compiled by the Mac and iOS apps: themes, the markdown parser and views, the remote protocol and client
 Tests/TristanTests/           124 tests for the Mac app (macOS only)
-Tests/TristanCoreTests/       205 tests on the Mac, 229 on Windows (files whose names start with Windows run only there)
+Tests/TristanCoreTests/       206 tests on the Mac, 230 on Windows (files whose names start with Windows run only there)
 Tests/TristanCLITests/        95 tests on the Mac, 109 on Windows
 ios/                          The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
 scripts/                      bundle.sh (app), make-dmg.sh (installer), install.sh (build and install), setup-ollama.sh and setup-ollama.ps1 (local models; `--start-only` / `-StartOnly` just starts it), package-windows.ps1 (Windows zip), install-voices.sh (Enhanced voice), uninstall.sh (remove test versions), record-demo.sh with record-window.swift (films the window and the app's own sound), ios-demo.sh, ios-icon.sh, ci/ (Windows CI fakes, the Ollama mock and the spike tools)
@@ -327,7 +327,7 @@ In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool th
 ### Running the tests
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 424 tests: TristanTests, TristanCoreTests, TristanCLITests
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 425 tests: TristanTests, TristanCoreTests, TristanCLITests
 ```
 
 On Windows: `swift test --filter TristanCoreTests` and `swift test --filter TristanCLITests` (the Mac app and its tests are only declared on macOS).
@@ -397,7 +397,7 @@ Done:
 - [x] 30 themes with a picker and Match system, a welcome line per theme and session, a spoken greeting that follows the time and day, and easier ways to quit
 - [x] The orb fills the screen by default with an ABORT button and Esc to stop a mission, an offline fallback to Ollama, sound in the demo videos, a cleaner voice (see the [audio crackle report](https://mariotristan.github.io/jarvis-tristan/audio-crackle.html)), a secret scan in CI and an uninstall script
 - [x] A rainbow Pride theme (32 themes now)
-- [x] Automated tests (441: 424 on the Mac and 17 for iOS; 338 also run on Windows)
+- [x] Automated tests (442: 425 on the Mac and 17 for iOS; 339 also run on Windows)
 
 Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 

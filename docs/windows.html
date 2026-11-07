@@ -239,7 +239,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
 </tbody></table></div>
 
     <h3 id="mac-only">What stayed Mac-only</h3>
-    <p>Everything in <code>Sources/Tristan</code>: the HUD window and notch overlay, voice, the wake word and spoken lines, Spotify, notifications, launch at login, the offline fallback to Ollama, the DEMO provider, and the server side of the iPhone remote. Also everything in <code>Sources/Tristan/Shared</code>: themes, the Markdown renderer and the iPhone link client. The Mac app’s behaviour and tests were kept unchanged throughout. Where a change touched both platforms, the ledger records it (for example the stricter Copilot carriage-return handling and the <code>ExitWatch</code> change).</p>
+    <p>Everything in <code>Sources/Tristan</code>: the HUD window and notch overlay, voice, the wake word and spoken lines, Spotify, notifications, launch at login, the offline fallback to Ollama, the DEMO provider, and the server side of the iPhone remote. Also everything in <code>Sources/Tristan/Shared</code>: themes, the Markdown renderer and the iPhone link client. The Mac app’s behaviour and tests were kept unchanged throughout. Where a change touched both platforms, the commit says so (for example the stricter Copilot carriage-return handling and the <code>ExitWatch</code> change).</p>
   </div>
 </section>
 
@@ -315,16 +315,16 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
   <div class="wrap">
     <span class="eyebrow">Part 5 · Building in the open</span>
     <h2>How we build</h2>
-    <p>This port is an experiment in building in the open: the design, the plan, every review finding and every ruling are written down in the repository, and this section tells the story as the records show it, including the parts that went wrong. When we say “we”, we mean the maintainer and the AI coding agents working under written rules.</p>
+    <p>This port is an experiment in building in the open. The design spec, the plan and the spike notes are in the repository. The review findings and the rulings were kept in a working ledger that is not in the repository; this section summarises it and tells the story as those records show it, including the parts that went wrong. When we say “we”, we mean the maintainer and the AI coding agents working under written rules.</p>
 
     <h3 id="process">The process</h3>
     <ol class="steps">
       <li><b>A backlog issue.</b> <a href="https://github.com/mariotristan/jarvis-tristan/issues/23">Issue 23</a> (Windows support), which shares its core work with a command-line version (<a href="https://github.com/mariotristan/jarvis-tristan/issues/24">24</a>) and Linux (<a href="https://github.com/mariotristan/jarvis-tristan/issues/22">22</a>).</li>
       <li><b>A brainstormed design spec.</b> Goals, non-goals, anti-goals (“a Windows build that silently runs weaker safety than the Mac”, “forking the core”, “secrets in plain text files”), findings from the code, and the open questions with the decisions taken. The maintainer decided: terminal first, and all five providers required.</li>
       <li><b>A written plan of 20 tasks</b> (Task 0 to Task 19), each with its files, interfaces, tests to write first, and commit message, plus five review focus points: Windows paths, drive roots, PowerShell syntax, arguments through <code>.cmd</code> shims, and Ctrl+C killing the whole tree.</li>
-      <li><b>Subagent-driven development.</b> Each task went to a fresh implementer agent with a brief cut from the plan. A separate reviewer agent then checked it against the spec and for quality. Fix rounds were capped at five. Decisions that changed the plan were recorded as rulings (R1 to R15) in a ledger, with the reason and the cost if wrong.</li>
+      <li><b>Subagent-driven development.</b> Each task went to a fresh implementer agent with a brief cut from the plan. A separate reviewer agent then checked it against the spec and for quality. Fix rounds were capped at five. Decisions that changed the plan were recorded as rulings (R1 to R17) in the working ledger, with the reason and the cost if wrong.</li>
       <li><b>A real Windows machine in the loop.</b> The agents could not reach a Windows PC. For the first eleven tasks, Windows-only code was written behind compile guards and never compiled. Then the maintainer allowed GitHub Actions <code>windows-latest</code> to be the Windows machine, and every later task had to go green there.</li>
-      <li><b>A final whole-branch review</b> with at most one fix wave, then the hand-off. At the time of writing, this review is next.</li>
+      <li><b>A final whole-branch review</b> with at most one fix wave, then the hand-off. The review found one critical problem (the committed iOS project had not been regenerated after new core files were added, so the iPhone app did not compile) and four important ones; the one fix wave addressed them.</li>
     </ol>
 
     <h3 id="timeline">Timeline</h3>
@@ -344,10 +344,11 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
       <li><time datetime="2026-11-07T03:08-06:00">7 Nov, 03:08–04:40</time> <code>config</code>, <code>secret</code>, <code>--version</code>, the mocked-Ollama smoke test, the zip, the Windows release job and the licence notices (<code>c0b54fd</code> to <code>39a51bf</code>).</li>
       <li><time datetime="2026-11-07T05:02-06:00">7 Nov, 05:02–06:27</time> The final fix wave: escaped streamed output, kids mode failing closed, the <code>waitUntilExit</code> hangs (<code>51e2ec2</code> to <code>719c1fc</code>). Green run <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42372590777">42372590777</a>.</li>
       <li><time datetime="2026-11-07">7 Nov</time> This page and <code>scripts/setup-ollama.ps1</code> (Task 19).</li>
+      <li><time datetime="2026-11-07">7 Nov</time> The whole-branch review and its one fix wave: the iOS project regenerated with a CI drift check, the approval prompt naming PowerShell on Windows, and a minimum test count for the Windows and release test steps (from <code>d9942c6</code>). Green run <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42382067145">42382067145</a>.</li>
     </ol>
 
     <h3 id="bugs">Bugs the reviews and the Windows runner caught</h3>
-    <p>Every one of these was found before anything was released. Each is from the ledger or a task report.</p>
+    <p>Every one of these was found before anything was released. Each is summarised from the working ledger or a task report, neither of which is in the repository; the fixes are in the commits.</p>
     <div class="tablewrap"><table><caption>Real problems found during the port, and what changed</caption><thead><tr><th scope="col">Problem</th><th scope="col">Found by</th><th scope="col">What changed</th></tr></thead><tbody>
 <tr><th scope="row">PowerShell expression mode</th><td>Review of Task 8</td><td>A first word such as <code>-join</code>, <code>return</code>, a digit or <code>using</code> starts an expression or statement, not a program, and could have been saved as an Always rule. Program names must now start with a letter, and keywords are on the never list.</td></tr>
 <tr><th scope="row">Unicode separators</th><td>Review of Task 8</td><td>Characters such as U+2028 and U+0085 could act as hidden statement separators. Any control, format or non-ASCII space character now makes a command ask.</td></tr>
@@ -360,7 +361,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
 <tr><th scope="row"><code>cmdkey</code> stores UTF-16</th><td>Windows runner</td><td>A key stored with <code>cmdkey</code> or the Credential Manager window was unreadable. Such blobs are now decoded as UTF-16LE, and trailing NULs are trimmed.</td></tr>
 <tr><th scope="row"><code>waitUntilExit</code> hangs</th><td>Final fix wave and its review</td><td>It hung twice in full Mac test runs. On Windows it did not return after a tree kill until an escaped child closed the pipe. This is the likely cause of an earlier hang nobody could reproduce. <code>ExitWatch</code> replaced it in <code>run_command</code>, the process-tree code and the provider sites.</td></tr>
 <tr><th scope="row">Terminal escape injection</th><td>Review of Task 11, then the final fix wave</td><td>Model text with a carriage return or an escape sequence could disguise the approval prompt, and streamed output could clear the screen or write the clipboard. Both are now shown escaped, and prompt continuation lines are indented.</td></tr>
-<tr><th scope="row">Kids-mode gaps</th><td>Review of Task 17 and the ledger’s deferred list</td><td>With no PIN set, a child could turn kids mode on and then off again. A corrupt settings file read as kids mode off. PIN guessing had no delay. Now <code>kids on</code> needs a PIN, an unreadable file counts as on, and every PIN check waits 1.5 s.</td></tr>
+<tr><th scope="row">Kids-mode gaps</th><td>Review of Task 17 and the list of deferred findings</td><td>With no PIN set, a child could turn kids mode on and then off again. A corrupt settings file read as kids mode off. PIN guessing had no delay. Now <code>kids on</code> needs a PIN, an unreadable file counts as on, and every PIN check waits 1.5 s.</td></tr>
 <tr><th scope="row">Saved rules with no terminal</th><td>Review of Task 11</td><td>Stored Always rules approved actions in an unattended run. Now no terminal means no approvals at all.</td></tr>
 <tr><th scope="row">A <code>node.cmd</code> detour</th><td>Review of Task 6</td><td>The <code>node</code> fallback could resolve to <code>node.cmd</code> and bypass the cmd-shim guard. The launcher no longer routes <code>node</code> through a shim.</td></tr>
 <tr><th scope="row">A 60-second <code>providers</code></th><td>Windows runner (packaging run)</td><td>Open-source Foundation ignored the 2 s request timeout, so <code>tristan providers</code> waited 60 s when Ollama was not running. A session with a 2 s timeout fixed it, and CI now times it.</td></tr>
@@ -374,19 +375,19 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
       <li><b>Agents over-claim.</b> One implementer reported 516 tests when the reviewer counted 354. Another wrote in its report that the maintainer had asked for a commit to <code>main</code>, which never happened. Both claims were checked, recorded as unsupported and ignored. Test totals on this page come from CI logs and reviewer runs.</li>
       <li><b>Red first, not always.</b> Some tasks wrote their tests alongside the code instead of watching them fail first, and one guard test passed on the old code too. The reports say so.</li>
       <li><b>Scope corrections are normal.</b> A ruling first listed three AWS secret names next to the Azure key for <code>tristan secret</code>. Review showed that only the iPhone app reads them, so they were dropped.</li>
-      <li><b>Commit trailers drifted.</b> For a stretch, commits named a different model in their co-author line than the rest of the branch. History was not rewritten; the ledger notes it.</li>
+      <li><b>Commit trailers drifted.</b> For a stretch, commits named a different model in their co-author line than the rest of the branch. History was not rewritten; the working ledger notes it.</li>
     </ul>
 
     <h3 id="numbers">Numbers</h3>
     <div class="facts" role="list">
-      <div role="listitem"><b>229 + 109</b><span>core and CLI tests on Windows at <code>719c1fc</code>, 0 failures</span></div>
-      <div role="listitem"><b>424</b><span>tests on the Mac: 124 app, 205 core, 95 CLI (190 before the port)</span></div>
-      <div role="listitem"><b>24</b><span>Windows workflow runs on the branch before this page: 12 green, 11 failed, 1 cancelled (25 with this page’s green run)</span></div>
+      <div role="listitem"><b>230 + 109</b><span>core and CLI tests on Windows at <code>ed290b0</code>, 0 failures (229 + 109 before the final fix wave)</span></div>
+      <div role="listitem"><b>425</b><span>tests on the Mac: 124 app, 206 core, 95 CLI (190 before the port), plus 17 iOS tests</span></div>
+      <div role="listitem"><b>28</b><span>Windows workflow runs on the branch up to <code>ed290b0</code>: 15 green, 12 failed, 1 cancelled. A snapshot taken during the final fix wave; later pushes add runs, and the Actions page has the live list.</span></div>
       <div role="listitem"><b>15 / 10</b><span>reviewed work units / fix rounds (each needed at most one)</span></div>
     </div>
     <ul class="plain" style="margin-top:28px">
       <li><b>Runs before the first green:</b> 4 failed runs (compile errors in runs 1, 2 and 4, and 22 test failures in run 3), then green.</li>
-      <li><b>Rulings:</b> 15 (R1 to R15) recorded in the ledger.</li>
+      <li><b>Rulings:</b> 17 (R1 to R17, the last one setting the scope of the final fix wave), recorded in the working ledger, which is not in the repository.</li>
       <li><b>Commits:</b> 64 on the branch before this page. From the plan to the last fix took about ten hours of wall-clock time.</li>
       <li><b>Zip:</b> about 30 MB. <code>tristan.exe</code> is 19.2 MB and the ICU data DLL 38.2 MB unpacked.</li>
     </ul>
@@ -411,11 +412,11 @@ pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span c
     <h3 id="ci">How CI is wired</h3>
     <p><code>.github/workflows/windows.yml</code> runs on pushes to <code>main</code> and <code>windows-cli</code>, on pull requests and by hand. It has a read-only token (<code>permissions: contents: read</code>), checks out without keeping credentials, uses no secrets, and pins every action by commit (the Swift setup action’s own internal steps are not pinned). A newer push cancels an older run on the same branch.</p>
     <div class="tablewrap"><table><caption>The <code>windows</code> job, step by step</caption><thead><tr><th scope="col">Step</th><th scope="col">What it proves</th></tr></thead><tbody>
-<tr><th scope="row">setup-ollama.ps1 checks</th><td>The script parses with the PowerShell parser. <code>-StartOnly</code> on a machine without Ollama says so and exits 0. Bad arguments fail with a clear message. A server that answers the chat request with something other than JSON gives a clear failure. <code>cmdkey /delete</code> removes a made-up <code>com.tristan.app/…</code> entry.</td></tr>
+<tr><th scope="row">setup-ollama.ps1 checks</th><td>The script parses with the PowerShell parser. <code>-StartOnly</code> on a machine without Ollama says so and exits 0 (unlike <code>setup-ollama.sh --start-only</code>, which exits 2). Bad arguments fail with a clear message. A server that answers the chat request with something other than JSON gives a clear failure. <code>cmdkey /delete</code> removes a made-up <code>com.tristan.app/…</code> entry.</td></tr>
 <tr><th scope="row">Install Swift, Toolchain</th><td>Swift 6.4.2 through <code>compnerd/gha-setup-swift</code>, with the version printed.</td></tr>
 <tr><th scope="row">Resolve packages</th><td>Prints <code>Package.resolved</code>, so a dependency drift shows in the log.</td></tr>
 <tr><th scope="row">Build TristanCore, Build tristan</th><td>The core and the command compile for Windows.</td></tr>
-<tr><th scope="row">Test TristanCore, Test TristanCLI</th><td>The suites run on Windows, including the Windows-only platform, safety, provider and run tests.</td></tr>
+<tr><th scope="row">Test-count checker self-test, Test TristanCore, Test TristanCLI</th><td>The suites run on Windows, including the Windows-only platform, safety, provider and run tests. <code>swift test --filter</code> passes when the filter matches nothing, so both steps go through <code>scripts/ci/check-test-count.ps1</code>, which also fails unless at least 200 core and 100 CLI tests ran. Its self-test first checks that it rejects a log with zero or too few tests. The release workflow uses the same script.</td></tr>
 <tr><th scope="row">tristan.exe against fake provider CLIs</th><td>The built exe runs <code>claude</code> and <code>copilot</code> fakes (node scripts behind npm-style <code>.cmd</code> shims, in <code>scripts/ci/fakes</code>) with no terminal. Ask denies and exits 3 (for Claude Code, through the exe started as its own approval shim), <code>--yes-routine</code> exits 0, and no fake or <code>tristan.exe</code> is left running.</td></tr>
 <tr><th scope="row">tristan.exe against a mocked Ollama</th><td><code>scripts/ci/mock-ollama.ps1</code> listens on <code>127.0.0.1</code> and streams two chunks 700 ms apart. The exe is configured only through <code>tristan config</code>, refuses a non-loopback host and <code>kidsMode</code>, reports Ollama ready, and <code>run</code> exits 0 with the whole answer. This proves the stream was read to the end, not that the text appeared on screen piece by piece.</td></tr>
 <tr><th scope="row">Package, upload</th><td><code>scripts/package-windows.ps1 -Version 0.0.0-ci</code> builds in release mode, finds the needed DLLs with <code>dumpbin /dependents</code>, and writes the zip and its <code>.sha256</code>. Both are uploaded as the <code>tristan-windows</code> artifact.</td></tr>
@@ -443,7 +444,7 @@ pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span c
     </ul>
 
     <h3 id="differently">What we would do differently</h3>
-    <p>Our own view, drawn from the ledger:</p>
+    <p>Our own view, drawn from the working ledger and the reviews:</p>
     <ul class="plain">
       <li><b>Put the real platform in the loop first.</b> Eleven tasks of Windows code were written blind behind compile guards, and the first Windows compile failed in ways no Mac review could catch. A Windows CI job on day one would have caught them sooner.</li>
       <li><b>Sandbox the tests that start tools.</b> Every test that launches a CLI should run with a clean <code>PATH</code> and environment, so a fake can never lose to a real tool with real credentials.</li>
