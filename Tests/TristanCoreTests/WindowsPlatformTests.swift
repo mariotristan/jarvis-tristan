@@ -110,6 +110,39 @@ final class WindowsPlatformTests: XCTestCase {
         XCTAssertTrue(result.isError)
     }
 
+    /// A zero-length write on a pipe makes a pending ReadFile succeed with 0 bytes. That is not the end of the output:
+    /// both readers (FileHandle.bytes and PipeDrain) keep reading until the writer closes the pipe.
+    func testZeroLengthPipeWriteIsNotEndOfFile() async throws {
+        func pipe() throws -> (read: FileHandle, write: HANDLE) {
+            var read: HANDLE? = nil, write: HANDLE? = nil
+            guard CreatePipe(&read, &write, nil, 0), let read, let write else { throw XCTSkip("CreatePipe failed") }
+            return (FileHandle(handle: read, closeOnDealloc: true), write)
+        }
+        func send(_ write: HANDLE) {
+            var written: DWORD = 0
+            var nothing: UInt8 = 0
+            Thread.sleep(forTimeInterval: 0.2)   // the reader is waiting in ReadFile by now
+            _ = WriteFile(write, &nothing, 0, &written, nil)
+            Thread.sleep(forTimeInterval: 0.2)
+            var text = Array("after".utf8)
+            _ = WriteFile(write, &text, DWORD(text.count), &written, nil)
+            CloseHandle(write)
+        }
+
+        let first = try pipe()
+        DispatchQueue.global().async { send(first.write) }
+        var data = Data()
+        for try await byte in first.read.bytes { data.append(byte) }
+        XCTAssertEqual(String(decoding: data, as: UTF8.self), "after")
+
+        let second = try pipe()
+        let drain = PipeDrain(second.read)
+        DispatchQueue.global().async { send(second.write) }
+        let (collected, complete, _) = drain.collect(within: 5)
+        XCTAssertTrue(complete)
+        XCTAssertEqual(String(decoding: collected, as: UTF8.self), "after")
+    }
+
     /// Ruling (Task 7): non-ASCII output may come back in the OEM code page. Recorded, not asserted, until decided.
     func testRunCommandNonASCIIOutput() async {
         let sandbox = ToolSandbox(root: folder)

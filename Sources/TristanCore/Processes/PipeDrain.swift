@@ -36,11 +36,18 @@ final class ExitWatch: @unchecked Sendable {
     /// Blocks until the process has ended; returns its exit status.
     func wait(for process: Process) -> Int32 {
         #if os(Windows)
+        // The handle was opened by PID after the start. Never wait on it alone: in 50 ms slices, Foundation's own
+        // signals (termination handler, isRunning) are checked too, and they win when they come first.
         if let handle {
             defer { CloseHandle(handle); self.handle = nil }
-            if WaitForSingleObject(handle, DWORD(0xFFFF_FFFF) /* INFINITE */) == DWORD(0) /* WAIT_OBJECT_0 */ {
-                var code: DWORD = 0
-                if GetExitCodeProcess(handle, &code) { return Int32(bitPattern: code) }
+            while true {
+                if ended.wait(timeout: .now()) == .success { ended.signal(); break }
+                if !process.isRunning { break }
+                if WaitForSingleObject(handle, 50) == DWORD(0) /* WAIT_OBJECT_0 */ {
+                    var code: DWORD = 0
+                    if GetExitCodeProcess(handle, &code) { return Int32(bitPattern: code) }
+                    break
+                }
             }
         }
         #endif
@@ -89,10 +96,15 @@ final class PipeDrain: @unchecked Sendable {
     /// One blocking read: the byte count (0 at end of file), or nil on a read error (treated as the end).
     private static func readSome(_ handle: FileHandle, into buffer: inout [UInt8]) -> Int? {
         #if os(Windows)
-        var read: DWORD = 0
-        let ok = buffer.withUnsafeMutableBytes { ReadFile(handle._handle, $0.baseAddress, DWORD($0.count), &read, nil) }
-        if ok { return Int(read) }
-        return GetLastError() == DWORD(109) /* ERROR_BROKEN_PIPE: every writer closed */ ? 0 : nil
+        while true {
+            var read: DWORD = 0
+            let ok = buffer.withUnsafeMutableBytes { ReadFile(handle._handle, $0.baseAddress, DWORD($0.count), &read, nil) }
+            // On a pipe a successful read of 0 bytes is a zero-length write, not the end: only a broken pipe is.
+            // (On a file it is the end.) FILE_TYPE_PIPE is 3.
+            if ok, read == 0, GetFileType(handle._handle) == DWORD(3) { Thread.sleep(forTimeInterval: 0.001); continue }
+            if ok { return Int(read) }
+            return GetLastError() == DWORD(109) /* ERROR_BROKEN_PIPE: every writer closed */ ? 0 : nil
+        }
         #else
         while true {
             let count = buffer.withUnsafeMutableBytes { read(handle.fileDescriptor, $0.baseAddress, $0.count) }

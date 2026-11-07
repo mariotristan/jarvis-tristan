@@ -207,11 +207,16 @@ extension FileHandle {
     /// One blocking read: the byte count (0 at end of file) or the error.
     private func readSome(into buffer: inout [UInt8]) -> Result<Int, FileReadError> {
         #if os(Windows)
-        var read: DWORD = 0
-        let ok = buffer.withUnsafeMutableBytes { ReadFile(_handle, $0.baseAddress, DWORD($0.count), &read, nil) }
-        if ok { return .success(Int(read)) }
-        let error = GetLastError()
-        return error == DWORD(109) /* ERROR_BROKEN_PIPE: the writer closed */ ? .success(0) : .failure(FileReadError(code: Int(error)))
+        while true {
+            var read: DWORD = 0
+            let ok = buffer.withUnsafeMutableBytes { ReadFile(_handle, $0.baseAddress, DWORD($0.count), &read, nil) }
+            // On a pipe a successful read of 0 bytes is a zero-length write, not the end: only a broken pipe is.
+            // (On a file it is the end.) FILE_TYPE_PIPE is 3.
+            if ok, read == 0, GetFileType(_handle) == DWORD(3) { Thread.sleep(forTimeInterval: 0.001); continue }
+            if ok { return .success(Int(read)) }
+            let error = GetLastError()
+            return error == DWORD(109) /* ERROR_BROKEN_PIPE: the writer closed */ ? .success(0) : .failure(FileReadError(code: Int(error)))
+        }
         #else
         while true {
             let count = buffer.withUnsafeMutableBytes { Glibc.read(fileDescriptor, $0.baseAddress, $0.count) }
