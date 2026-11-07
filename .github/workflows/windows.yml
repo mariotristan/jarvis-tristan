@@ -25,6 +25,57 @@ jobs:
         with:
           persist-credentials: false
 
+      # Plan Task 19: scripts/setup-ollama.ps1 on a machine without Ollama (only the Windows folders on PATH and an
+      # empty LOCALAPPDATA), in pwsh and in Windows PowerShell 5.1. Nothing is installed, started or downloaded.
+      - name: setup-ollama.ps1 (parses, -StartOnly without Ollama, bad arguments)
+        run: |
+          $ErrorActionPreference = 'Continue'   # the script's refusals go to stderr; exit codes are checked below
+          $failures = 0
+          function Check($label, $ok) {
+            if ($ok) { Write-Host "PASS: $label" } else { Write-Host "FAIL: $label"; $script:failures++ }
+          }
+          $target = (Resolve-Path scripts\setup-ollama.ps1).Path
+          $tokens = $null; $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($target, [ref]$tokens, [ref]$errors) | Out-Null
+          $errors | ForEach-Object { Write-Host "parse error: $_" }
+          Check "the PowerShell parser finds no errors ($(@($errors).Count))" (@($errors).Count -eq 0)
+          $shells = @((Get-Command pwsh).Source, (Get-Command powershell).Source)
+          $empty = Join-Path $env:RUNNER_TEMP "no-ollama-$(Get-Random)"
+          New-Item -ItemType Directory $empty | Out-Null
+          $savedPath = $env:Path; $savedLocal = $env:LOCALAPPDATA
+          try {
+            $env:Path = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+            $env:LOCALAPPDATA = $empty
+            Check 'no ollama on this PATH' (-not (Get-Command ollama -ErrorAction SilentlyContinue))
+            foreach ($shell in $shells) {
+              $name = Split-Path $shell -Leaf
+              $out = & $shell -NoProfile -File $target -StartOnly 2>&1 | Out-String
+              $code = $LASTEXITCODE
+              Write-Host $out
+              Check "$name -StartOnly without Ollama exits 0 (got $code)" ($code -eq 0)
+              Check "$name -StartOnly says Ollama is not installed" ($out.Contains('Ollama is not installed, so there is nothing to start.'))
+              $out = & $shell -NoProfile -File $target 2>&1 | Out-String
+              $code = $LASTEXITCODE
+              Write-Host $out
+              Check "$name without Ollama exits 2 (got $code)" ($code -eq 2)
+              Check "$name without Ollama names the winget command" ($out.Contains('winget install -e --id Ollama.Ollama'))
+              $out = & $shell -NoProfile -File $target -Bogus 2>&1 | Out-String
+              $code = $LASTEXITCODE
+              Write-Host $out
+              Check "$name with an unknown parameter fails (got $code)" ($code -ne 0)
+              Check "$name names the unknown parameter" ($out.Contains('Bogus'))
+              $out = & $shell -NoProfile -File $target 'bad model;x' 2>&1 | Out-String
+              $code = $LASTEXITCODE
+              Write-Host $out
+              Check "$name with a bad model name exits 2 (got $code)" ($code -eq 2)
+              Check "$name says it is not a model name" ($out.Contains('is not a model name'))
+            }
+          } finally {
+            $env:Path = $savedPath; $env:LOCALAPPDATA = $savedLocal
+          }
+          if ($failures -gt 0) { exit 1 }
+          exit 0
+
       - name: Install Swift
         uses: compnerd/gha-setup-swift@9ff1ee4c44888c5817fc14d1b257ac8cabb4935f # v0.5.1
         with:
