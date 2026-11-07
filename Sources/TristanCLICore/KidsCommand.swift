@@ -131,6 +131,9 @@ struct KidsOn: ParsableCommand, CLICommand {
     static let configuration = CommandConfiguration(commandName: "on", abstract: "Turn kids mode on.")
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
+        // Already on without a PIN (switched on in the Mac app with Touch ID): `set-pin` would refuse too, so say what
+        // `off` and `set-pin` say.
+        if Kids.isOn && !ParentPIN.isSet { return Kids.refuse(Kids.noPINMessage) }
         guard ParentPIN.isSet else { return Kids.refuse("Set a PIN first with `tristan kids set-pin`.") }
         if let stop = Kids.save(true, forKey: Kids.key) { return stop }
         Terminal.writeOutput("Kids mode is on.\n")

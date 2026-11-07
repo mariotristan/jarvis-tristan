@@ -111,6 +111,19 @@ final class KidsCommandTests: XCTestCase {
         XCTAssertEqual(calls.prompts, [])
     }
 
+    /// Already on without a PIN (switched on in the Mac app with Touch ID): the same message as `off` and `set-pin`,
+    /// not "Set a PIN first", which `set-pin` would then refuse.
+    func testKidsOnWhenAlreadyOnWithoutPINSaysTheSameAsOff() async throws {
+        Settings.set(true, forKey: "kidsMode")
+        let err = Sink()
+        Terminal.captureError = { err.add($0) }
+        defer { Terminal.captureError = nil }
+        let code = try await exec(["kids", "on"], Calls(), interactive: false)
+        XCTAssertEqual(code, .usage)
+        XCTAssertEqual(err.value, Kids.noPINMessage + "\n")
+        XCTAssertTrue(kidsOn)
+    }
+
     func testKidsOffWhenOnWithoutPINRefuses() async throws {
         Settings.set(true, forKey: "kidsMode")   // e.g. switched on from the Mac app in Touch ID mode
         let code = try await exec(["kids", "off"], Calls(answers: ["1234"]))

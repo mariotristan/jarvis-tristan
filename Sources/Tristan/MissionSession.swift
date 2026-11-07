@@ -102,7 +102,7 @@ final class MissionSession: ObservableObject, Identifiable {
         let directory = workingDirectory
         let briefed = memory.compose(task: prompt, folder: directory.path)
         if briefed != prompt { add("Remembering \(memory.exchanges.filter { $0.folder == directory.path }.count) earlier mission(s) from this session", .info) }
-        let kidsLocal = hub.kidsMode && !cloudApproved
+        let kidsLocal = KidsRouting.mustStayLocal(kidsMode: hub.kidsMode, cloudOnce: cloudApproved)
         let localReady = hub.localModelReady
         let startLocal = hub.startLocalModel
         runner = Task { [weak self] in
