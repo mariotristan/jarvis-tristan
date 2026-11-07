@@ -6,8 +6,42 @@ on:
   pull_request:
     branches: [main]
 
+# A newer push to the same pull request cancels the run it supersedes. Runs on main (and anything else) get a group of
+# their own, so they are never cancelled or queued behind each other.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Which jobs this change needs (scripts/ci/changed-paths.sh has the rules). `build-and-test` and `ios` are required
+  # checks on main, so the workflow itself always runs: a job skipped by its `if:` reports success, while a workflow
+  # skipped by a path filter would leave its required checks waiting forever.
+  changes-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      mac: ${{ steps.classify.outputs.mac }}
+      ios: ${{ steps.classify.outputs.ios }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 2 # the PR merge commit (or the pushed commit) and its parents
+          persist-credentials: false
+
+      - name: Classify the changed files
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: bash scripts/ci/changes-job.sh
+
+  # Fail safe: these run unless the classification succeeded AND said `false`. If `changes-ci` fails or its output is
+  # missing they run anyway; `!cancelled()` (not `always()`) so a cancelled run does not start them.
   build-and-test:
+    needs: changes-ci
+    if: ${{ !cancelled() && (needs.changes-ci.result != 'success' || needs.changes-ci.outputs.mac != 'false') }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +72,8 @@ jobs:
           path: dist/*.dmg*
 
   ios:
+    needs: changes-ci
+    if: ${{ !cancelled() && (needs.changes-ci.result != 'success' || needs.changes-ci.outputs.ios != 'false') }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4

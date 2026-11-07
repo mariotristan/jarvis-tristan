@@ -10,14 +10,44 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request cancels the run it supersedes. Runs on main and manual runs get a group of
+# their own, so they are never cancelled or queued behind each other.
 concurrency:
-  group: windows-${{ github.ref }}
-  cancel-in-progress: true
+  group: windows-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Whether this change needs the Windows job (scripts/ci/changed-paths.sh has the rules). `windows` is a required
+  # check on main, so the workflow itself always runs: a job skipped by its `if:` reports success, while a workflow
+  # skipped by a path filter would leave the required check waiting forever.
+  changes-windows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      windows: ${{ steps.classify.outputs.windows }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 2 # the PR merge commit (or the pushed commit) and its parents
+          persist-credentials: false
+
+      - name: Classify the changed files
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: bash scripts/ci/changes-job.sh
+
   # The portable core and the `tristan` command on a real Windows machine. The Mac app (AppKit) is not built here:
   # Package.swift only declares it on macOS.
+  # Fail safe: runs unless the classification succeeded AND said `false` (a manual run always runs it). If
+  # `changes-windows` fails or its output is missing it runs anyway; `!cancelled()` (not `always()`) so a cancelled
+  # run does not start it.
   windows:
+    needs: changes-windows
+    if: ${{ !cancelled() && (needs.changes-windows.result != 'success' || needs.changes-windows.outputs.windows != 'false') }}
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -367,7 +397,9 @@ jobs:
 
   # Plan Task 0 (spike): facts about this runner that later tasks rely on. Diagnostic only, so every check may fail
   # without failing the run; read the log. Notes: docs/superpowers/specs/2026-11-06-windows-spike-notes.md
+  # Manual runs only (Actions > Windows > Run workflow): the facts are recorded, so pushes and PRs skip it.
   windows-spike:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
