@@ -54,7 +54,7 @@ if ($count -lt 0) {
   exit 1
 }
 if ($count -lt $Minimum) {
-  Write-Host "::error::$label ran $count tests, fewer than the expected minimum of $Minimum: did the filter or a test target change?"
+  Write-Host "::error::$label ran $count tests, fewer than the expected minimum of ${Minimum}: did the filter or a test target change?"
   exit 1
 }
 Write-Host "$label ran $count tests (minimum $Minimum)."

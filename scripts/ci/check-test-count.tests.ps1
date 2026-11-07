@@ -6,12 +6,16 @@ $dir = Join-Path ([IO.Path]::GetTempPath()) ("tristan-count-" + [guid]::NewGuid(
 New-Item -ItemType Directory -Path $dir | Out-Null
 $failures = 0
 
-function Check-Log($name, $minimum, $expectPass, [string[]]$lines) {
+# Each case names the exit it expects AND a phrase the checker must print, so a checker that fails for the wrong
+# reason (say, it does not parse) cannot pass the rejection cases.
+function Check-Log($name, $minimum, $expectPass, $expectText, [string[]]$lines) {
   $file = Join-Path $dir "$name.log"
   Set-Content -LiteralPath $file -Value $lines -Encoding utf8
-  & pwsh -NoProfile -File $checker -LogFile $file -Minimum $minimum | Out-Host
-  $passed = ($LASTEXITCODE -eq 0)
-  if ($passed -eq $expectPass) { Write-Host "PASS: $name" } else { Write-Host "FAIL: $name (exit $LASTEXITCODE)"; $script:failures++ }
+  $out = (& pwsh -NoProfile -File $checker -LogFile $file -Minimum $minimum 2>&1 | ForEach-Object { "$_" }) -join "`n"
+  $code = $LASTEXITCODE
+  Write-Host $out
+  $ok = (($code -eq 0) -eq $expectPass) -and $out.Contains($expectText)
+  if ($ok) { Write-Host "PASS: $name" } else { Write-Host "FAIL: $name (exit $code, expected text: $expectText)"; $script:failures++ }
 }
 
 # The shape windows-latest prints: one top-level suite per test executable, the empty one first or last.
@@ -46,12 +50,12 @@ $mac = @(
   "`t Executed 109 tests, with 0 failures (0 unexpected) in 7.6 (7.6) seconds"
 )
 
-Check-Log 'core-229-min-200' 200 $true $core
-Check-Log 'core-229-min-300' 300 $false $core
-Check-Log 'no-tests-matched' 100 $false $none
-Check-Log 'no-summary-at-all' 1 $false @('Build complete!', 'error: no tests found; create a target in the Tests directory')
-Check-Log 'mac-109-counted-once-min-100' 100 $true $mac
-Check-Log 'mac-109-counted-once-min-200' 200 $false $mac
+Check-Log 'core-229-min-200' 200 $true 'ran 229 tests (minimum 200)' $core
+Check-Log 'core-229-min-300' 300 $false 'ran 229 tests, fewer than the expected minimum of 300' $core
+Check-Log 'no-tests-matched' 100 $false 'ran 0 tests, fewer than the expected minimum of 100' $none
+Check-Log 'no-summary-at-all' 1 $false 'printed no XCTest summary line' @('Build complete!', 'error: no tests found; create a target in the Tests directory')
+Check-Log 'mac-109-counted-once-min-100' 100 $true 'ran 109 tests (minimum 100)' $mac
+Check-Log 'mac-109-counted-once-min-200' 200 $false 'ran 109 tests, fewer than the expected minimum of 200' $mac
 
 Remove-Item -Recurse -Force -LiteralPath $dir
 if ($failures) { Write-Host "::error::check-test-count.ps1 self-test: $failures case(s) wrong"; exit 1 }
