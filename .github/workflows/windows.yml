@@ -1,0 +1,147 @@
+name: Windows
+
+on:
+  push:
+    branches: [windows-cli, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The portable core and the `tristan` command on a real Windows machine. The Mac app (AppKit) is not built here:
+  # Package.swift only declares it on macOS.
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Swift
+        uses: compnerd/gha-setup-swift@9ff1ee4c44888c5817fc14d1b257ac8cabb4935f # v0.5.1
+        with:
+          swift-version: swift-6.4.2-release
+          swift-build: 6.4.2-RELEASE
+
+      - name: Toolchain
+        run: swift --version
+
+      - name: Resolve packages
+        run: |
+          swift package resolve
+          Get-Content Package.resolved
+
+      - name: Build TristanCore
+        run: swift build --target TristanCore
+
+      - name: Build tristan
+        run: swift build --product tristan
+
+      - name: Test TristanCore
+        run: swift test --filter TristanCoreTests
+
+      - name: Test TristanCLI
+        run: swift test --filter TristanCLITests
+
+  # Plan Task 0 (spike): facts about this runner that later tasks rely on. Diagnostic only, so every check may fail
+  # without failing the run; read the log. Notes: docs/superpowers/specs/2026-11-06-windows-spike-notes.md
+  windows-spike:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Swift
+        uses: compnerd/gha-setup-swift@9ff1ee4c44888c5817fc14d1b257ac8cabb4935f # v0.5.1
+        with:
+          swift-version: swift-6.4.2-release
+          swift-build: 6.4.2-RELEASE
+
+      - name: (a) Swift version
+        continue-on-error: true
+        run: swift --version
+
+      - name: (d) Tools on PATH
+        continue-on-error: true
+        run: |
+          foreach ($name in 'pwsh', 'powershell', 'node', 'git', 'npm', 'aws', 'az', 'claude', 'copilot') {
+            Write-Host "== where.exe $name"
+            where.exe $name 2>&1 | ForEach-Object { Write-Host "   $_" }
+          }
+          Write-Host "PATHEXT=$env:PATHEXT"
+          Write-Host "USERDOMAIN=$env:USERDOMAIN USERNAME=$env:USERNAME"
+          whoami /user
+
+      - name: Build the spike tools
+        continue-on-error: true
+        run: |
+          swift build --package-path scripts/ci/spike
+          $bin = swift build --package-path scripts/ci/spike --show-bin-path
+          Copy-Item "$bin\argdump.exe" scripts\ci\spike\fixtures\
+          "SPIKE_BIN=$bin" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: (b) Does URLSession stream chunks as they arrive?
+        continue-on-error: true
+        run: |
+          $server = Start-Process pwsh -ArgumentList '-NoProfile', '-File', 'scripts/ci/spike/stream-server.ps1' -PassThru
+          Start-Sleep -Seconds 3
+          & "$env:SPIKE_BIN\stream-client.exe" http://localhost:18080/
+          $status = $LASTEXITCODE
+          Stop-Process -Id $server.Id -Force
+          exit $status
+
+      - name: (c) Process with awkward arguments
+        continue-on-error: true
+        run: |
+          $launch = "$env:SPIKE_BIN\launch.exe"
+          $fixtures = (Resolve-Path scripts\ci\spike\fixtures).Path
+          Write-Host "== a real .exe"
+          & $launch --tricky "$fixtures\argdump.exe"
+          Write-Host "== a .cmd file (cmd.exe in the middle)"
+          & $launch --tricky "$fixtures\hello.cmd"
+          Write-Host "== an npm-style shim"
+          & $launch --tricky "$fixtures\shim.cmd"
+          Write-Host "== the node script behind it, started directly"
+          & $launch --tricky (Get-Command node).Source "$fixtures\node_modules\dump\cli.js"
+          Write-Host "== pwsh -File"
+          & $launch --tricky (Get-Command pwsh).Source -NoProfile -File "$fixtures\dump.ps1"
+          Write-Host "== powershell.exe -File"
+          & $launch --tricky (Get-Command powershell).Source -NoProfile -File "$fixtures\dump.ps1"
+          Write-Host "== run_command style: pwsh -Command <text> (non-ASCII output, exit status)"
+          & $launch (Get-Command pwsh).Source -NoLogo -NoProfile -NonInteractive -Command "Write-Output 'a & b' '100%' 'caf$([char]0xE9) $([char]0x65E5)$([char]0x672C)'; exit 3"
+          Write-Host "== same with powershell.exe"
+          & $launch (Get-Command powershell).Source -NoLogo -NoProfile -NonInteractive -Command "Write-Output 'a & b' '100%' 'caf$([char]0xE9) $([char]0x65E5)$([char]0x672C)'; exit 3"
+          Write-Host "== a bare name (Foundation.Process does not search PATH)"
+          & $launch az --version
+          & $launch aws --version
+          Write-Host "== resolved full paths"
+          foreach ($tool in 'az', 'aws') {
+            $found = (Get-Command $tool -ErrorAction SilentlyContinue).Source
+            if ($found) { & $launch $found --version } else { Write-Host "$tool not installed" }
+          }
+
+      - name: (e) icacls with USERDOMAIN\USERNAME, taskkill /T /F
+        continue-on-error: true
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "spike-acl-$(Get-Random)"
+          New-Item -ItemType Directory $dir | Out-Null
+          icacls $dir /inheritance:r /grant:r "${env:USERDOMAIN}\${env:USERNAME}:(OI)(CI)F"
+          Write-Host "icacls exit $LASTEXITCODE"
+          icacls $dir
+          Remove-Item $dir -Recurse -Force
+          Write-Host "== taskkill /T /F on a cmd -> ping tree"
+          $root = Start-Process cmd -ArgumentList '/c', 'ping -n 60 127.0.0.1 > nul' -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 2
+          $children = Get-CimInstance Win32_Process -Filter "ParentProcessId = $($root.Id)"
+          Write-Host "root $($root.Id) children: $($children.ProcessId -join ', ')"
+          taskkill /T /F /PID $root.Id
+          Start-Sleep -Seconds 1
+          foreach ($id in @($root.Id) + @($children.ProcessId)) {
+            if (Get-Process -Id $id -ErrorAction SilentlyContinue) { Write-Host "STILL RUNNING: $id" } else { Write-Host "gone: $id" }
+          }
