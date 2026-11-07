@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Install—T.R.I.S.T.A.N.</title>
-<meta name="description" content="Requirements, the download, building from source, and what to do when macOS complains.">
+<meta name="description" content="Requirements, the Mac and Windows downloads, building from source, and what to do when macOS complains.">
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/install.html">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="theme-color" content="#1A0A0D">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Install—T.R.I.S.T.A.N.">
-<meta property="og:description" content="Requirements, the download, building from source, and what to do when macOS complains.">
+<meta property="og:description" content="Requirements, the Mac and Windows downloads, building from source, and what to do when macOS complains.">
 <meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/install.html">
 <meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
 <link rel="stylesheet" href="assets/site.css">
@@ -52,7 +52,7 @@
       <li><b>To build from source:</b> the full Xcode, not just the command line tools, because SwiftUI’s macros need the full toolchain. <code>scripts/bundle.sh</code> finds <code>/Applications/Xcode.app</code> even if <code>xcode-select</code> points elsewhere.</li>
       <li><b>For the Claude provider:</b> the Claude Code CLI, installed and signed in.</li>
       <li><b>Nothing else</b> to try it: pick DEMO and type any task.</li>
-      <li><b>On Windows 10 or 11 (x64), the target:</b> there is no app, but there is a <code>tristan</code> terminal command. CI has so far run it only on Windows Server 2025, and it is not released yet. See <a href="#windows">Windows</a> below.</li>
+      <li><b>On Windows 10 or 11 (x64):</b> there is no app, but there is a <code>tristan</code> terminal command, released in 0.6.0 as a zip. CI has so far run it only on Windows Server 2025. See <a href="#windows">Windows</a> below.</li>
     </ul>
   </div>
 </section>
@@ -61,17 +61,17 @@
     <h2>From a release</h2>
 
     <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.5.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download</b> <code>Tristan-0.6.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Open the disk image</b> and drag T.R.I.S.T.A.N. into Applications. Or use Terminal, below.</li>
       <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and T.R.I.S.T.A.N. is not notarized yet (that needs a paid Apple account).</li>
       <li><b>Open T.R.I.S.T.A.N.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>. T.R.I.S.T.A.N. has no Dock icon.</li>
     </ol>
     <pre data-copy><span class="c"># 1. Optional: check the download</span>
-cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.5.0.dmg.sha256
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.6.0.dmg.sha256
 
 <span class="c"># 2. Install</span>
-hdiutil attach Tristan-0.5.0.dmg
-cp -R "/Volumes/Tristan 0.5.0/Tristan.app" /Applications/
+hdiutil attach Tristan-0.6.0.dmg
+cp -R "/Volumes/Tristan 0.6.0/Tristan.app" /Applications/
 
 <span class="c"># 3. Remove the quarantine flag</span>
 xattr -dr com.apple.quarantine /Applications/Tristan.app
@@ -103,9 +103,24 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
 <section class="soft">
   <div class="wrap">
     <h2 id="windows">Windows: the <code>tristan</code> command</h2>
-    <p>On Windows, T.R.I.S.T.A.N. is a terminal command, not a window. You run a mission on any of the five providers and answer each approval in Windows Terminal, PowerShell or cmd. It is built and tested on a Windows machine in CI, but <b>it has not been released yet</b> and no provider has run against a live account on Windows. The <a href="windows.html">Windows guide</a> covers installing from the zip or from source, setting up each provider with <code>tristan config</code> and <code>tristan secret</code>, approvals, kids mode, what is verified and what is not, and how it was built.</p>
-    <pre data-copy>tristan providers                         <span class="c"># which providers are ready</span>
+    <p>On Windows, T.R.I.S.T.A.N. is a terminal command, not a window. You run a mission on any of the five providers and answer each approval in Windows Terminal, PowerShell or cmd. It is released as <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">0.6.0</a>, as a zip and not an installer (MSIX and winget are on the roadmap). It is built and tested on Windows Server 2025 in CI, but it has not been run on a real Windows 10 or 11 desktop, and no provider has run against a live account on Windows. <code>tristan.exe</code> is not code-signed, so Windows SmartScreen may warn the first time you run it (not yet checked on a real desktop).</p>
+    <p><a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a></p>
+    <ol class="steps">
+      <li><b>Download</b> <code>Tristan-0.6.0-windows-x64.zip</code> and <code>Tristan-0.6.0-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Check it</b> with <code>Get-FileHash -Algorithm SHA256</code> against the hash in the <code>.sha256</code> file.</li>
+      <li><b>Extract it</b> to a folder and add that folder to your <code>PATH</code>. The zip holds <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs and the licence notices (23 files, about 80 MB unpacked).</li>
+      <li><b>Try it.</b> <code>tristan --version</code> prints 0.6.0, and <code>tristan providers</code> shows which providers are ready.</li>
+    </ol>
+    <pre data-copy><span class="c"># PowerShell</span>
+cd ~\Downloads
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.0-windows-x64.zip).Hash
+Get-Content Tristan-0.6.0-windows-x64.zip.sha256
+Expand-Archive Tristan-0.6.0-windows-x64.zip -DestinationPath $HOME\Tristan
+$env:Path += ";$HOME\Tristan"      <span class="c"># this window only; add the folder to PATH in Settings to keep it</span>
+tristan --version
+tristan providers
 tristan run --provider ollama "add a README"</pre>
+    <p>The <a href="windows.html">Windows guide</a> covers setting up each provider with <code>tristan config</code> and <code>tristan secret</code>, approvals, kids mode, building from source, what is verified and what is not, and how it was built.</p>
   </div>
 </section>
 <section>
