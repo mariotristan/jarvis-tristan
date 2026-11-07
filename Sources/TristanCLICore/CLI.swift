@@ -11,6 +11,7 @@ struct TristanCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tristan",
         abstract: "Run coding-agent missions from the terminal and approve their actions here.",
+        version: BuildVersion.value,
         subcommands: [RunCommand.self, ProvidersCommand.self, KidsCommand.self,
                       HistoryCommand.self, SessionsCommand.self, ConfigCommand.self, SecretCommand.self])
 }
