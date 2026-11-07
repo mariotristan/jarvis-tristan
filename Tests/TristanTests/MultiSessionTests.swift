@@ -62,7 +62,8 @@ final class MultiSessionTests: XCTestCase {
 
         // Answering one does not touch the other.
         second.resolve(true)
-        try await eventually(timeout: 25) { second.phase == .done }
+        // generous: CI stretches the demo's 18 ms sleeps about 3x
+        try await eventually(timeout: 60) { second.phase == .done }
         XCTAssertEqual(second.phase, .done)
         XCTAssertEqual(first.phase, .awaitingApproval, "the first is still waiting for its own answer")
         XCTAssertTrue(second.code.contains("export function login"))
@@ -89,7 +90,8 @@ final class MultiSessionTests: XCTestCase {
         XCTAssertEqual(first.status, "ABORTED")
         XCTAssertEqual(second.phase, .awaitingApproval, "the other session is untouched")
         second.resolve(true)
-        try await eventually(timeout: 25) { second.phase == .done }
+        // generous: CI stretches the demo's 18 ms sleeps about 3x
+        try await eventually(timeout: 60) { second.phase == .done }
         XCTAssertEqual(second.phase, .done)
     }
 
