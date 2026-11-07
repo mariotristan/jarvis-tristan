@@ -1,90 +1,89 @@
 import Foundation
+#if canImport(Darwin)
 import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
-/// Tiny POSIX helpers for newline-delimited JSON over a Unix domain socket.
+#if !os(Windows)
+/// The Unix domain socket half of the approval transport (`unix:<path>`); see ApprovalTransport.swift.
 package enum UnixSocket {
-    private static func address(_ path: String) -> sockaddr_un {
+    /// nil when the path does not fit `sun_path` (a truncated path would bind somewhere else).
+    private static func address(_ path: String) -> sockaddr_un? {
         var addr = sockaddr_un()
+        let bytes = Array(path.utf8)
+        guard !bytes.isEmpty, !bytes.contains(0), bytes.count < MemoryLayout.size(ofValue: addr.sun_path) else { return nil }
         addr.sun_family = sa_family_t(AF_UNIX)
-        withUnsafeMutablePointer(to: &addr.sun_path) { ptr in
-            ptr.withMemoryRebound(to: CChar.self, capacity: 104) { _ = strlcpy($0, path, 104) }
-        }
+        withUnsafeMutableBytes(of: &addr.sun_path) { $0.copyBytes(from: bytes) }
         return addr
     }
 
     static func listen(at path: String) -> Int32? {
-        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard var addr = address(path) else { return nil }
+        let fd = socket(AF_UNIX, posixStreamType, 0)
         guard fd >= 0 else { return nil }
-        var addr = address(path)
         let bound = withUnsafePointer(to: &addr) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
         }
-        guard bound == 0, Darwin.listen(fd, 8) == 0 else { close(fd); return nil }
+        guard bound == 0, posixListen(fd, 8) == 0 else { _ = posixClose(fd); return nil }
         return fd
     }
 
     static func connect(to path: String) -> Int32? {
-        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        guard var addr = address(path) else { return nil }
+        let fd = socket(AF_UNIX, posixStreamType, 0)
         guard fd >= 0 else { return nil }
-        var addr = address(path)
         let rc = withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { posixConnect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
         }
-        guard rc == 0 else { close(fd); return nil }
+        guard rc == 0 else { _ = posixClose(fd); return nil }
         return fd
     }
-
-    static func readLine(_ fd: Int32) -> String? {
-        var bytes: [UInt8] = []
-        var byte: UInt8 = 0
-        while true {
-            let n = read(fd, &byte, 1)
-            if n <= 0 { break }
-            if byte == 10 { break }
-            bytes.append(byte)
-        }
-        return bytes.isEmpty ? nil : String(decoding: bytes, as: UTF8.self)
-    }
-
-    static func writeLine(_ fd: Int32, _ text: String) {
-        let data = Array((text + "\n").utf8)
-        var offset = 0
-        while offset < data.count {
-            let n = data[offset...].withUnsafeBytes { write(fd, $0.baseAddress, $0.count) }
-            if n <= 0 { break }
-            offset += n
-        }
-    }
 }
+#endif
 
 /// Runs inside the app. Receives permission requests from the MCP shim and asks the operator.
 package final class PermissionServer: @unchecked Sendable {
     typealias Handler = @Sendable (_ tool: String, _ detail: String, _ rule: ApprovalRule?) async -> Bool
 
+    /// The per-run folder: the Unix socket and the MCP config live here. Only the current user can open it.
     let directory: URL
-    var socketPath: String { directory.appendingPathComponent("s").path }
-    private var fd: Int32 = -1
+    private let transport: ApprovalTransportKind
+    private let lock = NSLock()
+    private var listener: ApprovalListener?
     private let handler: Handler
     private let workingDirectory: URL
 
-    init(workingDirectory: URL, handler: @escaping Handler) {
+    init(workingDirectory: URL, transport: ApprovalTransportKind = .platformDefault, handler: @escaping Handler) {
         self.workingDirectory = workingDirectory
+        self.transport = transport
         let short = UUID().uuidString.prefix(8)
         directory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tristan-\(short)")
         self.handler = handler
     }
 
+    /// What the shim connects to, once started.
+    var endpoint: String? {
+        lock.lock(); defer { lock.unlock() }
+        return listener?.endpoint
+    }
+
+    /// The shim's secret for a loopback listener; nil for a Unix socket.
+    var token: String? {
+        lock.lock(); defer { lock.unlock() }
+        return listener?.token
+    }
+
     func start() -> Bool {
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
-                                                    attributes: [.posixPermissions: 0o700])
-        } catch { return false }
-        guard let listener = UnixSocket.listen(at: socketPath) else { return false }
-        fd = listener
+        guard Self.createPrivateDirectory(directory) else { return false }
+        guard let listener = ApprovalTransport.listen(directory: directory, kind: transport) else { return false }
+        lock.lock()
+        self.listener = listener
+        lock.unlock()
+        nonisolated(unsafe) let accepting = listener
         DispatchQueue.global().async { [weak self] in
-            while let self, self.fd >= 0 {
-                let client = accept(self.fd, nil, nil)
-                if client < 0 { break }
+            while let client = accepting.accept() {
+                guard let self else { client.close(); break }
                 self.serve(client)
             }
         }
@@ -92,16 +91,65 @@ package final class PermissionServer: @unchecked Sendable {
     }
 
     func stop() {
-        if fd >= 0 { close(fd); fd = -1 }
+        lock.lock()
+        let listener = self.listener
+        self.listener = nil
+        lock.unlock()
+        listener?.close()
         try? FileManager.default.removeItem(at: directory)
     }
 
-    private func serve(_ client: Int32) {
+    private static func createPrivateDirectory(_ directory: URL) -> Bool {
+        #if os(Windows)
+        // A fresh folder (never one that already exists), then only the current user may open it.
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        } catch { return false }
+        guard restrictToCurrentUser(directory) else {
+            try? FileManager.default.removeItem(at: directory)
+            return false
+        }
+        return true
+        #else
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
+                                                    attributes: [.posixPermissions: 0o700])
+        } catch { return false }
+        return true
+        #endif
+    }
+
+    #if os(Windows)
+    /// Removes inherited entries and leaves one: full control for the current user, inherited by what is created inside.
+    /// Only the folder path and the account name are on icacls's command line.
+    private static func restrictToCurrentUser(_ directory: URL) -> Bool {
+        let environment = ProcessInfo.processInfo.environment
+        guard let user = ProcessLauncher.value(of: "USERNAME", in: environment, windows: true), !user.isEmpty else { return false }
+        let domain = ProcessLauncher.value(of: "USERDOMAIN", in: environment, windows: true) ?? ""
+        let account = domain.isEmpty ? user : domain + "\\" + user
+        let systemRoot = ProcessLauncher.value(of: "SystemRoot", in: environment, windows: true) ?? "C:\\Windows"
+        let path = directory.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? directory.path
+        do {
+            let process = try ProcessLauncher.prepare(systemRoot + "\\System32\\icacls.exe",
+                                                      [path, "/inheritance:r", "/grant:r", account + ":(OI)(CI)F"],
+                                                      directory: nil, extraEnvironment: [:], addToolPaths: false)
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            process.standardInput = FileHandle.nullDevice
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch { return false }
+    }
+    #endif
+
+    private func serve(_ client: ApprovalConnection) {
+        nonisolated(unsafe) let client = client
         DispatchQueue.global().async { [handler, workingDirectory] in
-            guard let line = UnixSocket.readLine(client),
+            guard let line = client.readLine(),
                   let data = line.data(using: .utf8),
                   let request = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                close(client); return
+                client.close(); return
             }
             let tool = request["tool_name"] as? String ?? "tool"
             let input = request["input"] as? [String: Any] ?? [:]
@@ -113,9 +161,9 @@ package final class PermissionServer: @unchecked Sendable {
                     ? ["behavior": "allow", "updatedInput": input]
                     : ["behavior": "deny", "message": "Denied by the operator in Tristan."]
                 if let out = try? JSONSerialization.data(withJSONObject: response), let text = String(data: out, encoding: .utf8) {
-                    UnixSocket.writeLine(client, text)
+                    client.writeLine(text)
                 }
-                close(client)
+                client.close()
             }
         }
     }
@@ -131,10 +179,11 @@ package final class PermissionServer: @unchecked Sendable {
     }
 }
 
-/// `Tristan --mcp-permission <socket>`: a minimal MCP stdio server exposing one tool, `approve`,
+/// `Tristan --mcp-permission <endpoint>`: a minimal MCP stdio server exposing one tool, `approve`,
 /// which Claude Code calls (via --permission-prompt-tool) before each action that needs permission.
+/// For a loopback endpoint the token comes from `TRISTAN_APPROVAL_TOKEN` in the environment, never the command line.
 package enum PermissionShim {
-    package static func run(socketPath: String) -> Never {
+    package static func run(endpoint: String, token: String?) -> Never {
         while let line = readLine() {
             guard let data = line.data(using: .utf8),
                   let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
@@ -164,7 +213,7 @@ package enum PermissionShim {
                 ]]])
             case "tools/call":
                 let arguments = params["arguments"] as? [String: Any] ?? [:]
-                reply(["content": [["type": "text", "text": decide(arguments, socketPath: socketPath)]]])
+                reply(["content": [["type": "text", "text": decide(arguments, endpoint: endpoint, token: token)]]])
             case "ping":
                 reply([:])
             default:
@@ -174,14 +223,16 @@ package enum PermissionShim {
         exit(0)
     }
 
-    private static func decide(_ arguments: [String: Any], socketPath: String) -> String {
+    /// Sends one request to the host and returns its decision line; a deny when the host cannot be reached or
+    /// does not answer.
+    static func decide(_ arguments: [String: Any], endpoint: String, token: String?) -> String {
         let deny = #"{"behavior":"deny","message":"Tristan is not reachable."}"#
-        guard let fd = UnixSocket.connect(to: socketPath),
-              let data = try? JSONSerialization.data(withJSONObject: arguments),
-              let text = String(data: data, encoding: .utf8) else { return deny }
-        defer { close(fd) }
-        UnixSocket.writeLine(fd, text)
-        return UnixSocket.readLine(fd) ?? deny
+        guard let data = try? JSONSerialization.data(withJSONObject: arguments),
+              let text = String(data: data, encoding: .utf8),
+              let connection = ApprovalTransport.connect(endpoint: endpoint, token: token) else { return deny }
+        defer { connection.close() }
+        connection.writeLine(text)
+        return connection.readLine() ?? deny
     }
 
     private static func send(_ object: [String: Any]) {

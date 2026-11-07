@@ -1,0 +1,475 @@
+import XCTest
+@testable import TristanCore
+
+/// The approval channel between the Claude Code MCP shim and the host. The loopback (Windows default) transport is
+/// exercised directly here so it runs on the Mac too.
+final class ApprovalTransportTests: XCTestCase {
+    private var folders: [URL] = []
+
+    override func tearDown() {
+        for folder in folders { try? FileManager.default.removeItem(at: folder) }
+        folders = []
+        super.tearDown()
+    }
+
+    /// Short, so a Unix socket path fits in `sun_path`.
+    private func makeFolder() throws -> URL {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tt-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        folders.append(folder)
+        return folder
+    }
+
+    private func loopback(handshakeTimeout: TimeInterval = 5) throws -> LoopbackListener {
+        try XCTUnwrap(LoopbackListener(handshakeTimeout: handshakeTimeout))
+    }
+
+    /// Accepts one connection in the background, records its first line, answers `got:<line>` and closes.
+    private func serveOne(_ listener: ApprovalListener, received: @escaping @Sendable (String?) -> Void) -> XCTestExpectation {
+        let done = expectation(description: "served")
+        nonisolated(unsafe) let listener = listener
+        DispatchQueue.global().async {
+            if let connection = listener.accept() {
+                let line = connection.readLine()
+                received(line)
+                // A huge echo would block on a client that is not reading.
+                connection.writeLine("got:\(line.map { $0.count > 1000 ? "long" : $0 } ?? "nil")")
+                connection.close()
+            } else {
+                received(nil)
+            }
+            done.fulfill()
+        }
+        return done
+    }
+
+    private final class Box: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [String?] = []
+        func add(_ item: String?) { lock.lock(); items.append(item); lock.unlock() }
+        var all: [String?] { lock.lock(); defer { lock.unlock() }; return items }
+    }
+
+    private func port(of endpoint: String) -> UInt16? {
+        guard endpoint.hasPrefix("tcp:127.0.0.1:") else { return nil }
+        return UInt16(endpoint.dropFirst("tcp:127.0.0.1:".count))
+    }
+
+    // MARK: - Loopback
+
+    func testLoopbackRoundTrip() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let token = try XCTUnwrap(listener.token)
+        XCTAssertEqual(token.count, 64, "256-bit token as hex")
+        XCTAssertTrue(token.allSatisfy { $0.isHexDigit && ($0.isNumber || $0.isLowercase) })
+        XCTAssertTrue(listener.endpoint.hasPrefix("tcp:127.0.0.1:"))
+        XCTAssertEqual(port(of: listener.endpoint), listener.port)
+
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: token))
+        client.writeLine(#"{"tool_name":"Bash"}"#)
+        XCTAssertEqual(client.readLine(), #"got:{"tool_name":"Bash"}"#)
+        XCTAssertNil(client.readLine(), "the server closed the connection")
+        client.close()
+        wait(for: [served], timeout: 5)
+        XCTAssertEqual(box.all, [#"{"tool_name":"Bash"}"#])
+    }
+
+    func testTokensAreFreshPerListener() throws {
+        let a = try loopback(), b = try loopback()
+        defer { a.close(); b.close() }
+        XCTAssertNotEqual(a.token, b.token)
+        XCTAssertNotEqual(a.port, b.port)
+    }
+
+    func testWrongTokenIsDropped() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+
+        let token = try XCTUnwrap(listener.token)
+        let wrong = String(token.reversed())
+        let intruder = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: wrong))
+        intruder.writeLine(#"{"tool_name":"Bash","input":{"command":"rm -rf ~"}}"#)
+        XCTAssertNil(intruder.readLine(), "a client with the wrong token gets nothing back")
+        intruder.close()
+
+        let prefix = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: String(token.dropLast())))
+        prefix.writeLine("evil")
+        XCTAssertNil(prefix.readLine(), "a prefix of the token is not the token")
+        prefix.close()
+
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: token))
+        client.writeLine("good")
+        XCTAssertEqual(client.readLine(), "got:good", "the next valid client is still accepted")
+        client.close()
+        wait(for: [served], timeout: 5)
+        XCTAssertEqual(box.all, ["good"])
+    }
+
+    func testMissingTokenIsDropped() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+        let port = listener.port
+
+        // The request first, no token line.
+        let bare = try XCTUnwrap(LoopbackConnection.open(port: port, token: nil))
+        bare.writeLine(#"{"tool_name":"Bash","input":{"command":"ls"}}"#)
+        XCTAssertNil(bare.readLine())
+        bare.close()
+
+        // An empty first line.
+        let empty = try XCTUnwrap(LoopbackConnection.open(port: port, token: nil))
+        empty.writeLine("")
+        empty.writeLine(try XCTUnwrap(listener.token))
+        XCTAssertNil(empty.readLine())
+        empty.close()
+
+        // Connects and hangs up.
+        try XCTUnwrap(LoopbackConnection.open(port: port, token: nil)).close()
+
+        // A long first line with no newline is not buffered without limit.
+        let flood = try XCTUnwrap(LoopbackConnection.open(port: port, token: nil))
+        flood.writeRaw(Array(repeating: UInt8(ascii: "a"), count: 64 * 1024))
+        XCTAssertNil(flood.readLine())
+        flood.close()
+
+        // The connect side refuses to talk TCP without a token.
+        XCTAssertNil(ApprovalTransport.connect(endpoint: listener.endpoint, token: nil))
+        XCTAssertNil(ApprovalTransport.connect(endpoint: listener.endpoint, token: ""))
+
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token))
+        client.writeLine("ok")
+        XCTAssertEqual(client.readLine(), "got:ok")
+        client.close()
+        wait(for: [served], timeout: 10)
+        XCTAssertEqual(box.all, ["ok"])
+    }
+
+    func testListensOnLoopbackOnly() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let bound = try XCTUnwrap(listener.boundAddress())
+        XCTAssertEqual(bound.host, "127.0.0.1")
+        XCTAssertEqual(bound.port, listener.port)
+        XCTAssertNotEqual(bound.port, 0)
+        XCTAssertEqual(listener.endpoint, "tcp:127.0.0.1:\(listener.port)")
+    }
+
+    func testConnectOnlyAcceptsWellFormedEndpoints() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let port = listener.port
+        for endpoint in ["tcp:0.0.0.0:\(port)", "tcp:localhost:\(port)", "tcp:192.168.1.10:\(port)", "tcp:127.0.0.1:",
+                         "tcp:127.0.0.1:0", "tcp:127.0.0.1:70000", "tcp:127.0.0.1:+\(port)", "tcp:127.0.0.1: \(port)",
+                         "tcp:127.0.0.1:\(port)x", "udp:127.0.0.1:\(port)", "unix:", "", "relative/path"] {
+            XCTAssertNil(ApprovalTransport.connect(endpoint: endpoint, token: listener.token), endpoint)
+        }
+        XCTAssertEqual(ApprovalEndpoint.parse("tcp:127.0.0.1:\(port)"), .loopback(port: port))
+        XCTAssertEqual(ApprovalEndpoint.parse("unix:/tmp/x/s"), .unix("/tmp/x/s"))
+    }
+
+    func testOversizedLineIsRejected() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token) as? LineConnection)
+        DispatchQueue.global().async {
+            client.writeRaw(Array(repeating: UInt8(ascii: "a"), count: ApprovalTransport.maxLineLength + 1) + [10])
+        }
+        wait(for: [served], timeout: 20)
+        XCTAssertEqual(box.all, [nil], "the server gives up on a line over the cap")
+        client.close()
+    }
+
+    func testLineAtTheCapIsAccepted() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0.map { "\($0.count)" }) }
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token))
+        DispatchQueue.global().async {
+            client.writeLine(String(repeating: "a", count: ApprovalTransport.maxLineLength))
+        }
+        wait(for: [served], timeout: 20)
+        XCTAssertEqual(box.all, ["\(ApprovalTransport.maxLineLength)"])
+        client.close()
+    }
+
+    func testSilentClientDoesNotBlockAccept() throws {
+        let listener = try loopback(handshakeTimeout: 0.5)
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+
+        let silent = try XCTUnwrap(LoopbackConnection.open(port: listener.port, token: nil))
+        defer { silent.close() }
+        // A slow client that dribbles bytes is held to the same overall deadline.
+        let slow = try XCTUnwrap(LoopbackConnection.open(port: listener.port, token: nil))
+        defer { slow.close() }
+        DispatchQueue.global().async {
+            for _ in 0..<40 { slow.writeRaw([UInt8(ascii: "0")]); Thread.sleep(forTimeInterval: 0.1) }
+        }
+
+        let start = Date()
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token))
+        client.writeLine("hello")
+        XCTAssertEqual(client.readLine(), "got:hello")
+        XCTAssertLessThan(Date().timeIntervalSince(start), 3)
+        client.close()
+        wait(for: [served], timeout: 5)
+        XCTAssertEqual(box.all, ["hello"])
+    }
+
+    func testCloseWakesAPendingAccept() throws {
+        let listener = try loopback()
+        let returned = expectation(description: "accept returned")
+        let pending = listener
+        DispatchQueue.global().async {
+            XCTAssertNil(pending.accept())
+            returned.fulfill()
+        }
+        Thread.sleep(forTimeInterval: 0.2)
+        listener.close()
+        wait(for: [returned], timeout: 5)
+    }
+
+    // MARK: - Unix
+
+    func testUnixTransportStillRoundTrips() throws {
+        let folder = try makeFolder()
+        let listener = try XCTUnwrap(ApprovalTransport.listen(directory: folder, kind: .unix))
+        defer { listener.close() }
+        XCTAssertNil(listener.token)
+        XCTAssertEqual(listener.endpoint, "unix:" + folder.appendingPathComponent("s").path)
+
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: nil))
+        client.writeLine("ping")
+        XCTAssertEqual(client.readLine(), "got:ping")
+        client.close()
+        wait(for: [served], timeout: 5)
+        XCTAssertEqual(box.all, ["ping"])
+    }
+
+    func testPlatformDefaultTransport() throws {
+        #if os(Windows)
+        XCTAssertEqual(ApprovalTransportKind.platformDefault, .loopback)
+        #else
+        XCTAssertEqual(ApprovalTransportKind.platformDefault, .unix)
+        let folder = try makeFolder()
+        let listener = try XCTUnwrap(ApprovalTransport.listen(directory: folder))
+        defer { listener.close() }
+        XCTAssertTrue(listener.endpoint.hasPrefix("unix:"))
+        XCTAssertNil(listener.token)
+        #endif
+    }
+
+    // MARK: - Permission server and shim
+
+    private final class Calls: @unchecked Sendable {
+        private let lock = NSLock()
+        private var items: [(String, String)] = []
+        func add(_ tool: String, _ detail: String) { lock.lock(); items.append((tool, detail)); lock.unlock() }
+        var all: [(String, String)] { lock.lock(); defer { lock.unlock() }; return items }
+    }
+
+    private func decision(_ text: String) -> [String: Any]? {
+        (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
+    }
+
+    private func checkServer(kind: ApprovalTransportKind) throws {
+        let calls = Calls()
+        let server = PermissionServer(workingDirectory: try makeFolder(), transport: kind) { tool, detail, _ in
+            calls.add(tool, detail)
+            return tool == "Bash"
+        }
+        XCTAssertTrue(server.start())
+        defer { server.stop() }
+        let endpoint = try XCTUnwrap(server.endpoint)
+
+        let allowed = PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls -la"]], endpoint: endpoint, token: server.token)
+        let allow = try XCTUnwrap(decision(allowed))
+        XCTAssertEqual(allow["behavior"] as? String, "allow")
+        XCTAssertEqual((allow["updatedInput"] as? [String: Any])?["command"] as? String, "ls -la")
+
+        let denied = PermissionShim.decide(["tool_name": "Write", "input": ["file_path": "/tmp/x"]], endpoint: endpoint, token: server.token)
+        let deny = try XCTUnwrap(decision(denied))
+        XCTAssertEqual(deny["behavior"] as? String, "deny")
+        XCTAssertEqual(deny["message"] as? String, "Denied by the operator in Tristan.")
+
+        XCTAssertEqual(calls.all.map(\.0), ["Bash", "Write"])
+        XCTAssertEqual(calls.all.map(\.1), ["ls -la", "/tmp/x"])
+    }
+
+    func testPermissionServerOverLoopback() throws {
+        try checkServer(kind: .loopback)
+    }
+
+    func testPermissionServerOverUnix() throws {
+        try checkServer(kind: .unix)
+    }
+
+    func testShimWithWrongTokenIsDeniedAndNeverReachesTheOperator() throws {
+        let calls = Calls()
+        let server = PermissionServer(workingDirectory: try makeFolder(), transport: .loopback) { tool, detail, _ in
+            calls.add(tool, detail)
+            return true
+        }
+        XCTAssertTrue(server.start())
+        defer { server.stop() }
+        let endpoint = try XCTUnwrap(server.endpoint)
+        let unreachable = #"{"behavior":"deny","message":"Tristan is not reachable."}"#
+        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls"]], endpoint: endpoint, token: "00"), unreachable)
+        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls"]], endpoint: endpoint, token: nil), unreachable)
+        XCTAssertTrue(calls.all.isEmpty)
+    }
+
+    func testStoppedServerIsUnreachable() throws {
+        let server = PermissionServer(workingDirectory: try makeFolder(), transport: .loopback) { _, _, _ in true }
+        XCTAssertTrue(server.start())
+        let endpoint = try XCTUnwrap(server.endpoint)
+        let token = server.token
+        server.stop()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: server.directory.path))
+        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": [:]], endpoint: endpoint, token: token),
+                       #"{"behavior":"deny","message":"Tristan is not reachable."}"#)
+    }
+
+    // MARK: - MCP config
+
+    private func readConfig(_ url: URL) throws -> [String: Any] {
+        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        let servers = try XCTUnwrap(object?["mcpServers"] as? [String: Any])
+        return try XCTUnwrap(servers["tristan"] as? [String: Any])
+    }
+
+    func testMCPConfigCarriesTheTokenInEnvNeverInArgs() throws {
+        let folder = try makeFolder()
+        let listener = try loopback()
+        defer { listener.close() }
+        let token = try XCTUnwrap(listener.token)
+        let url = try XCTUnwrap(ClaudeCodeProvider.writeMCPConfig(executable: "/Applications/Tristan.app/Contents/MacOS/Tristan",
+                                                                  endpoint: listener.endpoint, token: token, in: folder))
+        XCTAssertEqual(url.deletingLastPathComponent().standardizedFileURL.path, folder.standardizedFileURL.path)
+        let server = try readConfig(url)
+        XCTAssertEqual(server["command"] as? String, "/Applications/Tristan.app/Contents/MacOS/Tristan")
+        let args = try XCTUnwrap(server["args"] as? [String])
+        XCTAssertEqual(args, ["--mcp-permission", listener.endpoint])
+        XCTAssertTrue(args[1].hasPrefix("tcp:127.0.0.1:"))
+        XCTAssertFalse(args.contains { $0.contains(token) })
+        XCTAssertEqual(server["env"] as? [String: String], ["TRISTAN_APPROVAL_TOKEN": token])
+    }
+
+    func testMCPConfigOnTheMacDefaultHasNoEnvBlock() throws {
+        let folder = try makeFolder()
+        let listener = try XCTUnwrap(ApprovalTransport.listen(directory: folder))
+        defer { listener.close() }
+        let url = try XCTUnwrap(ClaudeCodeProvider.writeMCPConfig(executable: "/x/Tristan", endpoint: listener.endpoint,
+                                                                  token: listener.token, in: folder))
+        let server = try readConfig(url)
+        XCTAssertEqual(server["args"] as? [String], ["--mcp-permission", "unix:" + folder.appendingPathComponent("s").path])
+        XCTAssertNil(server["env"])
+        XCTAssertEqual(server.keys.sorted(), ["args", "command"])
+    }
+
+    func testShimExecutableIsAbsolute() {
+        let isFile: (String) -> Bool = { $0 == "/usr/local/bin/tristan" }
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("/opt/t/tristan", currentDirectory: "/w", path: "", windows: false, isFile: isFile),
+                       "/opt/t/tristan")
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("bin/tristan", currentDirectory: "/w", path: "", windows: false, isFile: isFile),
+                       "/w/bin/tristan")
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("./tristan", currentDirectory: "/w/", path: "", windows: false, isFile: isFile),
+                       "/w/tristan")
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("tristan", currentDirectory: "/w", path: "/usr/bin:/usr/local/bin", windows: false, isFile: isFile),
+                       "/usr/local/bin/tristan")
+        XCTAssertNil(ClaudeCodeProvider.absoluteExecutable("tristan", currentDirectory: "/w", path: "/usr/bin", windows: false, isFile: isFile))
+        XCTAssertNil(ClaudeCodeProvider.absoluteExecutable("", currentDirectory: "/w", path: "/usr/bin", windows: false, isFile: isFile))
+
+        let winFile: (String) -> Bool = { $0 == "C:\\Tools\\tristan.exe" }
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("C:\\Tools\\tristan.exe", currentDirectory: "C:\\w", path: "", windows: true, isFile: winFile),
+                       "C:\\Tools\\tristan.exe")
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("tristan", currentDirectory: "C:\\w", path: "C:\\Windows;C:\\Tools", windows: true, isFile: winFile),
+                       "C:\\Tools\\tristan.exe")
+        XCTAssertEqual(ClaudeCodeProvider.absoluteExecutable("bin\\tristan.exe", currentDirectory: "C:\\w", path: "", windows: true, isFile: winFile),
+                       "C:\\w\\bin\\tristan.exe")
+    }
+
+    // MARK: - Provider end to end, with a fake `claude` playing the MCP shim's part
+
+    /// A zsh stand-in for `claude`: reads the MCP config it was given, connects to the endpoint the way the shim does
+    /// (token line first for TCP), sends one Bash request and reports the decision as a stream-json result.
+    private func fakeClaude(in folder: URL) throws -> URL {
+        let script = folder.appendingPathComponent("fake-claude")
+        let text = #"""
+        #!/bin/zsh
+        cfg=""
+        for ((i = 1; i <= $#; i++)); do [[ ${@[i]} == --mcp-config ]] && cfg=${@[i+1]}; done
+        [[ -n $cfg ]] || { print -r -- '{"type":"result","result":"no config","is_error":true}'; exit 2 }
+        endpoint=$(/usr/bin/plutil -extract mcpServers.tristan.args.1 raw -o - "$cfg")
+        token=$(/usr/bin/plutil -extract mcpServers.tristan.env.TRISTAN_APPROVAL_TOKEN raw -o - "$cfg" 2>/dev/null)
+        if [[ $endpoint == tcp:127.0.0.1:* ]]; then
+          zmodload zsh/net/tcp
+          ztcp 127.0.0.1 ${endpoint##*:} || exit 3
+          fd=$REPLY
+          print -r -u $fd -- "$token"
+        else
+          zmodload zsh/net/socket
+          zsocket ${endpoint#unix:} || exit 3
+          fd=$REPLY
+          token=none
+        fi
+        print -r -u $fd -- '{"tool_name":"Bash","input":{"command":"ls"},"tool_use_id":"t1"}'
+        IFS= read -r -u $fd reply
+        exec {fd}>&-
+        if [[ $reply == *'"behavior":"allow"'* ]]; then r=allowed; else r=denied; fi
+        print -r -- "{\"type\":\"result\",\"result\":\"$r token=${#token}\",\"is_error\":false}"
+        """#
+        try text.write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+        return script
+    }
+
+    private func runProvider(kind: ApprovalTransportKind, allow: Bool) async throws -> (String?, [String]) {
+        let folder = try makeFolder()
+        var provider = ClaudeCodeProvider(mode: .ask)
+        provider.transport = kind
+        provider.claudeTool = try fakeClaude(in: folder).path
+        let calls = Calls()
+        var result: String?
+        for await event in provider.run(task: "list files", workingDirectory: folder, approve: { request in
+            calls.add(request.summary, request.detail)
+            return allow
+        }) {
+            switch event {
+            case .done(let text): result = text
+            case .failed(let text): result = "FAILED " + text
+            default: break
+            }
+        }
+        return (result, calls.all.map { "\($0.0) [\($0.1)]" })
+    }
+
+    func testProviderApprovalFlowOverLoopback() async throws {
+        let (allowed, calls) = try await runProvider(kind: .loopback, allow: true)
+        XCTAssertEqual(allowed, "allowed token=64")
+        XCTAssertEqual(calls, ["Allow Bash? [ls]"])
+        let (denied, _) = try await runProvider(kind: .loopback, allow: false)
+        XCTAssertEqual(denied, "denied token=64")
+    }
+
+    func testProviderApprovalFlowOverUnix() async throws {
+        let (allowed, calls) = try await runProvider(kind: .unix, allow: true)
+        XCTAssertEqual(allowed, "allowed token=4")
+        XCTAssertEqual(calls, ["Allow Bash? [ls]"])
+        let (denied, _) = try await runProvider(kind: .unix, allow: false)
+        XCTAssertEqual(denied, "denied token=4")
+    }
+}
