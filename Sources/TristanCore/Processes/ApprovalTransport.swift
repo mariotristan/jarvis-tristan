@@ -236,8 +236,8 @@ final class LineConnection: ApprovalConnection, @unchecked Sendable {
 /// line is the client token, after answering them with the server token.
 ///
 /// A background thread accepts clients and checks each one's token on a thread of its own, at most
-/// `maxPendingHandshakes` at a time; when all slots are taken the oldest unfinished handshake is cut off, and its
-/// thread notices within `LineConnection.waitSlice`. A silent client therefore costs one slot for at most
+/// `maxPendingHandshakes` at a time; when all slots are taken the oldest unfinished handshake is cut off once it has
+/// been pending `minimumEvictionAge` (never sooner), and its thread notices within `LineConnection.waitSlice`. A silent client therefore costs one slot for at most
 /// `handshakeTimeout`, never the whole line. A real shim sends its token at once, so as soon as it is accepted its
 /// handshake completes, even while many silent clients keep connecting (they only delay accepting it by the time
 /// evicted threads need to stop).
@@ -258,11 +258,14 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     /// Handshake threads alive at once, evicted ones included until they notice (within one wait slice). Reaching it
     /// only slows accepting during a burst; no accepted client is dropped for it.
     static let maxHandshakeThreads = 32
+    /// A handshake is only cut off to make room once it has been pending this long. A real shim sends its token as
+    /// soon as it connects, so its handshake finishes well within this; a flood of silent clients cannot evict it.
+    static let minimumEvictionAge: TimeInterval = 0.05
     private let condition = NSCondition()
     // Guarded by `condition`.
     private var closed = false
     private var ready: [LineConnection] = []
-    private var pending: [(id: Int, socket: Socket)] = []
+    private var pending: [(id: Int, socket: Socket, since: Date)] = []
     private var nextID = 0
     private var handshakeThreads = 0
 
@@ -319,24 +322,31 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
                 client.shutdownAndClose()
                 break
             }
-            // Every accepted client gets its turn: at the thread cap, cut off the oldest unfinished handshake and wait
-            // for a thread to finish (an evicted one stops within one wait slice) rather than dropping this client.
-            while handshakeThreads >= Self.maxHandshakeThreads, !closed {
-                if !pending.isEmpty { pending.removeFirst().socket.shutdownBoth() }
-                _ = condition.wait(until: Date().addingTimeInterval(LineConnection.waitSlice))
+            // Every accepted client gets its turn. When all handshake slots or threads are taken, cut off the oldest
+            // unfinished handshake, but only one pending longer than `minimumEvictionAge` (a real shim has sent its
+            // token by then); otherwise wait until it is that old or a handshake finishes. At the thread cap, also
+            // wait for a thread to finish (an evicted one stops within one wait slice) rather than drop this client.
+            while !closed, handshakeThreads >= Self.maxHandshakeThreads || pending.count >= Self.maxPendingHandshakes {
+                let now = Date()
+                if let oldest = pending.first, now.timeIntervalSince(oldest.since) >= Self.minimumEvictionAge {
+                    // Wakes that handshake's read; its own thread closes the socket.
+                    pending.removeFirst().socket.shutdownBoth()
+                    if handshakeThreads < Self.maxHandshakeThreads { continue }
+                    _ = condition.wait(until: now.addingTimeInterval(LineConnection.waitSlice))
+                    continue
+                }
+                let slice = now.addingTimeInterval(LineConnection.waitSlice)
+                let ripe = pending.first.map { $0.since.addingTimeInterval(Self.minimumEvictionAge) } ?? slice
+                _ = condition.wait(until: min(ripe, slice))
             }
             if closed {
                 condition.unlock()
                 client.shutdownAndClose()
                 break
             }
-            if pending.count >= Self.maxPendingHandshakes {
-                // Wakes that handshake's read; its own thread closes the socket.
-                pending.removeFirst().socket.shutdownBoth()
-            }
             let id = nextID
             nextID += 1
-            pending.append((id, client))
+            pending.append((id, client, Date()))
             handshakeThreads += 1
             condition.unlock()
             // A thread of its own, not a shared queue: a blocked read must never hold up another client's handshake

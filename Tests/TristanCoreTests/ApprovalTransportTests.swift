@@ -304,6 +304,49 @@ final class ApprovalTransportTests: XCTestCase {
         XCTAssertEqual(box.all, ["through"])
     }
 
+    /// A stream of rapid silent clients cannot evict a real shim that connects in the middle of it: only handshakes
+    /// pending longer than `minimumEvictionAge` are cut off, and a real shim sends its token at once.
+    func testRapidSilentClientsCannotEvictARealShim() throws {
+        final class Opened: @unchecked Sendable {
+            private let lock = NSLock()
+            private var all: [LineConnection] = []
+            func add(_ connection: LineConnection) { lock.lock(); all.append(connection); lock.unlock() }
+            func closeAll() { lock.lock(); let list = all; all = []; lock.unlock(); list.forEach { $0.close() } }
+            var count: Int { lock.lock(); defer { lock.unlock() }; return all.count }
+        }
+        XCTAssertGreaterThanOrEqual(LoopbackListener.minimumEvictionAge, 0.03)
+        XCTAssertLessThanOrEqual(LoopbackListener.minimumEvictionAge, 0.2)
+        for round in 0..<5 {
+            let listener = try loopback()
+            defer { listener.close() }
+            let box = Box()
+            let served = serveOne(listener) { box.add($0) }
+            let opened = Opened()
+            let flood = DispatchGroup()
+            let port = listener.port
+            DispatchQueue.global().async(group: flood) {
+                for _ in 0..<100 {
+                    guard let connection = LoopbackConnection.open(port: port) else { continue }
+                    connection.socket.setReceiveTimeout(5)
+                    opened.add(connection)
+                }
+            }
+            while opened.count < 30 { Thread.sleep(forTimeInterval: 0.001) }   // the shim connects mid-burst
+
+            let start = Date()
+            let client = connect(listener, token: listener.token)
+            XCTAssertNotNil(client, "round \(round): the real shim was cut off")
+            XCTAssertLessThan(Date().timeIntervalSince(start), 2, "round \(round)")
+            client?.writeLine("through")
+            XCTAssertEqual(client?.readLine(), "got:through", "round \(round)")
+            client?.close()
+            if client == nil { listener.close() }
+            wait(for: [served], timeout: 5)
+            flood.wait()
+            opened.closeAll()
+        }
+    }
+
     /// Handshakes run side by side, so many silent clients (default 5 s handshake timeout) cost a slot each, not the line.
     func testManySilentClientsDoNotStallAValidOne() throws {
         let listener = try loopback()
@@ -540,6 +583,24 @@ final class ApprovalTransportTests: XCTestCase {
                        ["TRISTAN_APPROVAL_TOKEN": token, "TRISTAN_APPROVAL_SERVER_TOKEN": serverToken])
         XCTAssertEqual(ApprovalTransport.tokenEnvironmentKey, "TRISTAN_APPROVAL_TOKEN")
         XCTAssertEqual(ApprovalTransport.serverTokenEnvironmentKey, "TRISTAN_APPROVAL_SERVER_TOKEN")
+    }
+
+    /// mcp.json is created new (CREATE_NEW / O_EXCL): a file already there, for example one planted by another user
+    /// in a shared temporary folder, is never written through or replaced.
+    func testMCPConfigIsNeverWrittenOverAnExistingFile() throws {
+        let folder = try makeFolder()
+        let planted = Data(#"{"mcpServers":{"tristan":{"command":"/tmp/evil","args":[]}}}"#.utf8)
+        let target = folder.appendingPathComponent("mcp.json")
+        try planted.write(to: target)
+        XCTAssertNil(ClaudeCodeProvider.writeMCPConfig(executable: "/x/Tristan", endpoint: "tcp:127.0.0.1:1", token: "t",
+                                                       serverToken: "s", in: folder))
+        XCTAssertEqual(try Data(contentsOf: target), planted)
+        // A fresh folder works, once.
+        let fresh = try makeFolder()
+        XCTAssertNotNil(ClaudeCodeProvider.writeMCPConfig(executable: "/x/Tristan", endpoint: "tcp:127.0.0.1:1", token: "t",
+                                                          serverToken: "s", in: fresh))
+        XCTAssertNil(ClaudeCodeProvider.writeMCPConfig(executable: "/x/Tristan", endpoint: "tcp:127.0.0.1:2", token: "t",
+                                                       serverToken: "s", in: fresh))
     }
 
     #if !os(Windows)   // the platform default is loopback on Windows, covered by the env-block test above

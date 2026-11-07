@@ -110,15 +110,8 @@ package final class PermissionServer: @unchecked Sendable {
 
     private static func createPrivateDirectory(_ directory: URL) -> Bool {
         #if os(Windows)
-        // A fresh folder (never one that already exists), then only the current user may open it.
-        do {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
-        } catch { return false }
-        guard restrictToCurrentUser(directory) else {
-            try? FileManager.default.removeItem(at: directory)
-            return false
-        }
-        return true
+        // A fresh folder (never one that already exists) that only the current user may open from its first moment.
+        return createLockedDirectory(directory)
         #else
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
@@ -129,14 +122,16 @@ package final class PermissionServer: @unchecked Sendable {
     }
 
     #if os(Windows)
-    /// Replaces the folder's access list with exactly one entry: full control for the current user, inherited by what
-    /// is created inside, with inheritance from the parent blocked (a protected DACL).
+    /// Creates `directory` (failing if it exists) with exactly one access entry: full control for the current user,
+    /// inherited by what is created inside, with inheritance from the parent blocked (a protected DACL). The security
+    /// descriptor is passed to CreateDirectoryW itself, so the folder never exists with the default, inherited list
+    /// (no create-then-restrict window in a shared temporary folder).
     ///
     /// The user is the SID of this process's token, not `%USERDOMAIN%\%USERNAME%`: those variables can name another
-    /// account (on GitHub's Windows runners USERNAME is SYSTEM while the process runs as runneradmin). The list is set
+    /// account (on GitHub's Windows runners USERNAME is SYSTEM while the process runs as runneradmin). The list is built
     /// through the Win32 API rather than icacls, because `icacls /inheritance:r /grant:r` left explicit full-control
     /// entries for SYSTEM and Administrators on the runner.
-    private static func restrictToCurrentUser(_ directory: URL) -> Bool {
+    static func createLockedDirectory(_ directory: URL) -> Bool {
         let path = directory.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? directory.path
         return withCurrentUserSID { sid -> Bool? in
             var access = EXPLICIT_ACCESS_W()
@@ -149,12 +144,20 @@ package final class PermissionServer: @unchecked Sendable {
             var acl: PACL? = nil
             guard SetEntriesInAclW(1, &access, nil, &acl) == 0, let acl else { return false }
             defer { _ = LocalFree(UnsafeMutableRawPointer(acl)) }
-            // DACL_SECURITY_INFORMATION (0x4) | PROTECTED_DACL_SECURITY_INFORMATION (0x80000000)
-            let result = path.withCString(encodedAs: UTF16.self) { name in
-                SetNamedSecurityInfoW(UnsafeMutablePointer(mutating: name), SE_FILE_OBJECT, DWORD(0x8000_0004),
-                                      nil, nil, acl, nil)
+            var descriptor = SECURITY_DESCRIPTOR()
+            return withUnsafeMutablePointer(to: &descriptor) { pointer -> Bool in
+                let raw = UnsafeMutableRawPointer(pointer)
+                // SECURITY_DESCRIPTOR_REVISION (1); SE_DACL_PROTECTED (0x1000) blocks inheritance from the parent.
+                guard InitializeSecurityDescriptor(raw, DWORD(1)),
+                      SetSecurityDescriptorDacl(raw, true, acl, false),
+                      SetSecurityDescriptorControl(raw, SECURITY_DESCRIPTOR_CONTROL(0x1000),
+                                                   SECURITY_DESCRIPTOR_CONTROL(0x1000)) else { return false }
+                var attributes = SECURITY_ATTRIBUTES()
+                attributes.nLength = DWORD(MemoryLayout<SECURITY_ATTRIBUTES>.size)
+                attributes.lpSecurityDescriptor = raw
+                attributes.bInheritHandle = false
+                return path.withCString(encodedAs: UTF16.self) { CreateDirectoryW($0, &attributes) }
             }
-            return result == 0
         } ?? false
     }
 

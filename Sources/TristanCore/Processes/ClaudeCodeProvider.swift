@@ -99,7 +99,7 @@ package struct ClaudeCodeProvider: AgentProvider {
         return "Could not launch claude: \(error.localizedDescription)"
     }
 
-    /// Writes `<directory>/mcp.json`, which makes Claude Code start `executable --mcp-permission <endpoint>` as an MCP
+    /// Writes a new `<directory>/mcp.json` (nil if one already exists), which makes Claude Code start `executable --mcp-permission <endpoint>` as an MCP
     /// server. Tokens go in the server's `env` block (the shim reads them from its environment), never in `args`.
     static func writeMCPConfig(executable: String, endpoint: String, token: String?, serverToken: String?,
                                in directory: URL) -> URL? {
@@ -113,8 +113,9 @@ package struct ClaudeCodeProvider: AgentProvider {
         if !environment.isEmpty { server["env"] = environment }
         let config: [String: Any] = ["mcpServers": ["tristan": server]]
         let url = directory.appendingPathComponent("mcp.json")
+        // Created new (O_EXCL / CREATE_NEW): a file or link already there is never written through or replaced.
         guard let json = try? JSONSerialization.data(withJSONObject: config),
-              (try? json.write(to: url)) != nil else { return nil }
+              (try? json.write(to: url, options: .withoutOverwriting)) != nil else { return nil }
         return url
     }
 

@@ -93,6 +93,23 @@ final class WindowsPlatformTests: XCTestCase {
         XCTAssertTrue(piped.text.contains("a & b") && piped.text.contains("100%"), piped.text)
     }
 
+    /// A process that left the tree still holds the output pipe after the timeout's tree kill: `cmd /c start /b` starts
+    /// ping with PowerShell's own output handles (Start-Process -NoNewWindow), then cmd exits, so ping's parent is gone
+    /// and `taskkill /T` cannot find it. run_command still returns soon after the kill and says the output was cut.
+    func testRunCommandReturnsWhenAnEscapedChildHoldsThePipe() async {
+        let sandbox = ToolSandbox(root: folder)
+        let start = Date()
+        let result = await sandbox.run("Write-Output before; Start-Process -NoNewWindow -FilePath cmd.exe -ArgumentList "
+                                       + "'/c','start','/b','ping','-n','25','127.0.0.1'; Start-Sleep 30", timeout: 2)
+        let seconds = Date().timeIntervalSince(start)
+        print("run_command with an escaped child: \(seconds) s, \(result.text.debugDescription)")
+        XCTAssertLessThan(seconds, 12, result.text)
+        XCTAssertTrue(result.text.hasPrefix("before"), result.text)
+        XCTAssertTrue(result.text.contains("\n[output truncated: a process the command started did not exit]\n[exit status "),
+                      result.text)
+        XCTAssertTrue(result.isError)
+    }
+
     /// Ruling (Task 7): non-ASCII output may come back in the OEM code page. Recorded, not asserted, until decided.
     func testRunCommandNonASCIIOutput() async {
         let sandbox = ToolSandbox(root: folder)
@@ -113,7 +130,40 @@ final class WindowsPlatformTests: XCTestCase {
         let server = PermissionServer(workingDirectory: folder, transport: .loopback) { _, _, _ in false }
         XCTAssertTrue(server.start())
         defer { server.stop() }
-        let path = native(server.directory)
+        try assertOnlyTheCurrentUser(native(server.directory))
+    }
+
+    /// The folder is created with its access list in one step (CreateDirectoryW with a security descriptor), so there
+    /// is no moment at which it carries the default, inherited list: inspected right after creation, it already has
+    /// exactly one entry and nothing inherited. A folder that already exists is never reused.
+    func testApprovalFolderIsCreatedLockedDown() throws {
+        let directory = folder.appendingPathComponent("locked-\(UUID().uuidString.prefix(8))", isDirectory: true)
+        XCTAssertTrue(PermissionServer.createLockedDirectory(directory))
+        try assertOnlyTheCurrentUser(native(directory))
+        XCTAssertFalse(PermissionServer.createLockedDirectory(directory), "an existing folder must not be reused")
+        // A file created inside inherits only that one entry.
+        let file = directory.appendingPathComponent("mcp.json")
+        XCTAssertTrue(FileManager.default.createFile(atPath: file.path, contents: Data("{}".utf8)))
+        let icacls = (ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows") + "\\System32\\icacls.exe"
+        let show = Process()
+        show.executableURL = URL(fileURLWithPath: icacls)
+        show.arguments = [native(file)]
+        let (text, status) = try output(of: show)
+        XCTAssertEqual(status, 0, text)
+        let path = native(file)
+        var entries = (text.components(separatedBy: "Successfully processed").first ?? "")
+            .split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }
+        if let first = entries.first, first.lowercased().hasPrefix(path.lowercased()) {
+            entries[0] = String(first.dropFirst(path.count)).trimmingCharacters(in: .whitespaces)
+        }
+        entries = entries.filter { !$0.isEmpty }
+        XCTAssertEqual(entries.count, 1, "the file inherits only the folder's one entry: \(text)")
+        XCTAssertTrue(entries.first?.hasSuffix(":(I)(F)") == true, text)
+    }
+
+    /// icacls shows exactly one entry, full control for the process token's SID, inherited by what is created inside,
+    /// and nothing inherited from the parent.
+    private func assertOnlyTheCurrentUser(_ path: String) throws {
         let icacls = (ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows") + "\\System32\\icacls.exe"
 
         let show = Process()
