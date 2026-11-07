@@ -9,12 +9,12 @@ package struct ClaudeCodeProvider: AgentProvider {
 
     package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
-            let process = Process()
+            let box = ProcessBox()
             let server = PermissionServer(workingDirectory: workingDirectory) { tool, detail, rule in
                 await approve(ApprovalRequest(summary: "Allow \(tool)?", detail: detail, rule: rule))
             }
             let worker = Task {
-                var arguments = ["claude", "-p", task,
+                var arguments = ["-p", task,
                                  "--output-format", "stream-json", "--verbose",
                                  "--permission-mode", mode.claudeFlag]
                 if mode == .ask {
@@ -38,12 +38,14 @@ package struct ClaudeCodeProvider: AgentProvider {
                     c.yield(.log("Approval mode \(mode.rawValue): no per-action prompts"))
                 }
 
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = arguments
-                process.currentDirectoryURL = workingDirectory
-                var env = ProcessInfo.processInfo.environment
-                env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
-                process.environment = env
+                let process: Process
+                do {
+                    process = try ProcessLauncher.prepare("claude", arguments, directory: workingDirectory, extraEnvironment: [:])
+                } catch {
+                    c.yield(.failed("Could not launch claude: \(error.localizedDescription)"))
+                    server.stop(); c.finish(); return
+                }
+                guard box.set(process) else { server.stop(); c.finish(); return }
                 let out = Pipe()
                 process.standardOutput = out
                 process.standardError = FileHandle.nullDevice
@@ -75,7 +77,7 @@ package struct ClaudeCodeProvider: AgentProvider {
             }
             c.onTermination = { _ in
                 worker.cancel()
-                if process.isRunning { process.terminate() }
+                box.terminate()
                 server.stop()
             }
         }

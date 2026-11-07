@@ -66,21 +66,27 @@ package final class AzureAuth: @unchecked Sendable {
 
     #if os(macOS)
     private static func azureCLIToken() async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
+        #if os(Windows)
+        let notFound = "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `winget install Microsoft.AzureCLI`."
+        #else
+        let notFound = "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `brew install azure-cli`."
+        #endif
+        return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = ["az", "account", "get-access-token", "--resource", "https://cognitiveservices.azure.com",
-                                     "--query", "accessToken", "-o", "tsv"]
-                var env = ProcessInfo.processInfo.environment
-                env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
-                process.environment = env
+                let process: Process
+                do {
+                    process = try ProcessLauncher.prepare("az", ["account", "get-access-token", "--resource", "https://cognitiveservices.azure.com",
+                                                                 "--query", "accessToken", "-o", "tsv"], directory: nil, extraEnvironment: [:])
+                } catch {
+                    continuation.resume(throwing: AzureError(message: notFound))
+                    return
+                }
                 let out = Pipe()
                 process.standardOutput = out
                 process.standardError = FileHandle.nullDevice
                 process.standardInput = FileHandle.nullDevice
                 do { try process.run() } catch {
-                    continuation.resume(throwing: AzureError(message: "No API key is set and the Azure CLI was not found. Add an API key in Configuration or install it with `brew install azure-cli`."))
+                    continuation.resume(throwing: AzureError(message: notFound))
                     return
                 }
                 let data = out.fileHandleForReading.readDataToEndOfFile()

@@ -17,15 +17,17 @@ package struct AWSCLIConverseClient: ConverseClient {
         FileManager.default.createFile(atPath: outFile.path, contents: nil)
         FileManager.default.createFile(atPath: errFile.path, contents: nil)
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        var arguments = ["aws", "bedrock-runtime", "converse", "--cli-input-json", "file://\(requestFile.path)",
+        var arguments = ["bedrock-runtime", "converse", "--cli-input-json", "file://\(requestFile.path)",
                          "--region", config.region, "--output", "json", "--cli-read-timeout", "300"]
         if !config.profile.isEmpty { arguments += ["--profile", config.profile] }
-        process.arguments = arguments
-        var env = ProcessInfo.processInfo.environment
-        env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
-        process.environment = env
+        let process: Process
+        do {
+            process = try ProcessLauncher.prepare("aws", arguments, directory: nil, extraEnvironment: [:])
+        } catch is ToolNotFound {
+            throw BedrockError(message: Self.notInstalled)
+        } catch {
+            throw BedrockError(message: "Could not launch the AWS CLI: \(error.localizedDescription)")
+        }
         process.standardOutput = try FileHandle(forWritingTo: outFile)
         process.standardError = try FileHandle(forWritingTo: errFile)
         process.standardInput = FileHandle.nullDevice
@@ -51,6 +53,12 @@ package struct AWSCLIConverseClient: ConverseClient {
         return object
     }
 
+    #if os(Windows)
+    static let notInstalled = "The AWS CLI was not found. Install it with `winget install Amazon.AWSCLI`."
+    #else
+    static let notInstalled = "The AWS CLI was not found. Install it with `brew install awscli`."
+    #endif
+
     static func explain(stderr: String) -> String {
         let text = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
         let lower = text.lowercased()
@@ -65,7 +73,7 @@ package struct AWSCLIConverseClient: ConverseClient {
             return "Bedrock rejected the model id. Set a valid one in Configuration (see `aws bedrock list-inference-profiles`). \(text.suffix(200))"
         }
         if lower.contains("command not found") || lower.contains("no such file") && lower.contains("aws") {
-            return "The AWS CLI was not found. Install it with `brew install awscli`."
+            return notInstalled
         }
         return text.isEmpty ? "The AWS CLI failed with no message" : String(text.suffix(400))
     }

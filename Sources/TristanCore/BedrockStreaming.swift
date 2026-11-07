@@ -245,21 +245,25 @@ package final class AWSCLICredentials: CredentialProvider, @unchecked Sendable {
     private static func export(profile: String) async throws -> AWSCredentials {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global().async {
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                var arguments = ["aws", "configure", "export-credentials", "--format", "process"]
+                var arguments = ["configure", "export-credentials", "--format", "process"]
                 if !profile.isEmpty { arguments += ["--profile", profile] }
-                process.arguments = arguments
-                var env = ProcessInfo.processInfo.environment
-                env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
-                process.environment = env
+                let process: Process
+                do {
+                    process = try ProcessLauncher.prepare("aws", arguments, directory: nil, extraEnvironment: [:])
+                } catch is ToolNotFound {
+                    continuation.resume(throwing: BedrockError(message: AWSCLIConverseClient.notInstalled))
+                    return
+                } catch {
+                    continuation.resume(throwing: BedrockError(message: "Could not launch the AWS CLI: \(error.localizedDescription)"))
+                    return
+                }
                 let out = Pipe()
                 let err = Pipe()
                 process.standardOutput = out
                 process.standardError = err
                 process.standardInput = FileHandle.nullDevice
                 do { try process.run() } catch {
-                    continuation.resume(throwing: BedrockError(message: "The AWS CLI was not found. Install it with `brew install awscli`."))
+                    continuation.resume(throwing: BedrockError(message: AWSCLIConverseClient.notInstalled))
                     return
                 }
                 let data = out.fileHandleForReading.readDataToEndOfFile()

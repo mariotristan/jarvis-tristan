@@ -59,7 +59,7 @@ package struct CopilotProvider: AgentProvider {
 
     package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
         AsyncStream { c in
-            let process = Process()
+            let box = ProcessBox()
             let worker = Task {
                 if mode == .ask {
                     c.yield(.status("AWAITING AUTHORIZATION"))
@@ -75,19 +75,20 @@ package struct CopilotProvider: AgentProvider {
                 try? FileManager.default.createDirectory(at: logDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
                 defer { try? FileManager.default.removeItem(at: logDirectory) }
                 let arguments = CopilotArguments.make(task: task, mode: mode, model: model, logDirectory: logDirectory.path)
-                if let override = launchOverride {
-                    let launch = override(arguments)
-                    process.executableURL = launch.executable
-                    process.arguments = launch.arguments
-                } else {
-                    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                    process.arguments = ["copilot"] + arguments
+                let process: Process
+                do {
+                    if let override = launchOverride {
+                        let launch = override(arguments)
+                        process = try ProcessLauncher.prepare(launch.executable.path, launch.arguments, directory: workingDirectory,
+                                                              extraEnvironment: ["NO_COLOR": "1"])
+                    } else {
+                        process = try ProcessLauncher.prepare("copilot", arguments, directory: workingDirectory, extraEnvironment: ["NO_COLOR": "1"])
+                    }
+                } catch {
+                    c.yield(.failed(Self.launchFailure(error)))
+                    c.finish(); return
                 }
-                process.currentDirectoryURL = workingDirectory
-                var env = ProcessInfo.processInfo.environment
-                env["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (env["PATH"] ?? "/usr/bin:/bin")
-                env["NO_COLOR"] = "1"
-                process.environment = env
+                guard box.set(process) else { c.finish(); return }
                 let out = Pipe()
                 let errFile = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-\(UUID().uuidString.prefix(8)).err")
                 FileManager.default.createFile(atPath: errFile.path, contents: nil)
@@ -97,7 +98,7 @@ package struct CopilotProvider: AgentProvider {
                 process.standardInput = FileHandle.nullDevice
 
                 do { try process.run() } catch {
-                    c.yield(.failed("Could not launch the Copilot CLI: \(error.localizedDescription). Install it with `npm install -g @github/copilot`."))
+                    c.yield(.failed(Self.launchFailure(error)))
                     c.finish(); return
                 }
                 c.yield(.status("ONLINE"))
@@ -127,8 +128,15 @@ package struct CopilotProvider: AgentProvider {
             }
             c.onTermination = { _ in
                 worker.cancel()
-                if process.isRunning { process.terminate() }
+                box.terminate()
             }
         }
+    }
+
+    static func launchFailure(_ error: Error) -> String {
+        if error is UnsafeArguments {
+            return "Could not launch the Copilot CLI safely: \(error.localizedDescription). Remove those characters from the task and retry."
+        }
+        return "Could not launch the Copilot CLI: \(error.localizedDescription). Install it with `npm install -g @github/copilot`."
     }
 }
