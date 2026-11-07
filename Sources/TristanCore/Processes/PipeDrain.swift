@@ -43,11 +43,15 @@ final class ExitWatch: @unchecked Sendable {
             while true {
                 if ended.wait(timeout: .now()) == .success { ended.signal(); break }
                 if !process.isRunning { break }
-                if WaitForSingleObject(handle, 50) == DWORD(0) /* WAIT_OBJECT_0 */ {
+                let rc = WaitForSingleObject(handle, 50)
+                if rc == DWORD(0) /* WAIT_OBJECT_0 */ {
                     var code: DWORD = 0
                     if GetExitCodeProcess(handle, &code) { return Int32(bitPattern: code) }
                     break
                 }
+                // WAIT_FAILED (or anything but WAIT_TIMEOUT) returns at once, so looping here would spin: stop using
+                // the handle and fall back to the 50 ms Foundation loop below.
+                if rc != DWORD(0x102) /* WAIT_TIMEOUT */ { break }
             }
         }
         #endif
