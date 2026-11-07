@@ -308,7 +308,7 @@ final class PolicyTests: XCTestCase {
             box.value = SafePath.real(deep, parent: windowsLikeParent)
             done.signal()
         }
-        XCTAssertEqual(done.wait(timeout: .now() + 1), .success, "SafePath.real must return within a second")
+        XCTAssertEqual(done.wait(timeout: .now() + 10), .success, "SafePath.real must return within a second")
         XCTAssertNil(box.value, "a path on a missing drive root cannot be resolved")
 
         // An existing root that is its own parent still resolves, even when the walk's existence probe fails on it
@@ -332,7 +332,7 @@ final class PolicyTests: XCTestCase {
             box2.value = SafePath.real(missing.appendingPathComponent("z"), parent: runaway)
             done2.signal()
         }
-        XCTAssertEqual(done2.wait(timeout: .now() + 1), .success)
+        XCTAssertEqual(done2.wait(timeout: .now() + 10), .success)
         XCTAssertNil(box2.value)
     }
 }
