@@ -128,6 +128,12 @@ package enum ProcessLauncher {
         return process
     }
 
+    /// The program `prepare` would start for `tool`, or nil when it is not installed (`tristan providers` uses this).
+    package static func locate(_ tool: String) -> String? {
+        try? plan(tool, [], environment: ProcessInfo.processInfo.environment, windows: isWindows,
+                  isFile: isLaunchable, readFile: readText).executable
+    }
+
     /// Resolves `tool` the way `prepare` does, with the file system passed in.
     static func plan(_ tool: String, _ arguments: [String], environment: [String: String], windows: Bool,
                      isFile: (String) -> Bool, readFile: (String) -> String?) throws -> Plan {
