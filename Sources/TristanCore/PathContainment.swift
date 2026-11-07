@@ -31,6 +31,9 @@ package enum PathFlavor: Sendable {
 ///   hold others, so the path is ambiguous).
 /// - Out of scope: 8.3 short names (`PROGRA~1`) and junctions. Both must be expanded by the file system
 ///   (`SafePath.real`) before this check; an unexpanded short name only compares as a different, outside, name.
+/// - Known limitation: per-directory case-sensitive NTFS folders (`fsutil file setCaseSensitiveInfo`, WSL) are not
+///   detected. Inside such a folder `Proj` and `proj` are different siblings, and the case-insensitive compare here
+///   would treat a path under `proj` as inside the root `Proj`.
 package enum PathContainment {
     /// How a tool's path argument is read before it is joined to the working folder.
     package enum InputForm: Equatable, Sendable {

@@ -73,10 +73,47 @@ extension ShellFlavor {
         "wmic", "msiexec", "net1", "register-scheduledtask", "new-service", "set-service", "start-bitstransfer",
         "invoke-wmimethod", "invoke-cimmethod", "set-content", "add-content", "ac", "out-file", "clear-content",
         "clc", "set-itemproperty", "sp", "remove-itemproperty", "rp",
+        // Fix round 1: more counterparts (mv, mkfs/diskutil, launchctl, chmod) and launchers.
+        "ren", "rni", "rename-item", "format-volume", "clear-disk", "initialize-disk", "remove-partition",
+        "stop-service", "spsv", "remove-service", "restart-service", "set-acl", "conhost", "explorer", "forfiles",
+        "wt", "pwsh-preview",
+        // PowerShell keywords: as a first word they start a statement, not a program call
+        // (`return 'C:/x' -as [IO.StreamWriter]` creates a file; `using module` loads code).
+        "return", "throw", "exit", "break", "continue", "using", "data", "trap", "filter", "function", "param",
+        "begin", "process", "end", "dynamicparam", "switch", "foreach", "for", "while", "do", "until", "if", "try",
+        "class", "enum", "configuration", "workflow", "parallel", "sequence", "inlinescript",
     ]
 
-    /// `(` is not in the brief's list but is needed: in PowerShell `git (Remove-Item x)` runs Remove-Item.
-    private static let powershellOperators = ["$", "{", "}", "@(", "(", "-encodedcommand", "\r"]
+    /// `(` and `[` are not in the brief's list but are needed: in PowerShell `git (Remove-Item x)` runs Remove-Item,
+    /// and `[IO.StreamWriter]` type literals reach .NET. `-encodedcommand` is also caught by its abbreviations
+    /// (see `hasEncodedCommandFlag`).
+    private static let powershellOperators = ["$", "{", "}", "@(", "(", "[", "-encodedcommand", "\r"]
+
+    /// True if any space-separated word is `-EncodedCommand` or an abbreviation PowerShell accepts for it
+    /// (`-e`, `-ec`, `-en`, `-enc`, ... `-encodedcommand`), with `-`, en dash, em dash or horizontal bar, any case,
+    /// with or without a `:value` suffix. Over-matching (`git -e`) only makes the command ask.
+    static func hasEncodedCommandFlag(_ text: String) -> Bool {
+        let dashes: Set<Character> = ["-", "\u{2013}", "\u{2014}", "\u{2015}"]
+        return text.split(separator: " ").contains { word in
+            guard let first = word.first, dashes.contains(first) else { return false }
+            let name = word.dropFirst().prefix { $0 != ":" }.lowercased()
+            return !name.isEmpty && ("encodedcommand".hasPrefix(name) && name.hasPrefix("e") || name == "ec")
+        }
+    }
+
+    /// True if the text holds a character PowerShell might read as a statement separator or hide: any control
+    /// character (tab included; a plain command uses spaces), or any non-ASCII whitespace, separator or format
+    /// character (U+0085, U+00A0, U+2028, U+2029, U+3000, U+200B-U+200F, U+FEFF, ...).
+    static func hasUnsafeCharacter(_ text: String) -> Bool {
+        text.unicodeScalars.contains { s in
+            if s.value < 0x20 || s.value == 0x7F { return true }
+            if s.isASCII { return false }
+            switch s.properties.generalCategory {
+            case .control, .format, .lineSeparator, .paragraphSeparator, .spaceSeparator: return true
+            default: return s.properties.isWhitespace
+            }
+        }
+    }
 
     /// Extensions Windows runs a program through (PATHEXT plus `.ps1`), stripped before the name is compared.
     /// Broader than `.exe .cmd .bat .ps1` on purpose: `format.com` is the real `format`.
@@ -87,11 +124,15 @@ extension ShellFlavor {
 
     /// The name a command's first word is compared and keyed by, or nil if it is not a plain program name.
     /// Without Windows rules this is today's check, unchanged. With them the name is lower-cased, program
-    /// extensions are stripped (repeatedly), and names starting or ending with a dot (`.`, `..`, `.exe`, `rm.`)
-    /// are refused (`. x.ps1` dot-sources a script).
+    /// extensions are stripped (repeatedly), and the name must start with an ASCII letter: a leading `-`, digit,
+    /// `_` or dot puts PowerShell in expression mode (`-join ...`, `1..9`) or dot-sources a script (`. x.ps1`).
+    /// Names ending with a dot (`rm.`) are refused.
     static func programName(_ word: String, windowsRules: Bool) -> String? {
         guard word.range(of: "^[A-Za-z0-9._-]+$", options: .regularExpression) != nil else { return nil }
         guard windowsRules else { return word }
+        guard let first = word.unicodeScalars.first, ("a"..."z").contains(first) || ("A"..."Z").contains(first) else {
+            return nil
+        }
         var name = word.lowercased()
         guard !name.hasPrefix("."), !name.hasSuffix(".") else { return nil }
         while let ext = programExtensions.first(where: { name.hasSuffix($0) }) {

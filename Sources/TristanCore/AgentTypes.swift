@@ -37,6 +37,9 @@ package struct ApprovalRule: Codable, Hashable, Sendable, Identifiable {
             let text = command.trimmingCharacters(in: .whitespacesAndNewlines)
             let haystack = flavor == .powershell ? text.lowercased() : text
             guard !flavor.operators.contains(where: haystack.contains) else { return nil }
+            if windowsRules {
+                guard !ShellFlavor.hasUnsafeCharacter(text), !ShellFlavor.hasEncodedCommandFlag(text) else { return nil }
+            }
             let never = windowsRules ? ShellFlavor.powershell.neverGeneralise : flavor.neverGeneralise
             guard let first = text.split(separator: " ").first.map(String.init),
                   let name = ShellFlavor.programName(first, windowsRules: windowsRules),

@@ -62,17 +62,20 @@ package enum SafePath {
         real(url, parent: { $0.deletingLastPathComponent() })
     }
 
-    /// `parent` is a seam for tests: on Windows a drive root (`C:\`, or a missing `Q:\`) is its own parent and never
-    /// equals "/", so the walk stops when the parent stops changing, and gives up (nil) after a bounded number of steps.
-    static func real(_ url: URL, parent: (URL) -> URL) -> String? {
+    /// `parent` and `exists` are seams for tests: on Windows a drive root (`C:\`, or a missing `Q:\`) is its own
+    /// parent and never equals "/", so the walk stops when the parent stops changing (the root must then pass
+    /// `fileExists`, else nil), and gives up (nil) after a bounded number of steps.
+    static func real(_ url: URL, parent: (URL) -> URL,
+                     exists: (String) -> Bool = { (try? FileManager.default.attributesOfItem(atPath: $0)) != nil }) -> String? {
         let fm = FileManager.default
         var existing = url.standardizedFileURL
         var tail: [String] = []
         var steps = 0
-        while (try? fm.attributesOfItem(atPath: existing.path)) == nil, existing.path != "/" {
+        while !exists(existing.path), existing.path != "/" {
             let up = parent(existing)
             steps += 1
-            guard up.path != existing.path, steps < 4096 else { return nil }   // a root that does not exist
+            if up.path == existing.path { break }   // a self-parent root (`C:\`): confirmed or refused below
+            guard steps < 4096 else { return nil }
             tail.insert(existing.lastPathComponent, at: 0)
             existing = up
         }
