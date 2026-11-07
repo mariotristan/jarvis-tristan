@@ -194,7 +194,7 @@ final class ConfigCommandTests: XCTestCase {
     }
 
     func testSecretSetRejectsEmptyControlAndUnknown() async throws {
-        for answer in ["", "   ", nil, "abc\u{1B}def", "abc\u{7}"] as [String?] {
+        for answer in ["", "   ", nil, "abc\u{1B}def", "abc\u{7}", "abc\u{202E}def", "key\u{200B}"] as [String?] {
             let (code, _) = try await exec(["secret", "set", "azure-openai-key"], secrets: Prompts([answer]))
             XCTAssertNotEqual(code, .ok, String(describing: answer))
             XCTAssertNil(KeychainStore.get("azure-openai-key"), String(describing: answer))

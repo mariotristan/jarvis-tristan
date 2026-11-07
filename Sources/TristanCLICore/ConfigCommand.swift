@@ -180,10 +180,12 @@ struct SecretSet: ParsableCommand, CLICommand {
         guard let typed = environment.readSecret("Value for \(name) (hidden): ") else {
             return Kids.refuse("Nothing was entered. Nothing was stored.", .failed)
         }
-        let value = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Only plain spaces, tabs and line ends are trimmed: Foundation's whitespace set would also drop invisible
+        // format characters (U+200B) that must be refused, not silently removed.
+        let value = typed.trimmingCharacters(in: CharacterSet(charactersIn: " \t\r\n"))
         guard !value.isEmpty else { return Kids.refuse("The value is empty. Nothing was stored.") }
-        guard !value.unicodeScalars.contains(where: { $0.properties.generalCategory == .control }) else {
-            return Kids.refuse("The value contains a control character. Nothing was stored.")
+        guard !value.unicodeScalars.contains(where: { [.control, .format].contains($0.properties.generalCategory) }) else {
+            return Kids.refuse("The value contains a control or invisible formatting character. Nothing was stored.")
         }
         guard KeychainStore.set(value, account: name) else { return Kids.refuse("The credential could not be stored.", .failed) }
         Terminal.writeOutput("\(name) is stored.\n")

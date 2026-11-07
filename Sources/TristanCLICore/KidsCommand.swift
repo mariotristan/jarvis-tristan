@@ -22,10 +22,10 @@ struct CLIEnvironment {
     /// Reads one answer to an approval prompt (a line from stdin); tests script the answers.
     var readAnswer: () -> String? = { readLine() }
     /// Reads a secret without echo after showing `prompt` (`tristan secret set`); nil when nothing could be read.
-    var readSecret: (String) -> String? = { PINPrompt.read($0) }
+    var readSecret: (String) -> String? = { PINPrompt.read($0, trim: false) }
 
     static var live: CLIEnvironment {
-        CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: PINPrompt.read,
+        CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: { PINPrompt.read($0) },
                        makeProvider: { $0.make(mode: $1) }, installInterrupt: true,
                        historyURL: CLIPaths.historyURL, sessions: .live)
     }
@@ -46,7 +46,8 @@ enum CLIPaths {
 
 /// Reads a PIN from the terminal with echo turned off.
 enum PINPrompt {
-    static func read(_ prompt: String) -> String? {
+    /// `trim: false` returns the line as typed (the secret prompt checks it for invisible characters itself).
+    static func read(_ prompt: String, trim: Bool = true) -> String? {
         Terminal.writeError(prompt)
         defer { Terminal.writeError("\n") }
         #if os(Windows)
@@ -64,7 +65,8 @@ enum PINPrompt {
         }
         defer { if changed { tcsetattr(0, TCSAFLUSH, &original) } }
         #endif
-        return readLine()?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let line = readLine()   // without its line ending
+        return trim ? line?.trimmingCharacters(in: .whitespacesAndNewlines) : line
     }
 }
 
