@@ -175,7 +175,8 @@ final class WindowsProviderTests: XCTestCase {
         XCTAssertEqual(WindowsCredentialStore.decode(Array("key-é".utf8) + [0]), "key-é")
         XCTAssertEqual(WindowsCredentialStore.decode(Array("key".utf8) + [0, 0, 0]), "key")
         XCTAssertEqual(WindowsCredentialStore.decode(utf16("caf\u{E9}") + [0, 0]), "caf\u{E9}", "Latin-1 through UTF-16")
-        XCTAssertEqual(WindowsCredentialStore.decode([0, 0]), "")
+        XCTAssertNil(WindowsCredentialStore.decode([0, 0]), "only a terminator: no value")
+        XCTAssertNil(WindowsCredentialStore.decode([0]))
         XCTAssertEqual(WindowsCredentialStore.decode(Array("a\u{0}b".utf8)), "a\u{0}b", "only trailing NULs go")
     }
 

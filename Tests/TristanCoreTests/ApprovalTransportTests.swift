@@ -304,6 +304,18 @@ final class ApprovalTransportTests: XCTestCase {
         XCTAssertEqual(box.all, ["through"])
     }
 
+    /// The eviction rule itself: a handshake may be cut off only once it has been pending the minimum age (50 ms).
+    func testEvictionNeedsTheMinimumAge() {
+        XCTAssertEqual(LoopbackListener.minimumEvictionAge, 0.05, accuracy: 0.0001)
+        XCTAssertFalse(LoopbackListener.mayEvict(pendingFor: 0))
+        XCTAssertFalse(LoopbackListener.mayEvict(pendingFor: 0.049))
+        XCTAssertTrue(LoopbackListener.mayEvict(pendingFor: 0.050))
+        XCTAssertTrue(LoopbackListener.mayEvict(pendingFor: 0.051))
+        // With another minimum the same rule applies.
+        XCTAssertFalse(LoopbackListener.mayEvict(pendingFor: 0.1, minimumAge: 0.2))
+        XCTAssertTrue(LoopbackListener.mayEvict(pendingFor: 0.2, minimumAge: 0.2))
+    }
+
     /// A stream of rapid silent clients cannot evict a real shim that connects in the middle of it: only handshakes
     /// pending longer than `minimumEvictionAge` are cut off, and a real shim sends its token at once.
     func testRapidSilentClientsCannotEvictARealShim() throws {

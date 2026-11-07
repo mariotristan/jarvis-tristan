@@ -261,6 +261,11 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     /// A handshake is only cut off to make room once it has been pending this long. A real shim sends its token as
     /// soon as it connects, so its handshake finishes well within this; a flood of silent clients cannot evict it.
     static let minimumEvictionAge: TimeInterval = 0.05
+
+    /// Whether a handshake pending for `age` seconds may be cut off to make room.
+    static func mayEvict(pendingFor age: TimeInterval, minimumAge: TimeInterval = minimumEvictionAge) -> Bool {
+        age >= minimumAge
+    }
     private let condition = NSCondition()
     // Guarded by `condition`.
     private var closed = false
@@ -328,7 +333,7 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
             // wait for a thread to finish (an evicted one stops within one wait slice) rather than drop this client.
             while !closed, handshakeThreads >= Self.maxHandshakeThreads || pending.count >= Self.maxPendingHandshakes {
                 let now = Date()
-                if let oldest = pending.first, now.timeIntervalSince(oldest.since) >= Self.minimumEvictionAge {
+                if let oldest = pending.first, Self.mayEvict(pendingFor: now.timeIntervalSince(oldest.since)) {
                     // Wakes that handshake's read; its own thread closes the socket.
                     pending.removeFirst().socket.shutdownBoth()
                     if handshakeThreads < Self.maxHandshakeThreads { continue }

@@ -23,12 +23,12 @@ enum WindowsCredentialStore {
     /// `set` writes UTF-8. Windows' own tools (`cmdkey`, the Credential Manager window) store the password as UTF-16LE,
     /// so a blob whose every second byte is zero (an ASCII or Latin-1 key typed there) is read as UTF-16LE. Trailing
     /// NUL characters (a terminator some tools store with the value) are not part of the value and are dropped, in
-    /// both encodings.
+    /// both encodings. Nil when nothing is left (a blob holding only NULs is no value).
     ///
     /// Not supported: a value typed into `cmdkey` or the Credential Manager window with characters above U+00FF.
     /// Its UTF-16LE high bytes are not zero, so it cannot be told from UTF-8 and is read as UTF-8 (garbled). Store such
     /// a value with `tristan secret set` instead.
-    static func decode(_ bytes: [UInt8]) -> String {
+    static func decode(_ bytes: [UInt8]) -> String? {
         var text: String
         if bytes.count >= 2, bytes.count % 2 == 0, stride(from: 1, to: bytes.count, by: 2).allSatisfy({ bytes[$0] == 0 }) {
             let units = stride(from: 0, to: bytes.count, by: 2).map { UInt16(bytes[$0]) | UInt16(bytes[$0 + 1]) << 8 }
@@ -37,7 +37,7 @@ enum WindowsCredentialStore {
             text = String(decoding: bytes, as: UTF8.self)
         }
         while text.unicodeScalars.last == "\0" { text.unicodeScalars.removeLast() }
-        return text
+        return text.isEmpty ? nil : text
     }
 
     /// Creates or replaces the credential. False when Windows refuses it (for example a value over 2,560 bytes).
