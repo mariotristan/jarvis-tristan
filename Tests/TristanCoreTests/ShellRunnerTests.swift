@@ -41,6 +41,41 @@ final class ShellRunnerTests: XCTestCase {
         XCTAssertTrue(bad.isError)
         XCTAssertTrue(bad.text.contains("[exit status 3]"))
     }
+
+    /// A child that left the process tree (its parent exited, so it was reparented and the tree kill cannot see it)
+    /// still holds the output pipe: run_command stops reading shortly after the command is stopped and says so.
+    func testRunCommandReturnsWhenAnEscapedChildHoldsThePipe() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("escape-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer {
+            for name in ["timeout.pid", "exited.pid"] {
+                if let text = try? String(contentsOf: folder.appendingPathComponent(name), encoding: .utf8),
+                   let pid = Int32(text.trimmingCharacters(in: .whitespacesAndNewlines)) { kill(pid, SIGKILL) }
+            }
+            try? FileManager.default.removeItem(at: folder)
+        }
+        let sandbox = ToolSandbox(root: folder)
+
+        // On timeout: the command is stopped, the escaped child keeps the pipe open for 20 s.
+        var start = Date()
+        let stopped = await sandbox.run("echo before; (sleep 20 & echo $! > timeout.pid); sleep 20", timeout: 1)
+        XCTAssertLessThan(Date().timeIntervalSince(start), 8, stopped.text)
+        XCTAssertTrue(stopped.text.hasPrefix("before\n"), stopped.text)
+        XCTAssertTrue(stopped.text.contains("\n[output truncated: a process the command started did not exit]\n[exit status "),
+                      stopped.text)
+        XCTAssertTrue(stopped.isError)
+
+        // The command exits by itself and leaves the child behind: its own status is kept.
+        start = Date()
+        let left = await sandbox.run("echo started; (sleep 20 & echo $! > exited.pid)")
+        XCTAssertLessThan(Date().timeIntervalSince(start), 8, left.text)
+        XCTAssertEqual(left.text, "started\n\n[output truncated: a process the command started did not exit]\n[exit status 0]")
+        XCTAssertFalse(left.isError)
+
+        // A normal command is unchanged.
+        let ok = await sandbox.run("printf 'a\\nb'")
+        XCTAssertEqual(ok.text, "a\nb\n[exit status 0]")
+    }
     #endif
 
     func testSystemPromptPerPlatform() {

@@ -92,6 +92,8 @@ package enum SafePath {
 package struct ToolSandbox {
     let root: URL
     private static let maxOutput = 20_000
+    /// How long `run` waits for the end of the output once the command has exited or been stopped.
+    static let outputGrace: TimeInterval = 2
 
     private var rootPath: String { SafePath.real(root) ?? root.standardizedFileURL.path }
 
@@ -174,12 +176,17 @@ package struct ToolSandbox {
                     continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
                     return
                 }
+                // Read while the command runs, so a full pipe never stalls it.
+                let output = PipeDrain(pipe.fileHandleForReading)
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { if process.isRunning { box.terminate() } }
                 DispatchQueue.global().async {
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
+                    // A process the command started can outlive it (or escape the tree kill) and keep the pipe open:
+                    // wait only briefly for the end of the output, then report what arrived.
+                    let (data, complete, capped) = output.collect(within: Self.outputGrace)
                     var text = String(decoding: data, as: UTF8.self)
-                    if text.count > Self.maxOutput { text = String(text.prefix(Self.maxOutput)) + "\n[output truncated]" }
+                    if text.count > Self.maxOutput || capped { text = String(text.prefix(Self.maxOutput)) + "\n[output truncated]" }
+                    if !complete { text += "\n[output truncated: a process the command started did not exit]" }
                     let status = process.terminationStatus
                     continuation.resume(returning: .init(text: text + "\n[exit status \(status)]", isError: status != 0))
                 }
