@@ -72,7 +72,7 @@ final class ConfigCommandTests: XCTestCase {
                                      historyURL: scratch.appendingPathComponent("history.json"),
                                      sessions: SessionRegistry(directory: scratch.appendingPathComponent("sessions"), isAlive: { _ in true }))
             env.readSecret = { secrets.next($0) }
-            env.afterWrongPIN = {}   // no real wait after a wrong PIN in tests
+            env.afterPINCheck = {}   // no real wait after a PIN check in tests
             let code = await command.execute(environment: env)
             return (code, out.value)
         }

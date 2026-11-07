@@ -54,11 +54,11 @@ final class KidsCommandTests: XCTestCase {
                                  historyURL: scratch.appendingPathComponent("history.json"),
                                  sessions: SessionRegistry(directory: scratch.appendingPathComponent("sessions"), isAlive: { _ in true }))
         let delays = self.delays
-        env.afterWrongPIN = { delays.add() }
+        env.afterPINCheck = { delays.add() }
         return await command.execute(environment: env)
     }
 
-    // MARK: - A wrong parent PIN costs a delay
+    // MARK: - Every checked parent PIN costs the same delay
 
     func testWrongPINWaitsOncePerAttempt() async throws {
         XCTAssertTrue(ParentPIN.set("1234"))
@@ -78,7 +78,9 @@ final class KidsCommandTests: XCTestCase {
         XCTAssertTrue(kidsOn)
     }
 
-    func testRightPINOrNoTerminalDoesNotWait() async throws {
+    /// The right PIN waits exactly as long as a wrong one, so the time taken does not tell them apart. Nothing is
+    /// checked (and nobody waits) with no terminal or when no PIN was entered.
+    func testRightPINWaitsTooButNoCheckDoesNot() async throws {
         XCTAssertTrue(ParentPIN.set("1234"))
         Settings.set(true, forKey: "kidsMode")
         var code = try await exec(["kids", "off"], Calls(answers: ["1234"]), interactive: false)
@@ -88,11 +90,11 @@ final class KidsCommandTests: XCTestCase {
         XCTAssertEqual(delays.value, 0)
         code = try await exec(["kids", "off"], Calls(answers: ["1234"]))
         XCTAssertEqual(code, .ok)
-        XCTAssertEqual(delays.value, 0)
+        XCTAssertEqual(delays.value, 1)
     }
 
-    func testWrongPINDelayIsAboutASecondAndAHalf() {
-        XCTAssertEqual(Kids.wrongPINDelay, 1.5, accuracy: 0.01)
+    func testPINCheckDelayIsAboutASecondAndAHalf() {
+        XCTAssertEqual(Kids.pinCheckDelay, 1.5, accuracy: 0.01)
     }
 
     private var kidsOn: Bool { Settings.bool("kidsMode") }
@@ -359,6 +361,22 @@ final class KidsCommandTests: XCTestCase {
             XCTAssertEqual(try Data(contentsOf: url), contents, "the file must not be rewritten")
             XCTAssertTrue(Kids.isOn)
         }
+    }
+
+    /// `kids on` with an unreadable file and no PIN: first why kids mode counts as on, then the usual no-PIN message.
+    func testKidsOnWithCorruptSettingsSaysWhyFirst() async throws {
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let url = try corruptSettings(Self.corrupt[1])
+        let err = Sink()
+        Terminal.captureError = { err.add($0) }
+        defer { Terminal.captureError = nil }
+        let code = try await exec(["kids", "on"], Calls(), interactive: false)
+        XCTAssertEqual(code, .usage)
+        let text = err.value
+        let why = try XCTUnwrap(text.range(of: "cannot be read"), text)
+        let pin = try XCTUnwrap(text.range(of: Kids.noPINMessage), text)
+        XCTAssertLessThan(why.lowerBound, pin.lowerBound, text)
+        XCTAssertEqual(try Data(contentsOf: url), Self.corrupt[1])
     }
 
     func testCorruptSettingsStatusSaysOn() async throws {

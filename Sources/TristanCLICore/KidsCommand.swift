@@ -23,8 +23,9 @@ struct CLIEnvironment {
     var readAnswer: () -> String? = { readLine() }
     /// Reads a secret without echo after showing `prompt` (`tristan secret set`); nil when nothing could be read.
     var readSecret: (String) -> String? = { PINPrompt.read($0, trim: false) }
-    /// Waits after a wrong parent PIN, so guessing from a script is slow; tests count the calls instead of waiting.
-    var afterWrongPIN: () -> Void = { Thread.sleep(forTimeInterval: Kids.wrongPINDelay) }
+    /// Waits after every checked parent PIN, right or wrong, so guessing from a script is slow and the time taken does
+    /// not tell a right PIN from a wrong one; tests count the calls instead of waiting.
+    var afterPINCheck: () -> Void = { Thread.sleep(forTimeInterval: Kids.pinCheckDelay) }
 
     static var live: CLIEnvironment {
         CLIEnvironment(interactive: Terminal.inputIsTerminal, readPIN: { PINPrompt.read($0) },
@@ -82,8 +83,8 @@ struct KidsCommand: ParsableCommand {
 
 enum Kids {
     static let key = "kidsMode"
-    /// Seconds `askParentPIN` waits after a wrong PIN before saying so.
-    static let wrongPINDelay: TimeInterval = 1.5
+    /// Seconds `askParentPIN` waits after checking a PIN, whatever the result.
+    static let pinCheckDelay: TimeInterval = 1.5
     static let noPINMessage = "Kids mode is on without a PIN. Ask a parent to change it in the Tristan app."
     /// Every kids check in the CLI goes through here: on when the setting is on, and also when the settings file
     /// exists but cannot be read (fail closed, `KidsRouting.kidsModeIsOn`).
@@ -118,11 +119,11 @@ enum Kids {
         guard let entered = environment.readPIN("Parent PIN: ") else {
             return refuse("No PIN was entered. Nothing was changed.", .failed)
         }
-        guard ParentPIN.matches(entered) else {
-            environment.afterWrongPIN()   // each wrong guess costs time
-            return refuse("Wrong PIN. Nothing was changed.", .failed)
-        }
-        return nil
+        // Checked first, then the same wait whatever the result: each guess costs time, and the time taken does not
+        // tell a right PIN from a wrong one.
+        let right = ParentPIN.matches(entered)
+        environment.afterPINCheck()
+        return right ? nil : refuse("Wrong PIN. Nothing was changed.", .failed)
     }
 
     /// Settings and secrets may only change with the parent PIN while kids mode is on, exactly like `kids off`.
@@ -139,6 +140,7 @@ struct KidsOn: ParsableCommand, CLICommand {
     static let configuration = CommandConfiguration(commandName: "on", abstract: "Turn kids mode on.")
 
     func execute(environment: CLIEnvironment) async -> ExitCode {
+        Kids.explainUnreadableSettings()
         // Already on without a PIN (switched on in the Mac app with Touch ID): `set-pin` would refuse too, so say what
         // `off` and `set-pin` say.
         if Kids.isOn && !ParentPIN.isSet { return Kids.refuse(Kids.noPINMessage) }
