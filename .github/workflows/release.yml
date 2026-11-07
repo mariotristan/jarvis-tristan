@@ -30,10 +30,10 @@ jobs:
           swift-build: 6.4.2-RELEASE
 
       - name: Test TristanCore
-        run: swift test --filter TristanCoreTests
+        run: pwsh -NoProfile -File scripts/ci/check-test-count.ps1 -Filter TristanCoreTests -Minimum 200
 
       - name: Test TristanCLI
-        run: swift test --filter TristanCLITests
+        run: pwsh -NoProfile -File scripts/ci/check-test-count.ps1 -Filter TristanCLITests -Minimum 100
 
       - name: Build the zip
         run: |

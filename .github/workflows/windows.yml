@@ -129,11 +129,16 @@ jobs:
       - name: Build tristan
         run: swift build --product tristan
 
+      # `swift test --filter` passes when the filter matches nothing, so the shared checker also requires a minimum
+      # number of tests to have run. Its self-test first proves it rejects a log with zero (or too few) tests.
+      - name: Test-count checker self-test
+        run: pwsh -NoProfile -File scripts/ci/check-test-count.tests.ps1
+
       - name: Test TristanCore
-        run: swift test --filter TristanCoreTests
+        run: pwsh -NoProfile -File scripts/ci/check-test-count.ps1 -Filter TristanCoreTests -Minimum 200
 
       - name: Test TristanCLI
-        run: swift test --filter TristanCLITests
+        run: pwsh -NoProfile -File scripts/ci/check-test-count.ps1 -Filter TristanCLITests -Minimum 100
 
       # Plan Tasks 13-16: the built tristan.exe against the fake provider CLIs in scripts/ci/fakes (node scripts behind
       # .cmd shims). No terminal is attached here, so `ask` must deny: for Claude Code that answer comes back through
