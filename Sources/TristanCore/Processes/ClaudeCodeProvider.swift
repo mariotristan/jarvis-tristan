@@ -28,7 +28,8 @@ package struct ClaudeCodeProvider: AgentProvider {
                         server.stop(); c.finish(); return
                     }
                     guard let configURL = Self.writeMCPConfig(executable: executable, endpoint: endpoint,
-                                                              token: server.token, in: server.directory) else {
+                                                              token: server.token, serverToken: server.serverToken,
+                                                              in: server.directory) else {
                         c.yield(.failed("Could not write the MCP config"))
                         server.stop(); c.finish(); return
                     }
@@ -83,13 +84,17 @@ package struct ClaudeCodeProvider: AgentProvider {
     }
 
     /// Writes `<directory>/mcp.json`, which makes Claude Code start `executable --mcp-permission <endpoint>` as an MCP
-    /// server. A token goes in the server's `env` block (the shim reads it from its environment), never in `args`.
-    static func writeMCPConfig(executable: String, endpoint: String, token: String?, in directory: URL) -> URL? {
+    /// server. Tokens go in the server's `env` block (the shim reads them from its environment), never in `args`.
+    static func writeMCPConfig(executable: String, endpoint: String, token: String?, serverToken: String?,
+                               in directory: URL) -> URL? {
         var server: [String: Any] = [
             "command": executable,
             "args": ["--mcp-permission", endpoint],
         ]
-        if let token { server["env"] = [ApprovalTransport.tokenEnvironmentKey: token] }
+        var environment: [String: String] = [:]
+        if let token { environment[ApprovalTransport.tokenEnvironmentKey] = token }
+        if let serverToken { environment[ApprovalTransport.serverTokenEnvironmentKey] = serverToken }
+        if !environment.isEmpty { server["env"] = environment }
         let config: [String: Any] = ["mcpServers": ["tristan": server]]
         let url = directory.appendingPathComponent("mcp.json")
         guard let json = try? JSONSerialization.data(withJSONObject: config),

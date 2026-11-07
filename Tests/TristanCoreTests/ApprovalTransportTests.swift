@@ -55,20 +55,66 @@ final class ApprovalTransportTests: XCTestCase {
         return UInt16(endpoint.dropFirst("tcp:127.0.0.1:".count))
     }
 
+    /// A shim-side connection through the real handshake, with a read timeout so a bypass fails instead of hanging.
+    private func connect(_ listener: ApprovalListener, token: String?, serverToken: String? = nil) -> LineConnection? {
+        let connection = ApprovalTransport.connect(endpoint: listener.endpoint, token: token,
+                                                   serverToken: serverToken ?? listener.serverToken,
+                                                   handshakeTimeout: 2, replyTimeout: 5) as? LineConnection
+        return connection
+    }
+
+    /// A TCP connection that skips the handshake, reads time out after 5 s.
+    private func raw(_ port: UInt16) throws -> LineConnection {
+        let connection = try XCTUnwrap(LoopbackConnection.open(port: port))
+        connection.socket.setReceiveTimeout(5)
+        return connection
+    }
+
+    /// `token` with the character at `index` changed to another hex digit.
+    private func flip(_ token: String, at index: Int) -> String {
+        var chars = Array(token)
+        chars[index] = chars[index] == "0" ? "1" : "0"
+        return String(chars)
+    }
+
     // MARK: - Loopback
+
+    func testConstantTimeEqual() {
+        let a = Array("0123456789abcdef0123456789abcdef".utf8)
+        XCTAssertTrue(LoopbackListener.constantTimeEqual(a, a))
+        XCTAssertTrue(LoopbackListener.constantTimeEqual([], []))
+        for index in [0, a.count / 2, a.count - 1] {
+            var b = a
+            b[index] ^= 0x01
+            XCTAssertFalse(LoopbackListener.constantTimeEqual(a, b), "difference at \(index)")
+            XCTAssertFalse(LoopbackListener.constantTimeEqual(b, a), "difference at \(index)")
+        }
+        var twoDifferences = a
+        twoDifferences[0] ^= 0x01
+        twoDifferences[a.count - 1] ^= 0x01
+        XCTAssertFalse(LoopbackListener.constantTimeEqual(a, twoDifferences))
+        XCTAssertFalse(LoopbackListener.constantTimeEqual(a, Array(a.dropLast())))
+        XCTAssertFalse(LoopbackListener.constantTimeEqual(Array(a.dropLast()), a))
+        XCTAssertFalse(LoopbackListener.constantTimeEqual(a, a + [0]))
+        XCTAssertFalse(LoopbackListener.constantTimeEqual(a, []))
+    }
 
     func testLoopbackRoundTrip() throws {
         let listener = try loopback()
         defer { listener.close() }
         let token = try XCTUnwrap(listener.token)
-        XCTAssertEqual(token.count, 64, "256-bit token as hex")
-        XCTAssertTrue(token.allSatisfy { $0.isHexDigit && ($0.isNumber || $0.isLowercase) })
+        let serverToken = try XCTUnwrap(listener.serverToken)
+        for secret in [token, serverToken] {
+            XCTAssertEqual(secret.count, 64, "256-bit token as hex")
+            XCTAssertTrue(secret.allSatisfy { $0.isHexDigit && ($0.isNumber || $0.isLowercase) })
+        }
+        XCTAssertNotEqual(token, serverToken)
         XCTAssertTrue(listener.endpoint.hasPrefix("tcp:127.0.0.1:"))
         XCTAssertEqual(port(of: listener.endpoint), listener.port)
 
         let box = Box()
         let served = serveOne(listener) { box.add($0) }
-        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: token))
+        let client = try XCTUnwrap(connect(listener, token: token))
         client.writeLine(#"{"tool_name":"Bash"}"#)
         XCTAssertEqual(client.readLine(), #"got:{"tool_name":"Bash"}"#)
         XCTAssertNil(client.readLine(), "the server closed the connection")
@@ -81,6 +127,7 @@ final class ApprovalTransportTests: XCTestCase {
         let a = try loopback(), b = try loopback()
         defer { a.close(); b.close() }
         XCTAssertNotEqual(a.token, b.token)
+        XCTAssertNotEqual(a.serverToken, b.serverToken)
         XCTAssertNotEqual(a.port, b.port)
     }
 
@@ -91,18 +138,19 @@ final class ApprovalTransportTests: XCTestCase {
         let served = serveOne(listener) { box.add($0) }
 
         let token = try XCTUnwrap(listener.token)
-        let wrong = String(token.reversed())
-        let intruder = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: wrong))
-        intruder.writeLine(#"{"tool_name":"Bash","input":{"command":"rm -rf ~"}}"#)
-        XCTAssertNil(intruder.readLine(), "a client with the wrong token gets nothing back")
-        intruder.close()
+        let wrongs = [String(token.reversed()), flip(token, at: 0), flip(token, at: 31), flip(token, at: 63),
+                      String(token.dropLast()), token + "0", token.uppercased()]
+        for wrong in wrongs {
+            XCTAssertNil(connect(listener, token: wrong), "the host never answers a wrong token: \(wrong)")
+            // The same, seen from a raw client: the host closes without sending its token.
+            let intruder = try raw(listener.port)
+            intruder.writeLine(wrong)
+            intruder.writeLine(#"{"tool_name":"Bash","input":{"command":"rm -rf ~"}}"#)
+            XCTAssertNil(intruder.readLine(), "a client with a wrong token gets nothing back: \(wrong)")
+            intruder.close()
+        }
 
-        let prefix = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: String(token.dropLast())))
-        prefix.writeLine("evil")
-        XCTAssertNil(prefix.readLine(), "a prefix of the token is not the token")
-        prefix.close()
-
-        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: token))
+        let client = try XCTUnwrap(connect(listener, token: token))
         client.writeLine("good")
         XCTAssertEqual(client.readLine(), "got:good", "the next valid client is still accepted")
         client.close()
@@ -118,32 +166,41 @@ final class ApprovalTransportTests: XCTestCase {
         let port = listener.port
 
         // The request first, no token line.
-        let bare = try XCTUnwrap(LoopbackConnection.open(port: port, token: nil))
+        let bare = try raw(port)
         bare.writeLine(#"{"tool_name":"Bash","input":{"command":"ls"}}"#)
         XCTAssertNil(bare.readLine())
         bare.close()
 
         // An empty first line.
-        let empty = try XCTUnwrap(LoopbackConnection.open(port: port, token: nil))
+        let empty = try raw(port)
         empty.writeLine("")
         empty.writeLine(try XCTUnwrap(listener.token))
         XCTAssertNil(empty.readLine())
         empty.close()
 
+        // The token without its newline, then end of stream.
+        let unterminated = try raw(port)
+        unterminated.writeRaw(Array(try XCTUnwrap(listener.token).utf8))
+        unterminated.socket.shutdownWrite()
+        XCTAssertNil(unterminated.readLine())
+        unterminated.close()
+
         // Connects and hangs up.
-        try XCTUnwrap(LoopbackConnection.open(port: port, token: nil)).close()
+        try raw(port).close()
 
         // A long first line with no newline is not buffered without limit.
-        let flood = try XCTUnwrap(LoopbackConnection.open(port: port, token: nil))
+        let flood = try raw(port)
         flood.writeRaw(Array(repeating: UInt8(ascii: "a"), count: 64 * 1024))
         XCTAssertNil(flood.readLine())
         flood.close()
 
-        // The connect side refuses to talk TCP without a token.
-        XCTAssertNil(ApprovalTransport.connect(endpoint: listener.endpoint, token: nil))
-        XCTAssertNil(ApprovalTransport.connect(endpoint: listener.endpoint, token: ""))
+        // The connect side refuses to talk TCP without both tokens.
+        XCTAssertNil(connect(listener, token: nil))
+        XCTAssertNil(connect(listener, token: ""))
+        XCTAssertNil(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token, serverToken: nil))
+        XCTAssertNil(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token, serverToken: ""))
 
-        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token))
+        let client = try XCTUnwrap(connect(listener, token: listener.token))
         client.writeLine("ok")
         XCTAssertEqual(client.readLine(), "got:ok")
         client.close()
@@ -168,7 +225,7 @@ final class ApprovalTransportTests: XCTestCase {
         for endpoint in ["tcp:0.0.0.0:\(port)", "tcp:localhost:\(port)", "tcp:192.168.1.10:\(port)", "tcp:127.0.0.1:",
                          "tcp:127.0.0.1:0", "tcp:127.0.0.1:70000", "tcp:127.0.0.1:+\(port)", "tcp:127.0.0.1: \(port)",
                          "tcp:127.0.0.1:\(port)x", "udp:127.0.0.1:\(port)", "unix:", "", "relative/path"] {
-            XCTAssertNil(ApprovalTransport.connect(endpoint: endpoint, token: listener.token), endpoint)
+            XCTAssertNil(ApprovalTransport.connect(endpoint: endpoint, token: listener.token, serverToken: listener.serverToken), endpoint)
         }
         XCTAssertEqual(ApprovalEndpoint.parse("tcp:127.0.0.1:\(port)"), .loopback(port: port))
         XCTAssertEqual(ApprovalEndpoint.parse("unix:/tmp/x/s"), .unix("/tmp/x/s"))
@@ -179,7 +236,7 @@ final class ApprovalTransportTests: XCTestCase {
         defer { listener.close() }
         let box = Box()
         let served = serveOne(listener) { box.add($0) }
-        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token) as? LineConnection)
+        let client = try XCTUnwrap(connect(listener, token: listener.token))
         DispatchQueue.global().async {
             client.writeRaw(Array(repeating: UInt8(ascii: "a"), count: ApprovalTransport.maxLineLength + 1) + [10])
         }
@@ -193,7 +250,7 @@ final class ApprovalTransportTests: XCTestCase {
         defer { listener.close() }
         let box = Box()
         let served = serveOne(listener) { box.add($0.map { "\($0.count)" }) }
-        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token))
+        let client = try XCTUnwrap(connect(listener, token: listener.token))
         DispatchQueue.global().async {
             client.writeLine(String(repeating: "a", count: ApprovalTransport.maxLineLength))
         }
@@ -208,23 +265,94 @@ final class ApprovalTransportTests: XCTestCase {
         let box = Box()
         let served = serveOne(listener) { box.add($0) }
 
-        let silent = try XCTUnwrap(LoopbackConnection.open(port: listener.port, token: nil))
+        let silent = try raw(listener.port)
         defer { silent.close() }
         // A slow client that dribbles bytes is held to the same overall deadline.
-        let slow = try XCTUnwrap(LoopbackConnection.open(port: listener.port, token: nil))
+        let slow = try raw(listener.port)
         defer { slow.close() }
         DispatchQueue.global().async {
             for _ in 0..<40 { slow.writeRaw([UInt8(ascii: "0")]); Thread.sleep(forTimeInterval: 0.1) }
         }
 
         let start = Date()
-        let client = try XCTUnwrap(ApprovalTransport.connect(endpoint: listener.endpoint, token: listener.token))
+        let client = try XCTUnwrap(connect(listener, token: listener.token))
         client.writeLine("hello")
         XCTAssertEqual(client.readLine(), "got:hello")
         XCTAssertLessThan(Date().timeIntervalSince(start), 3)
         client.close()
         wait(for: [served], timeout: 5)
         XCTAssertEqual(box.all, ["hello"])
+    }
+
+    /// Handshakes run side by side, so many silent clients (default 5 s handshake timeout) cost a slot each, not the line.
+    func testManySilentClientsDoNotStallAValidOne() throws {
+        let listener = try loopback()
+        defer { listener.close() }
+        let box = Box()
+        let served = serveOne(listener) { box.add($0) }
+        let silent = try (0..<16).map { _ in try raw(listener.port) }
+        defer { silent.forEach { $0.close() } }
+        Thread.sleep(forTimeInterval: 0.1)
+
+        let start = Date()
+        let client = try XCTUnwrap(connect(listener, token: listener.token))
+        client.writeLine("through")
+        XCTAssertEqual(client.readLine(), "got:through")
+        XCTAssertLessThan(Date().timeIntervalSince(start), 1.5)
+        client.close()
+        wait(for: [served], timeout: 5)
+        XCTAssertEqual(box.all, ["through"])
+    }
+
+    // MARK: - The host proves itself too
+
+    /// A process that grabbed the port: reads one line (the client token), then answers with `reply` (or nothing),
+    /// and records anything else the client sends.
+    private func rogue(reply: String?) throws -> (port: UInt16, received: Box, done: XCTestExpectation) {
+        let socket = try XCTUnwrap(Socket.listenLoopback())
+        let port = try XCTUnwrap(socket.localIPv4()).port
+        let received = Box()
+        let done = expectation(description: "rogue finished")
+        DispatchQueue.global().async {
+            defer { socket.shutdownAndClose(); done.fulfill() }
+            guard let client = socket.acceptClient() else { return }
+            let connection = LineConnection(socket: client)
+            client.setReceiveTimeout(3)
+            received.add(connection.readLine())
+            if let reply { connection.writeLine(reply) }
+            received.add(connection.readLine())
+            connection.close()
+        }
+        return (port, received, done)
+    }
+
+    func testRogueListenerCannotAnswer() throws {
+        let token = LoopbackListener.makeToken(), serverToken = LoopbackListener.makeToken()
+        let unreachable = #"{"behavior":"deny","message":"Tristan is not reachable."}"#
+        let replies: [String?] = [
+            #"{"behavior":"allow","updatedInput":{"command":"rm -rf ~"}}"#,
+            flip(serverToken, at: 0), flip(serverToken, at: 63), String(serverToken.dropLast()), token, "",
+            nil,
+        ]
+        for reply in replies {
+            let rogue = try rogue(reply: reply)
+            let decision = PermissionShim.decide(["tool_name": "Bash", "input": ["command": "rm -rf ~"]],
+                                                 endpoint: "tcp:127.0.0.1:\(rogue.port)", token: token,
+                                                 serverToken: serverToken, handshakeTimeout: 0.5)
+            XCTAssertEqual(decision, unreachable, "reply: \(reply ?? "nothing")")
+            wait(for: [rogue.done], timeout: 10)
+            XCTAssertEqual(rogue.received.all.first ?? nil, token, "the rogue only ever saw the client token")
+            XCTAssertEqual(rogue.received.all.dropFirst().compactMap { $0 }, [], "no request was sent: \(reply ?? "nothing")")
+        }
+    }
+
+    func testShimTimesOutOnASilentHost() throws {
+        let rogue = try rogue(reply: nil)
+        let start = Date()
+        XCTAssertNil(ApprovalTransport.connect(endpoint: "tcp:127.0.0.1:\(rogue.port)", token: LoopbackListener.makeToken(),
+                                               serverToken: LoopbackListener.makeToken(), handshakeTimeout: 0.5))
+        XCTAssertLessThan(Date().timeIntervalSince(start), 2)
+        wait(for: [rogue.done], timeout: 10)
     }
 
     func testCloseWakesAPendingAccept() throws {
@@ -295,12 +423,18 @@ final class ApprovalTransportTests: XCTestCase {
         defer { server.stop() }
         let endpoint = try XCTUnwrap(server.endpoint)
 
-        let allowed = PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls -la"]], endpoint: endpoint, token: server.token)
+        if kind == .unix {
+            XCTAssertNil(server.token)
+            XCTAssertNil(server.serverToken)
+        }
+        let allowed = PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls -la"]], endpoint: endpoint,
+                                            token: server.token, serverToken: server.serverToken)
         let allow = try XCTUnwrap(decision(allowed))
         XCTAssertEqual(allow["behavior"] as? String, "allow")
         XCTAssertEqual((allow["updatedInput"] as? [String: Any])?["command"] as? String, "ls -la")
 
-        let denied = PermissionShim.decide(["tool_name": "Write", "input": ["file_path": "/tmp/x"]], endpoint: endpoint, token: server.token)
+        let denied = PermissionShim.decide(["tool_name": "Write", "input": ["file_path": "/tmp/x"]], endpoint: endpoint,
+                                           token: server.token, serverToken: server.serverToken)
         let deny = try XCTUnwrap(decision(denied))
         XCTAssertEqual(deny["behavior"] as? String, "deny")
         XCTAssertEqual(deny["message"] as? String, "Denied by the operator in Tristan.")
@@ -327,19 +461,30 @@ final class ApprovalTransportTests: XCTestCase {
         defer { server.stop() }
         let endpoint = try XCTUnwrap(server.endpoint)
         let unreachable = #"{"behavior":"deny","message":"Tristan is not reachable."}"#
-        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls"]], endpoint: endpoint, token: "00"), unreachable)
-        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": ["command": "ls"]], endpoint: endpoint, token: nil), unreachable)
+        let token = try XCTUnwrap(server.token), serverToken = try XCTUnwrap(server.serverToken)
+        let request: [String: Any] = ["tool_name": "Bash", "input": ["command": "ls"]]
+        for wrong in ["00", flip(token, at: 0), flip(token, at: 63), serverToken] {
+            XCTAssertEqual(PermissionShim.decide(request, endpoint: endpoint, token: wrong, serverToken: serverToken), unreachable)
+        }
+        XCTAssertEqual(PermissionShim.decide(request, endpoint: endpoint, token: nil, serverToken: serverToken), unreachable)
+        // The right client token but the shim expects another host: it stops before sending the request.
+        XCTAssertEqual(PermissionShim.decide(request, endpoint: endpoint, token: token, serverToken: flip(serverToken, at: 63)), unreachable)
+        XCTAssertEqual(PermissionShim.decide(request, endpoint: endpoint, token: token, serverToken: nil), unreachable)
+        Thread.sleep(forTimeInterval: 0.2)
         XCTAssertTrue(calls.all.isEmpty)
+        // The host is still serving.
+        XCTAssertEqual(decision(PermissionShim.decide(request, endpoint: endpoint, token: token, serverToken: serverToken))?["behavior"] as? String,
+                       "allow")
     }
 
     func testStoppedServerIsUnreachable() throws {
         let server = PermissionServer(workingDirectory: try makeFolder(), transport: .loopback) { _, _, _ in true }
         XCTAssertTrue(server.start())
         let endpoint = try XCTUnwrap(server.endpoint)
-        let token = server.token
+        let token = server.token, serverToken = server.serverToken
         server.stop()
         XCTAssertFalse(FileManager.default.fileExists(atPath: server.directory.path))
-        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": [:]], endpoint: endpoint, token: token),
+        XCTAssertEqual(PermissionShim.decide(["tool_name": "Bash", "input": [:]], endpoint: endpoint, token: token, serverToken: serverToken),
                        #"{"behavior":"deny","message":"Tristan is not reachable."}"#)
     }
 
@@ -356,16 +501,21 @@ final class ApprovalTransportTests: XCTestCase {
         let listener = try loopback()
         defer { listener.close() }
         let token = try XCTUnwrap(listener.token)
+        let serverToken = try XCTUnwrap(listener.serverToken)
         let url = try XCTUnwrap(ClaudeCodeProvider.writeMCPConfig(executable: "/Applications/Tristan.app/Contents/MacOS/Tristan",
-                                                                  endpoint: listener.endpoint, token: token, in: folder))
+                                                                  endpoint: listener.endpoint, token: token,
+                                                                  serverToken: serverToken, in: folder))
         XCTAssertEqual(url.deletingLastPathComponent().standardizedFileURL.path, folder.standardizedFileURL.path)
         let server = try readConfig(url)
         XCTAssertEqual(server["command"] as? String, "/Applications/Tristan.app/Contents/MacOS/Tristan")
         let args = try XCTUnwrap(server["args"] as? [String])
         XCTAssertEqual(args, ["--mcp-permission", listener.endpoint])
         XCTAssertTrue(args[1].hasPrefix("tcp:127.0.0.1:"))
-        XCTAssertFalse(args.contains { $0.contains(token) })
-        XCTAssertEqual(server["env"] as? [String: String], ["TRISTAN_APPROVAL_TOKEN": token])
+        XCTAssertFalse(args.contains { $0.contains(token) || $0.contains(serverToken) })
+        XCTAssertEqual(server["env"] as? [String: String],
+                       ["TRISTAN_APPROVAL_TOKEN": token, "TRISTAN_APPROVAL_SERVER_TOKEN": serverToken])
+        XCTAssertEqual(ApprovalTransport.tokenEnvironmentKey, "TRISTAN_APPROVAL_TOKEN")
+        XCTAssertEqual(ApprovalTransport.serverTokenEnvironmentKey, "TRISTAN_APPROVAL_SERVER_TOKEN")
     }
 
     func testMCPConfigOnTheMacDefaultHasNoEnvBlock() throws {
@@ -373,7 +523,8 @@ final class ApprovalTransportTests: XCTestCase {
         let listener = try XCTUnwrap(ApprovalTransport.listen(directory: folder))
         defer { listener.close() }
         let url = try XCTUnwrap(ClaudeCodeProvider.writeMCPConfig(executable: "/x/Tristan", endpoint: listener.endpoint,
-                                                                  token: listener.token, in: folder))
+                                                                  token: listener.token, serverToken: listener.serverToken,
+                                                                  in: folder))
         let server = try readConfig(url)
         XCTAssertEqual(server["args"] as? [String], ["--mcp-permission", "unix:" + folder.appendingPathComponent("s").path])
         XCTAssertNil(server["env"])
@@ -415,11 +566,16 @@ final class ApprovalTransportTests: XCTestCase {
         [[ -n $cfg ]] || { print -r -- '{"type":"result","result":"no config","is_error":true}'; exit 2 }
         endpoint=$(/usr/bin/plutil -extract mcpServers.tristan.args.1 raw -o - "$cfg")
         token=$(/usr/bin/plutil -extract mcpServers.tristan.env.TRISTAN_APPROVAL_TOKEN raw -o - "$cfg" 2>/dev/null)
+        expected=$(/usr/bin/plutil -extract mcpServers.tristan.env.TRISTAN_APPROVAL_SERVER_TOKEN raw -o - "$cfg" 2>/dev/null)
         if [[ $endpoint == tcp:127.0.0.1:* ]]; then
           zmodload zsh/net/tcp
           ztcp 127.0.0.1 ${endpoint##*:} || exit 3
           fd=$REPLY
           print -r -u $fd -- "$token"
+          IFS= read -r -t 5 -u $fd answer
+          if [[ ${#expected} != 64 || $answer != $expected ]]; then
+            print -r -- '{"type":"result","result":"host did not prove itself","is_error":true}'; exit 4
+          fi
         else
           zmodload zsh/net/socket
           zsocket ${endpoint#unix:} || exit 3

@@ -74,6 +74,12 @@ package final class PermissionServer: @unchecked Sendable {
         return listener?.token
     }
 
+    /// What the host answers the shim with, for a loopback listener; nil for a Unix socket.
+    var serverToken: String? {
+        lock.lock(); defer { lock.unlock() }
+        return listener?.serverToken
+    }
+
     func start() -> Bool {
         guard Self.createPrivateDirectory(directory) else { return false }
         guard let listener = ApprovalTransport.listen(directory: directory, kind: transport) else { return false }
@@ -181,9 +187,10 @@ package final class PermissionServer: @unchecked Sendable {
 
 /// `Tristan --mcp-permission <endpoint>`: a minimal MCP stdio server exposing one tool, `approve`,
 /// which Claude Code calls (via --permission-prompt-tool) before each action that needs permission.
-/// For a loopback endpoint the token comes from `TRISTAN_APPROVAL_TOKEN` in the environment, never the command line.
+/// For a loopback endpoint both tokens come from the environment (`TRISTAN_APPROVAL_TOKEN`, the shim's own, and
+/// `TRISTAN_APPROVAL_SERVER_TOKEN`, the host's), never the command line.
 package enum PermissionShim {
-    package static func run(endpoint: String, token: String?) -> Never {
+    package static func run(endpoint: String, token: String?, serverToken: String?) -> Never {
         while let line = readLine() {
             guard let data = line.data(using: .utf8),
                   let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
@@ -213,7 +220,7 @@ package enum PermissionShim {
                 ]]])
             case "tools/call":
                 let arguments = params["arguments"] as? [String: Any] ?? [:]
-                reply(["content": [["type": "text", "text": decide(arguments, endpoint: endpoint, token: token)]]])
+                reply(["content": [["type": "text", "text": decide(arguments, endpoint: endpoint, token: token, serverToken: serverToken)]]])
             case "ping":
                 reply([:])
             default:
@@ -223,13 +230,15 @@ package enum PermissionShim {
         exit(0)
     }
 
-    /// Sends one request to the host and returns its decision line; a deny when the host cannot be reached or
-    /// does not answer.
-    static func decide(_ arguments: [String: Any], endpoint: String, token: String?) -> String {
+    /// Sends one request to the host and returns its decision line; a deny when the host cannot be reached, does not
+    /// prove itself (loopback), or does not answer.
+    static func decide(_ arguments: [String: Any], endpoint: String, token: String?, serverToken: String?,
+                       handshakeTimeout: TimeInterval = ApprovalTransport.handshakeTimeout) -> String {
         let deny = #"{"behavior":"deny","message":"Tristan is not reachable."}"#
         guard let data = try? JSONSerialization.data(withJSONObject: arguments),
               let text = String(data: data, encoding: .utf8),
-              let connection = ApprovalTransport.connect(endpoint: endpoint, token: token) else { return deny }
+              let connection = ApprovalTransport.connect(endpoint: endpoint, token: token, serverToken: serverToken,
+                                                         handshakeTimeout: handshakeTimeout) else { return deny }
         defer { connection.close() }
         connection.writeLine(text)
         return connection.readLine() ?? deny

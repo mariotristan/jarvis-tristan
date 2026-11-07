@@ -12,9 +12,11 @@ import Glibc
 //
 // Two transports:
 // - `unix:<path>`: a Unix domain socket in a per-run folder only the user can open (the Mac default).
-// - `tcp:127.0.0.1:<port>`: loopback TCP (the Windows default). Any local process can connect to a loopback port, so
-//   the first line a client sends must be a one-time 256-bit token; anything else is closed without a word. The token
-//   reaches the shim through its environment (the MCP config's `env` block), never its command line.
+// - `tcp:127.0.0.1:<port>`: loopback TCP (the Windows default). Any local process can connect to a loopback port, and
+//   any local process could take the port if the host died, so both sides prove themselves with one-time 256-bit tokens:
+//   the client sends the client token as its first line (anything else is closed without a word); only then does the
+//   host send the server token as its first line, and the client checks it before it sends a request. Both tokens
+//   reach the shim through its environment (the MCP config's `env` block), never its command line.
 
 /// One accepted or opened connection, framed in lines.
 package protocol ApprovalConnection: AnyObject {
@@ -30,6 +32,9 @@ package protocol ApprovalListener: AnyObject {
     var endpoint: String { get }
     /// The secret a client must send as its first line; nil for a Unix socket (the folder's permissions guard it).
     var token: String? { get }
+    /// The secret the listener answers an authenticated client with, so the client knows it reached the real host;
+    /// nil for a Unix socket.
+    var serverToken: String? { get }
     /// Blocks until an authenticated client connects; nil once the listener is closed.
     func accept() -> ApprovalConnection?
     func close()
@@ -49,8 +54,14 @@ package enum ApprovalTransportKind: Sendable, Equatable {
 }
 
 package enum ApprovalTransport {
-    /// The environment variable the shim reads its token from.
+    /// The environment variable the shim reads its (client) token from.
     package static let tokenEnvironmentKey = "TRISTAN_APPROVAL_TOKEN"
+    /// The environment variable holding the token the host must answer with.
+    package static let serverTokenEnvironmentKey = "TRISTAN_APPROVAL_SERVER_TOKEN"
+    /// How long the shim waits for the host's half of the handshake.
+    package static let handshakeTimeout: TimeInterval = 10
+    /// How long the shim waits for a decision; the operator may be away, but never forever.
+    package static let replyTimeout: TimeInterval = 60 * 60
     /// The longest line either side accepts once authenticated. Generous because the decision echoes the tool input
     /// (a `Write` carries the whole file); it only bounds what a client can make the host buffer.
     package static let maxLineLength = 16 * 1024 * 1024
@@ -73,8 +84,12 @@ package enum ApprovalTransport {
         }
     }
 
-    /// Opens a connection to a listener. For TCP the token is sent as the first line, and a missing token is refused.
-    package static func connect(endpoint: String, token: String?) -> ApprovalConnection? {
+    /// Opens a connection to a listener. For TCP both tokens are required: `token` is sent as the first line, and the
+    /// host's first line must be `serverToken` within `handshakeTimeout`, or nil is returned before anything else is
+    /// sent. Reads after that time out after `replyTimeout`. A Unix socket ignores the tokens and timeouts, as before.
+    package static func connect(endpoint: String, token: String?, serverToken: String? = nil,
+                                handshakeTimeout: TimeInterval = ApprovalTransport.handshakeTimeout,
+                                replyTimeout: TimeInterval = ApprovalTransport.replyTimeout) -> ApprovalConnection? {
         switch ApprovalEndpoint.parse(endpoint) {
         case .none:
             return nil
@@ -86,9 +101,18 @@ package enum ApprovalTransport {
             return LineConnection(socket: Socket(handle: fd))
             #endif
         case .loopback(let port):
-            guard let token, !token.isEmpty, !token.utf8.contains(where: { $0 == 10 || $0 == 13 }) else { return nil }
-            return LoopbackConnection.open(port: port, token: token)
+            guard let token, let serverToken, isUsableToken(token), isUsableToken(serverToken) else { return nil }
+            return LoopbackConnection.open(port: port, token: token, serverToken: serverToken,
+                                           handshakeTimeout: handshakeTimeout, replyTimeout: replyTimeout)
         }
+    }
+}
+
+extension ApprovalTransport {
+    /// Non-empty, one line, and short enough to fit the handshake.
+    static func isUsableToken(_ token: String) -> Bool {
+        !token.isEmpty && token.utf8.count <= LoopbackListener.handshakeLimit
+            && !token.utf8.contains(where: { $0 == 10 || $0 == 13 })
     }
 }
 
@@ -197,23 +221,35 @@ final class LineConnection: ApprovalConnection, @unchecked Sendable {
 // MARK: - Loopback TCP
 
 /// Listens on 127.0.0.1 (never any other address) on a port the system picks. Hands out only connections whose first
-/// line is the token.
+/// line is the client token, after answering them with the server token.
+///
+/// A background thread accepts clients and checks each one's token on its own task, at most `maxPendingHandshakes` at
+/// a time; when all slots are taken the oldest unfinished handshake is cut off. A silent client therefore costs one
+/// slot for at most `handshakeTimeout`, never the whole line, and a real shim (which sends its token at once) gets
+/// through even while others stall.
 package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
     package let port: UInt16
     package let token: String?
+    package let serverToken: String?
     package var endpoint: String { "tcp:127.0.0.1:\(port)" }
 
     /// The token line is 64 bytes; a first line longer than this is not a token.
     static let handshakeLimit = 128
+    static let maxPendingHandshakes = 8
 
     private let socket: Socket
     private let secret: [UInt8]
+    private let answer: String
     private let handshakeTimeout: TimeInterval
-    private let lock = NSLock()
+    private let handshakes = DispatchQueue(label: "tristan.approval.handshake", attributes: .concurrent)
+    private let condition = NSCondition()
+    // Guarded by `condition`.
     private var closed = false
+    private var ready: [LineConnection] = []
+    private var pending: [(id: Int, socket: Socket)] = []
+    private var nextID = 0
 
-    /// `handshakeTimeout` bounds how long one client may take to send its token line, so a silent or slow client
-    /// cannot hold up the clients behind it.
+    /// `handshakeTimeout` bounds how long one client may take to send its token line.
     package init?(handshakeTimeout: TimeInterval = 5) {
         guard let socket = Socket.listenLoopback() else { return nil }
         guard let bound = socket.localIPv4(), bound.host == "127.0.0.1", bound.port != 0 else {
@@ -225,7 +261,14 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
         let token = Self.makeToken()
         self.token = token
         secret = Array(token.utf8)
+        var serverToken = Self.makeToken()
+        while serverToken == token { serverToken = Self.makeToken() }
+        self.serverToken = serverToken
+        answer = serverToken
         self.handshakeTimeout = handshakeTimeout
+        let thread = Thread { [self] in acceptLoop() }
+        thread.name = "tristan.approval.accept"
+        thread.start()
     }
 
     /// 32 bytes from the system's secure generator (arc4random on Apple, getrandom on Linux, BCryptGenRandom on
@@ -250,32 +293,73 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
         return difference == 0
     }
 
-    private var isClosed: Bool {
-        lock.lock(); defer { lock.unlock() }
-        return closed
+    /// Runs until the listening socket is closed (or fails, which also ends `accept`: fail closed).
+    private func acceptLoop() {
+        while let client = socket.acceptClient() {
+            condition.lock()
+            if closed {
+                condition.unlock()
+                client.shutdownAndClose()
+                break
+            }
+            if pending.count >= Self.maxPendingHandshakes {
+                // Wakes that handshake's read; its own task closes the socket.
+                pending.removeFirst().socket.shutdownBoth()
+            }
+            let id = nextID
+            nextID += 1
+            pending.append((id, client))
+            condition.unlock()
+            handshakes.async { [self] in handshake(client, id: id) }
+        }
+        condition.lock()
+        closed = true
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    private func handshake(_ client: Socket, id: Int) {
+        let connection = LineConnection(socket: client)
+        let deadline = Date().addingTimeInterval(handshakeTimeout)
+        let first = connection.readLineBytes(limit: Self.handshakeLimit, deadline: deadline, requireNewline: true)
+        let authenticated = first.map { Self.constantTimeEqual($0, secret) } ?? false
+        condition.lock()
+        let evicted = !pending.contains { $0.id == id }
+        pending.removeAll { $0.id == id }
+        condition.unlock()
+        guard authenticated, !evicted else { connection.close(); return }
+        client.setReceiveTimeout(nil)
+        connection.writeLine(answer)
+        condition.lock()
+        if closed {
+            condition.unlock()
+            connection.close()
+            return
+        }
+        ready.append(connection)
+        condition.signal()
+        condition.unlock()
     }
 
     package func accept() -> ApprovalConnection? {
-        while true {
-            if isClosed { return nil }
-            guard let client = socket.acceptClient() else { return nil }
-            if isClosed { client.shutdownAndClose(); return nil }
-            let connection = LineConnection(socket: client)
-            let deadline = Date().addingTimeInterval(handshakeTimeout)
-            if let first = connection.readLineBytes(limit: Self.handshakeLimit, deadline: deadline, requireNewline: true),
-               Self.constantTimeEqual(first, secret) {
-                client.setReceiveTimeout(nil)
-                return connection
-            }
-            connection.close()
-        }
+        condition.lock()
+        defer { condition.unlock() }
+        while ready.isEmpty, !closed { condition.wait() }
+        if closed { return nil }
+        return ready.removeFirst()
     }
 
     package func close() {
-        lock.lock()
+        condition.lock()
         closed = true
-        lock.unlock()
+        let waiting = ready
+        ready = []
+        let handshaking = pending.map(\.socket)
+        condition.broadcast()
+        condition.unlock()
         socket.shutdownAndClose()
+        waiting.forEach { $0.close() }
+        handshaking.forEach { $0.shutdownBoth() }
     }
 
     /// The address the socket is bound to, from the system (`getsockname`).
@@ -285,11 +369,25 @@ package final class LoopbackListener: ApprovalListener, @unchecked Sendable {
 }
 
 enum LoopbackConnection {
-    /// Connects to 127.0.0.1:`port` and, when given, sends the token line.
-    static func open(port: UInt16, token: String?) -> LineConnection? {
+    /// A bare connection to 127.0.0.1:`port`, no handshake.
+    static func open(port: UInt16) -> LineConnection? {
         guard let socket = Socket.connectLoopback(port: port) else { return nil }
-        let connection = LineConnection(socket: socket)
-        if let token { connection.writeLine(token) }
+        return LineConnection(socket: socket)
+    }
+
+    /// Connects, sends `token`, and requires the host's first line to be `serverToken` within `handshakeTimeout`;
+    /// otherwise closes and returns nil without sending anything else. Later reads time out after `replyTimeout`.
+    static func open(port: UInt16, token: String, serverToken: String, handshakeTimeout: TimeInterval,
+                     replyTimeout: TimeInterval) -> LineConnection? {
+        guard let connection = open(port: port) else { return nil }
+        connection.writeLine(token)
+        let deadline = Date().addingTimeInterval(handshakeTimeout)
+        guard let answer = connection.readLineBytes(limit: LoopbackListener.handshakeLimit, deadline: deadline, requireNewline: true),
+              LoopbackListener.constantTimeEqual(answer, Array(serverToken.utf8)) else {
+            connection.close()
+            return nil
+        }
+        connection.socket.setReceiveTimeout(replyTimeout)
         return connection
     }
 }
@@ -302,6 +400,7 @@ final class UnixListener: ApprovalListener, @unchecked Sendable {
     let path: String
     var endpoint: String { "unix:" + path }
     var token: String? { nil }
+    var serverToken: String? { nil }
 
     private let socket: Socket
     private let lock = NSLock()
@@ -373,6 +472,19 @@ final class Socket: @unchecked Sendable {
         Self.closeHandle(old)
     }
 
+    /// Ends both directions without releasing the handle (so its number cannot be reused under a thread still
+    /// reading it); that thread wakes and the owner closes it.
+    func shutdownBoth() {
+        guard let handle = current else { return }
+        Self.shutdownHandle(handle)
+    }
+
+    /// Sends end-of-stream; reading still works.
+    func shutdownWrite() {
+        guard let handle = current else { return }
+        Self.shutdownSending(handle)
+    }
+
     #if os(Windows)
     private static let winsockReady: Bool = {
         var data = WSADATA()
@@ -386,6 +498,7 @@ final class Socket: @unchecked Sendable {
 
     private static func closeHandle(_ handle: Handle) { _ = closesocket(handle) }
     private static func shutdownHandle(_ handle: Handle) { _ = WinSDK.shutdown(handle, 2 /* SD_BOTH */) }
+    private static func shutdownSending(_ handle: Handle) { _ = WinSDK.shutdown(handle, 1 /* SD_SEND */) }
 
     private static func newStreamSocket() -> Handle? {
         guard winsockReady else { return nil }
@@ -487,7 +600,8 @@ final class Socket: @unchecked Sendable {
     }
 
     private static func closeHandle(_ fd: Handle) { _ = posixClose(fd) }
-    private static func shutdownHandle(_ fd: Handle) { _ = posixShutdown(fd) }
+    private static func shutdownHandle(_ fd: Handle) { _ = posixShutdown(fd, Int32(SHUT_RDWR)) }
+    private static func shutdownSending(_ fd: Handle) { _ = posixShutdown(fd, Int32(SHUT_WR)) }
 
     private static func loopbackAddress(port: UInt16) -> sockaddr_in {
         var address = sockaddr_in()
@@ -596,5 +710,5 @@ func posixClose(_ fd: Int32) -> Int32 { close(fd) }
 func posixListen(_ fd: Int32, _ backlog: Int32) -> Int32 { listen(fd, backlog) }
 func posixConnect(_ fd: Int32, _ address: UnsafePointer<sockaddr>, _ length: socklen_t) -> Int32 { connect(fd, address, length) }
 func posixAccept(_ fd: Int32) -> Int32 { accept(fd, nil, nil) }
-func posixShutdown(_ fd: Int32) -> Int32 { shutdown(fd, Int32(SHUT_RDWR)) }
+func posixShutdown(_ fd: Int32, _ how: Int32) -> Int32 { shutdown(fd, how) }
 #endif
