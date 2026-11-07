@@ -62,7 +62,8 @@ final class WindowsPlatformTests: XCTestCase {
         try Data("process.stdout.write(JSON.stringify(process.argv.slice(2)))".utf8).write(to: script.appendingPathComponent("cli.js"))
 
         let tricky = ["two words", "quote\"inside", "a&b", "100%", "%PATH%", "trail\\", "caf\u{e9} \u{65E5}\u{672C}",
-                      "^caret", "pipe|x", "(paren)", "!bang!", "", "back\\\\\"slash"]
+                      "^caret", "pipe|x", "(paren)", "!bang!", "back\\\\\"slash"]
+        // Not tested: an empty argument. Foundation.Process on Windows drops it (spike notes), shim or not.
         var environment = ProcessInfo.processInfo.environment
         let nodeFolder = URL(fileURLWithPath: node).deletingLastPathComponent()
         environment["PATH"] = native(folder) + ";" + native(nodeFolder)
@@ -98,6 +99,12 @@ final class WindowsPlatformTests: XCTestCase {
         let result = await sandbox.run("Write-Output ('caf' + [char]0xE9 + ' ' + [char]0x65E5 + [char]0x672C)")
         print("run_command non-ASCII output: \(result.text.debugDescription)")
         XCTAssertFalse(result.isError, result.text)
+    }
+
+    /// The per-run approval folder is restricted to the user named by the process token's SID.
+    func testCurrentUserSIDComesFromTheToken() {
+        let sid = PermissionServer.currentUserSID()
+        XCTAssertTrue(sid?.hasPrefix("S-1-5-") == true, sid ?? "nil")
     }
 
     /// SO_EXCLUSIVEADDRUSE: while the host holds the approval port, no other socket can bind it, even one that asks to

@@ -4,6 +4,9 @@ import Darwin
 #elseif canImport(Glibc)
 import Glibc
 #endif
+#if os(Windows)
+import WinSDK
+#endif
 
 #if !os(Windows)
 /// The Unix domain socket half of the approval transport (`unix:<path>`); see ApprovalTransport.swift.
@@ -127,12 +130,13 @@ package final class PermissionServer: @unchecked Sendable {
 
     #if os(Windows)
     /// Removes inherited entries and leaves one: full control for the current user, inherited by what is created inside.
-    /// Only the folder path and the account name are on icacls's command line.
+    /// The user is named by the SID of this process's token (`*S-1-5-…`), not `%USERDOMAIN%\%USERNAME%`: those
+    /// variables can name another account (on GitHub's Windows runners USERNAME is SYSTEM while the process runs as
+    /// runneradmin, and icacls then fails). Only the folder path and the SID are on icacls's command line.
     private static func restrictToCurrentUser(_ directory: URL) -> Bool {
+        guard let sid = currentUserSID() else { return false }
+        let account = "*" + sid
         let environment = ProcessInfo.processInfo.environment
-        guard let user = ProcessLauncher.value(of: "USERNAME", in: environment, windows: true), !user.isEmpty else { return false }
-        let domain = ProcessLauncher.value(of: "USERDOMAIN", in: environment, windows: true) ?? ""
-        let account = domain.isEmpty ? user : domain + "\\" + user
         let systemRoot = ProcessLauncher.value(of: "SystemRoot", in: environment, windows: true) ?? "C:\\Windows"
         let path = directory.withUnsafeFileSystemRepresentation { $0.map { String(cString: $0) } } ?? directory.path
         do {
@@ -146,6 +150,24 @@ package final class PermissionServer: @unchecked Sendable {
             process.waitUntilExit()
             return process.terminationStatus == 0
         } catch { return false }
+    }
+
+    /// The string SID (`S-1-5-21-…`) of the user this process runs as, from its access token.
+    static func currentUserSID() -> String? {
+        var token: HANDLE? = nil
+        guard OpenProcessToken(GetCurrentProcess(), DWORD(0x0008) /* TOKEN_QUERY */, &token), let token else { return nil }
+        defer { CloseHandle(token) }
+        var size: DWORD = 0
+        _ = GetTokenInformation(token, TokenUser, nil, 0, &size)
+        guard size > 0 else { return nil }
+        let buffer = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<TOKEN_USER>.alignment)
+        defer { buffer.deallocate() }
+        guard GetTokenInformation(token, TokenUser, buffer, size, &size) else { return nil }
+        let user = buffer.assumingMemoryBound(to: TOKEN_USER.self).pointee
+        var text: LPWSTR? = nil
+        guard ConvertSidToStringSidW(user.User.Sid, &text), let text else { return nil }
+        defer { _ = LocalFree(UnsafeMutableRawPointer(text)) }
+        return String(decodingCString: text, as: UTF16.self)
     }
     #endif
 

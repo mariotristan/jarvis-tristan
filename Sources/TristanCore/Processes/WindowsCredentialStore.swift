@@ -13,7 +13,7 @@ enum WindowsCredentialStore {
     static func get(_ target: String) -> String? {
         var credential: PCREDENTIALW? = nil
         let found = target.withCString(encodedAs: UTF16.self) { CredReadW($0, genericType, 0, &credential) }
-        guard found.boolValue, let credential else { return nil }
+        guard found, let credential else { return nil }
         defer { CredFree(UnsafeMutableRawPointer(credential)) }
         let size = Int(credential.pointee.CredentialBlobSize)
         guard size > 0, let blob = credential.pointee.CredentialBlob else { return nil }
@@ -32,7 +32,7 @@ enum WindowsCredentialStore {
                 credential.CredentialBlobSize = DWORD(bytes.count)
                 credential.CredentialBlob = bytes.baseAddress
                 credential.Persist = persistLocalMachine
-                return CredWriteW(&credential, 0).boolValue
+                return CredWriteW(&credential, 0)
             }
         }
     }
@@ -40,7 +40,7 @@ enum WindowsCredentialStore {
     /// True when the credential is gone afterwards, including when there was none.
     static func delete(_ target: String) -> Bool {
         target.withCString(encodedAs: UTF16.self) { name in
-            CredDeleteW(name, genericType, 0).boolValue || GetLastError() == notFound
+            CredDeleteW(name, genericType, 0) || GetLastError() == notFound
         }
     }
 }
