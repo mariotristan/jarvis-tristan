@@ -11,8 +11,8 @@ package enum SettingsError: Error, LocalizedError {
     package var errorDescription: String? {
         switch self {
         case .unreadable(let path, let reason):
-            return "The settings file \(path) cannot be read (\(reason)). Kids mode counts as on, and nothing is saved "
-                + "until the file is fixed or deleted."
+            return "The settings file \(path) cannot be read (\(reason)). Kids mode stays on until the file is "
+                + "repaired, and no setting can be saved until then."
         case .notSaved(let path, let reason):
             return "The settings file \(path) could not be saved (\(reason))."
         }

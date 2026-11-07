@@ -125,6 +125,32 @@ final class SettingsTests: XCTestCase {
     }
     #endif
 
+    /// A `kidsMode` that is there but not a Bool (`"true"`, `"no"`, an object) was written by something else: it reads
+    /// as on. A real Bool is read as it is.
+    func testNonBoolKidsModeReadsAsOn() throws {
+        let previous = Settings.backend
+        defer { Settings.backend = previous }
+        let cases: [(String, Bool)] = [(#"{"kidsMode": "true"}"#, true), (#"{"kidsMode": "no"}"#, true),
+                                       (#"{"kidsMode": {"on": false}}"#, true), (#"{"kidsMode": false}"#, false),
+                                       (#"{"kidsMode": true}"#, true), (#"{"other": 1}"#, false)]
+        for (json, on) in cases {
+            let url = tempURL()
+            defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent().deletingLastPathComponent()) }
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(json.utf8).write(to: url)
+            Settings.backend = JSONFileBackend(url: url)
+            XCTAssertNil(Settings.unreadable, json)
+            XCTAssertEqual(KidsRouting.kidsModeIsOn, on, json)
+        }
+    }
+
+    /// The message says kids mode stays on until the file is repaired, and does not offer deleting it as the way out.
+    func testUnreadableMessageSaysKidsModeStaysOn() {
+        let text = SettingsError.unreadable(path: "/x/settings.json", reason: "it is not valid settings JSON").localizedDescription
+        XCTAssertTrue(text.contains("Kids mode stays on until the file is repaired"), text)
+        XCTAssertFalse(text.lowercased().contains("delete"), text)
+    }
+
     /// No file yet is not an error: kids mode is off and the first write creates the file.
     func testMissingSettingsFileIsReadableAndWritable() throws {
         let url = tempURL()
