@@ -200,12 +200,17 @@ jobs:
 
       # release.yml's Windows job turns the tag into a version with exactly these lines (there $ref is
       # $env:GITHUB_REF_NAME); made-up tags prove the derivation, the stamping, the zip name and the checks.
-      - name: Package as a release would (tags v9.9.9-test, v1.2, v1.2.3_rc1)
+      - name: Package as a release would (tags v9.9.9-test, v1.2, v1.2.3_rc1, v1.2.3-<Kelvin sign>)
         run: |
+          # The script itself refuses a version with a non-ASCII letter (case-sensitive check), before building.
+          pwsh -NoProfile -File scripts/package-windows.ps1 -Version "1.2.$([char]0x212A)"
+          if ($LASTEXITCODE -eq 0) { throw "package-windows.ps1 accepted a version with the Kelvin sign U+212A" }
+          Write-Host "PASS: package-windows.ps1 refuses a version with U+212A"
           foreach ($case in @(@{ Tag = 'v9.9.9-test'; Want = '9.9.9-test' }, @{ Tag = 'v1.2'; Want = '1.2' },
-                              @{ Tag = 'v1.2.3_rc1'; Want = '1.2.3-rc1' })) {
+                              @{ Tag = 'v1.2.3_rc1'; Want = '1.2.3-rc1' },
+                              @{ Tag = "v1.2.3-$([char]0x212A)"; Want = '1.2.3--' })) {
             $ref = $case.Tag
-            $version = ($ref -replace '^v', '') -replace '[^0-9A-Za-z.-]', '-'
+            $version = ($ref -creplace '^v', '') -creplace '[^0-9A-Za-z.-]', '-'
             if (-not $version) { $version = '0.0.0' }
             pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

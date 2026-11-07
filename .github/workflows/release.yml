@@ -40,7 +40,8 @@ jobs:
           # The tag is the version: v1.2.3 gives 1.2.3. Any v* tag works, as for the DMG: characters other than letters,
           # digits, dots and dashes become dashes (v1.2.3_rc1 gives 1.2.3-rc1). Same lines as windows.yml's simulation.
           $ref = $env:GITHUB_REF_NAME
-          $version = ($ref -replace '^v', '') -replace '[^0-9A-Za-z.-]', '-'
+          # -creplace: case-sensitive, so a non-ASCII letter such as the Kelvin sign (U+212A) cannot pass [A-Za-z].
+          $version = ($ref -creplace '^v', '') -creplace '[^0-9A-Za-z.-]', '-'
           if (-not $version) { $version = '0.0.0' }
           pwsh -NoProfile -File scripts/package-windows.ps1 -Version $version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

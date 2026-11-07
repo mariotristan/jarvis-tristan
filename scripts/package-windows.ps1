@@ -12,8 +12,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 # The version goes into a Swift string literal and a file name: letters, digits, dots and dashes only, starting with a
-# letter or digit (no quotes, backslashes, `$`, slashes or spaces).
-if ($Version -notmatch '\A[0-9A-Za-z][0-9A-Za-z.-]*\z') {
+# letter or digit (no quotes, backslashes, `$`, slashes or spaces). Case-sensitive (-cnotmatch): PowerShell's default
+# case-insensitive matching would let a non-ASCII letter whose lower case is ASCII (the Kelvin sign U+212A) pass [A-Za-z].
+if ($Version -cnotmatch '\A[0-9A-Za-z][0-9A-Za-z.-]*\z') {
     throw "Version '$Version' may only contain letters, digits, dots and dashes, and must start with a letter or digit"
 }
 

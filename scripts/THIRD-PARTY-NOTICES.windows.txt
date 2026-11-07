@@ -5,12 +5,16 @@ and the zip ships the Swift runtime and Foundation DLLs next to it. Those compon
 statically inside them, are listed below with their licence texts, copied verbatim from the files named in each
 section at the version the build uses.
 
-What is inside the DLLs was established from the Swift 6.4.2 sources (utils/build.ps1 and
-utils/update_checkout/update-checkout-config.json at swift-6.4.2-RELEASE: curl-8_9_1, zlib v1.3.1, brotli v1.2.0, all
-built as static libraries; libcurl with Schannel, Windows IDN, zlib and Brotli, without nghttp2, zstd, libssh, libpsl or
-OpenSSL) and confirmed in the shipped files: FoundationNetworking.dll contains libcurl, Schannel, gzip/deflate and
-Brotli dictionary strings and depends on no curl, zlib or Brotli DLL; _FoundationICU.dll contains ICU 76 data
-(icudt76l). libxml2 (FoundationXML) is not shipped.
+Sources of these statements. The curl, zlib and Brotli versions (curl-8_9_1, zlib v1.3.1, brotli v1.2.0) are taken
+from the Swift 6.4.2 build configuration (utils/build.ps1 and utils/update_checkout/update-checkout-config.json at
+swift-6.4.2-RELEASE, which build them as static libraries; libcurl with Schannel, Windows IDN, zlib and Brotli, without
+nghttp2, zstd, libssh, libpsl or OpenSSL), not from version strings in the shipped binaries. What the shipped files
+themselves show is only this: FoundationNetworking.dll contains libcurl, Schannel, gzip/deflate and Brotli dictionary
+strings and depends on no curl, zlib or Brotli DLL; the ICU data inside _FoundationICU.dll is version 76 (icudt76l).
+libxml2 (FoundationXML) is not shipped.
+
+This list reflects Swift 6.4.2 and the package versions resolved on the build date: swift-argument-parser 1.8.2 and
+swift-crypto 3.15.1. When the Swift toolchain or those packages change, these notices may need refreshing.
 
 VCRUNTIME140.dll, VCRUNTIME140_1.dll and MSVCP140.dll are the Microsoft Visual C++ runtime, redistributed with the
 application as Microsoft's Visual Studio redistribution terms allow; they carry no separate notice here.
