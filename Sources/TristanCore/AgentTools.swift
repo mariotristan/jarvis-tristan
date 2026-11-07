@@ -167,6 +167,7 @@ package struct ToolSandbox {
                 process.standardOutput = pipe
                 process.standardError = pipe
                 process.standardInput = FileHandle.nullDevice
+                let exit = ExitWatch(process)
                 do {
                     guard try box.start(process) else {
                         continuation.resume(returning: .init(text: "Command cancelled", isError: true))
@@ -176,18 +177,18 @@ package struct ToolSandbox {
                     continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
                     return
                 }
+                exit.started(process)
                 // Read while the command runs, so a full pipe never stalls it.
                 let output = PipeDrain(pipe.fileHandleForReading)
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { if process.isRunning { box.terminate() } }
                 DispatchQueue.global().async {
-                    process.waitUntilExit()
+                    let status = exit.wait(for: process)
                     // A process the command started can outlive it (or escape the tree kill) and keep the pipe open:
                     // wait only briefly for the end of the output, then report what arrived.
                     let (data, complete, capped) = output.collect(within: Self.outputGrace)
                     var text = String(decoding: data, as: UTF8.self)
                     if text.count > Self.maxOutput || capped { text = String(text.prefix(Self.maxOutput)) + "\n[output truncated]" }
                     if !complete { text += "\n[output truncated: a process the command started did not exit]" }
-                    let status = process.terminationStatus
                     continuation.resume(returning: .init(text: text + "\n[exit status \(status)]", isError: status != 0))
                 }
             }

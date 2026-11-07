@@ -141,7 +141,8 @@ final class WindowsPlatformTests: XCTestCase {
         XCTAssertTrue(PermissionServer.createLockedDirectory(directory))
         try assertOnlyTheCurrentUser(native(directory))
         XCTAssertFalse(PermissionServer.createLockedDirectory(directory), "an existing folder must not be reused")
-        // A file created inside inherits only that one entry.
+        // A file created inside has one entry too, full control for this user (Foundation's createFile may set it
+        // explicitly rather than inherit it).
         let file = directory.appendingPathComponent("mcp.json")
         XCTAssertTrue(FileManager.default.createFile(atPath: file.path, contents: Data("{}".utf8)))
         let icacls = (ProcessInfo.processInfo.environment["SystemRoot"] ?? "C:\\Windows") + "\\System32\\icacls.exe"
@@ -157,8 +158,14 @@ final class WindowsPlatformTests: XCTestCase {
             entries[0] = String(first.dropFirst(path.count)).trimmingCharacters(in: .whitespaces)
         }
         entries = entries.filter { !$0.isEmpty }
-        XCTAssertEqual(entries.count, 1, "the file inherits only the folder's one entry: \(text)")
-        XCTAssertTrue(entries.first?.hasSuffix(":(I)(F)") == true, text)
+        XCTAssertEqual(entries.count, 1, "the file has one entry: \(text)")
+        XCTAssertTrue(entries.first.map { $0.hasSuffix(":(I)(F)") || $0.hasSuffix(":(F)") } == true, text)
+        let sid = try XCTUnwrap(PermissionServer.currentUserSID())
+        let find = Process()
+        find.executableURL = URL(fileURLWithPath: icacls)
+        find.arguments = [path, "/findsid", "*" + sid]
+        let (found, _) = try output(of: find)
+        XCTAssertTrue(found.contains("SID Found"), "the file's entry is for \(sid): \(found)")
     }
 
     /// icacls shows exactly one entry, full control for the process token's SID, inherited by what is created inside,

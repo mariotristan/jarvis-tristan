@@ -7,6 +7,48 @@ import Darwin
 import Glibc
 #endif
 
+/// Waits for a started process to end, without `Process.waitUntilExit`.
+///
+/// `waitUntilExit` turned out not to be safe to rely on: on the Mac it now and then never returned for a command that
+/// had already exited (the thread sat in its run loop, seen in full test runs), and on Windows it did not return after
+/// the tree kill until a child that escaped the kill closed the output pipe. Here the end is noticed by whichever
+/// comes first: the termination handler, `isRunning` turning false (checked every 50 ms), or on Windows the process
+/// handle itself becoming signalled (WaitForSingleObject), with the exit code read from that handle.
+final class ExitWatch: @unchecked Sendable {
+    private let ended = DispatchSemaphore(value: 0)
+    #if os(Windows)
+    private var handle: HANDLE?
+    #endif
+
+    /// Call before the process is started: installs the termination handler.
+    init(_ process: Process) {
+        process.terminationHandler = { [ended] _ in ended.signal() }
+    }
+
+    /// Call once the process has started.
+    func started(_ process: Process) {
+        #if os(Windows)
+        // SYNCHRONIZE (0x00100000) | PROCESS_QUERY_LIMITED_INFORMATION (0x1000)
+        handle = OpenProcess(DWORD(0x0010_1000), false, DWORD(process.processIdentifier))
+        #endif
+    }
+
+    /// Blocks until the process has ended; returns its exit status.
+    func wait(for process: Process) -> Int32 {
+        #if os(Windows)
+        if let handle {
+            defer { CloseHandle(handle); self.handle = nil }
+            if WaitForSingleObject(handle, DWORD(0xFFFF_FFFF) /* INFINITE */) == DWORD(0) /* WAIT_OBJECT_0 */ {
+                var code: DWORD = 0
+                if GetExitCodeProcess(handle, &code) { return Int32(bitPattern: code) }
+            }
+        }
+        #endif
+        while ended.wait(timeout: .now() + 0.05) == .timedOut, process.isRunning {}
+        return process.terminationStatus
+    }
+}
+
 /// Reads everything written to a pipe on a thread of its own, so the reader can stop waiting for end of file.
 ///
 /// End of file only comes when every process holding the pipe's write end has closed it. A process a command started
