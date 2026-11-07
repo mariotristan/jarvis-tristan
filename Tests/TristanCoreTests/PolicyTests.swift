@@ -212,6 +212,26 @@ final class PolicyTests: XCTestCase {
         }
     }
 
+    /// Programs that load code, start hidden work, write files or change the system (final fix wave).
+    func testPowerShellLoadersAndWritersNeverGeneralise() {
+        let names = [
+            "import-module", "ipmo", "new-object", "tee-object", "tee", "new-itemproperty", "register-scheduledjob",
+            "start-threadjob", "tskill", "fsutil",
+        ]
+        let mixed = ["Import-Module", "IpMo", "New-Object", "Tee-Object", "TEE", "New-ItemProperty",
+                     "Register-ScheduledJob", "Start-ThreadJob", "TsKill", "FsUtil"]
+        for name in names + mixed {
+            XCTAssertTrue(ShellFlavor.powershell.neverGeneralise.contains(name.lowercased()), name)
+            XCTAssertNil(powershell("\(name) x"), "should not generalise: \(name)")
+            XCTAssertNil(powershell(name), "should not generalise: \(name)")
+            XCTAssertNil(powershell("\(name.uppercased()) x"), "should not generalise: \(name.uppercased())")
+            for ext in [".exe", ".EXE", ".Exe", ".cmd", ".bat", ".ps1", ".com"] {
+                XCTAssertNil(powershell("\(name)\(ext) x"), "should not generalise: \(name)\(ext)")
+            }
+        }
+        XCTAssertFalse(ShellFlavor.posix.neverGeneralise.contains("tee"), "the Mac list is unchanged")
+    }
+
     func testPowerShellRejectsUnicodeSeparatorsAndControls() {
         let commands = [
             "git status\u{2028}Remove-Item -Recurse C:/x", "git status\u{2029}calc", "git status\u{0085}calc",

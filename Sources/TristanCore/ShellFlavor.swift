@@ -77,6 +77,10 @@ extension ShellFlavor {
         "ren", "rni", "rename-item", "format-volume", "clear-disk", "initialize-disk", "remove-partition",
         "stop-service", "spsv", "remove-service", "restart-service", "set-acl", "conhost", "explorer", "forfiles",
         "wt", "pwsh-preview",
+        // Final fix wave: loaders and object factories (load or run arbitrary code), writers (`tee` writes files),
+        // registry and scheduled or background work, process killing, and the file system tool.
+        "import-module", "ipmo", "new-object", "tee-object", "tee", "new-itemproperty", "register-scheduledjob",
+        "start-threadjob", "tskill", "fsutil",
         // PowerShell keywords: as a first word they start a statement, not a program call
         // (`return 'C:/x' -as [IO.StreamWriter]` creates a file; `using module` loads code).
         "return", "throw", "exit", "break", "continue", "using", "data", "trap", "filter", "function", "param",
