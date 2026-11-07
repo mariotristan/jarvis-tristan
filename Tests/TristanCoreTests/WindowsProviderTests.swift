@@ -167,6 +167,18 @@ final class WindowsProviderTests: XCTestCase {
         XCTAssertEqual(WindowsCredentialStore.decode(Array("ab".utf8)), "ab")
     }
 
+    /// Some tools store the terminating NUL with the value: trailing NULs are not part of the secret.
+    func testCredentialDecodeTrimsTrailingNULs() {
+        func utf16(_ text: String) -> [UInt8] { Array(text.utf16).flatMap { [UInt8($0 & 0xFF), UInt8($0 >> 8)] } }
+        XCTAssertEqual(WindowsCredentialStore.decode(utf16("key-123") + [0, 0]), "key-123")
+        XCTAssertEqual(WindowsCredentialStore.decode(utf16("key-123") + [0, 0, 0, 0]), "key-123")
+        XCTAssertEqual(WindowsCredentialStore.decode(Array("key-é".utf8) + [0]), "key-é")
+        XCTAssertEqual(WindowsCredentialStore.decode(Array("key".utf8) + [0, 0, 0]), "key")
+        XCTAssertEqual(WindowsCredentialStore.decode(utf16("caf\u{E9}") + [0, 0]), "caf\u{E9}", "Latin-1 through UTF-16")
+        XCTAssertEqual(WindowsCredentialStore.decode([0, 0]), "")
+        XCTAssertEqual(WindowsCredentialStore.decode(Array("a\u{0}b".utf8)), "a\u{0}b", "only trailing NULs go")
+    }
+
     // MARK: - Bedrock (Task 14)
 
     private var bedrockConfig: BedrockConfig { BedrockConfig(model: "anthropic.fake-model-v1:0", region: "us-east-1", profile: "") }

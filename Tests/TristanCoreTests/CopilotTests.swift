@@ -76,8 +76,19 @@ final class CopilotTests: XCTestCase {
     func testStripANSIHandlesCRLF() {
         XCTAssertEqual(CopilotArguments.stripANSI("\u{001B}[32mok\u{001B}[0m\r\n"), "ok")
         XCTAssertEqual(CopilotArguments.stripANSI("line one\r\nline two\r\n"), "line one\nline two")
-        XCTAssertEqual(CopilotArguments.stripANSI("progress\rdone"), "progressdone")
         XCTAssertEqual(CopilotArguments.stripANSI("no carriage return\n"), "no carriage return\n", "unchanged without a CR")
+    }
+
+    /// A lone CR returns to the start of the line, as in a terminal: only what follows the last one is kept.
+    func testStripANSIKeepsTextAfterTheLastLoneCR() {
+        XCTAssertEqual(CopilotArguments.stripANSI("progress\rdone"), "done")
+        XCTAssertEqual(CopilotArguments.stripANSI("Thinking…\rDone"), "Done")
+        XCTAssertEqual(CopilotArguments.stripANSI("10%\r50%\r100%\r\n"), "100%")
+        XCTAssertEqual(CopilotArguments.stripANSI("a\rb\nc\rd\r\ne"), "b\nd\ne")
+        XCTAssertEqual(CopilotArguments.stripANSI("\u{001B}[2KThinking\r\u{001B}[2KAnswer\r\n"), "Answer")
+        XCTAssertEqual(CopilotArguments.stripANSI("line one\r\nline two\r\n"), "line one\nline two", "CRLF is still a line end")
+        XCTAssertEqual(CopilotArguments.stripANSI("shown\r"), "shown", "a CR with nothing after it overwrites nothing")
+        XCTAssertEqual(CopilotArguments.stripANSI("old\r\rnew"), "new")
     }
 
     func testUnsafeTaskOnCmdShimIsRefusedWithMessage() async {

@@ -38,12 +38,23 @@ package enum CopilotArguments {
     }
 
     /// The CLI colours output even when asked not to in some versions, so strip escape codes defensively. Carriage
-    /// returns go too (Windows ends lines with CR LF), with any line break left at the end.
+    /// returns go too: CR LF (Windows line ends) becomes LF, and a lone CR returns to the start of the line as in a
+    /// terminal, so of `Thinking…\rDone` only `Done` is kept (the last non-empty piece of the line). Any line break
+    /// left at the end is dropped.
     static func stripANSI(_ text: String) -> String {
         var plain = text.replacingOccurrences(of: "\u{001B}\\[[0-9;?]*[ -/]*[@-~]", with: "", options: .regularExpression)
         guard plain.unicodeScalars.contains("\r") else { return plain }
-        // By scalar: "\r\n" is one Character in Swift, so a Character-based replace could miss it.
-        plain = String(String.UnicodeScalarView(plain.unicodeScalars.filter { $0 != "\r" }))
+        // By scalar: "\r\n" is one Character in Swift, so a Character-based split could miss it.
+        let scalars = Array(plain.unicodeScalars)
+        var lines: [[Unicode.Scalar]] = [[]]
+        for (index, scalar) in scalars.enumerated() {
+            if scalar == "\r", index + 1 < scalars.count, scalars[index + 1] == "\n" { continue }
+            if scalar == "\n" { lines.append([]) } else { lines[lines.count - 1].append(scalar) }
+        }
+        plain = lines.map { line -> String in
+            let pieces = line.split(separator: "\r", omittingEmptySubsequences: true)
+            return String(String.UnicodeScalarView(pieces.last ?? []))
+        }.joined(separator: "\n")
         while plain.hasSuffix("\n") { plain.removeLast() }
         return plain
     }
