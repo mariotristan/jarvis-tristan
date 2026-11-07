@@ -37,7 +37,7 @@
     <div class="titlebox">
       <span class="eyebrow">Guide · Windows</span>
       <h1>T.R.I.S.T.A.N. in a Windows terminal.</h1>
-      <p class="lead">A <code>tristan</code> command whose target is Windows 10 and 11 (x64); so far CI has run it only on Windows Server 2025. Run a mission on any of the five providers and approve each action in Windows Terminal, PowerShell or cmd. This page covers how to use it, how we ported it, what is proven and what is not, what comes next, and how we built it.</p>
+      <p class="lead">A <code>tristan</code> command whose target is Windows 10 and 11 (x64); so far CI has run it only on Windows Server 2025. It is released as a zip in 0.6.0. Run a mission on any of the five providers and approve each action in Windows Terminal, PowerShell or cmd. This page covers how to use it, how we ported it, what is proven and what is not, what comes next, and how we built it.</p>
     </div>
   </div>
 </header>
@@ -45,7 +45,7 @@
 <main id="main" class="doc">
 <section>
   <div class="wrap">
-    <p class="note warn"><b>Not released yet.</b> The Windows work lives on the <code>windows-cli</code> branch. No GitHub Release with the Windows zip has been published, and the release workflow’s Windows job has never run. Until a release exists, <a href="#build-from-source">build from source</a>, or download the <code>tristan-windows</code> artifact from a green <a href="https://github.com/mariotristan/jarvis-tristan/actions/workflows/windows.yml">Windows workflow run</a> (you must be signed in to GitHub). That artifact is a CI build stamped <code>0.0.0-ci</code>.</p>
+    <p class="note"><b>Released as 0.6.0, as a zip.</b> <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">Release v0.6.0</a> (7 November 2026) carries <code>Tristan-0.6.0-windows-x64.zip</code> and its <code>.sha256</code> next to the Mac DMG. It is a zip, not an installer. <code>tristan.exe</code> is not code-signed, so Windows SmartScreen may warn the first time you run it; that has not been checked on a real Windows desktop. Running the extracted exe on a pristine Windows 10 or 11 install, and every provider against a live account, are still unverified: see <a href="#support">What is supported</a>. <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a>, or <a href="#build-from-source">build from source</a>.</p>
 
     <nav class="toc" aria-labelledby="toc-title">
       <h2 id="toc-title" class="toc-title">On this page</h2>
@@ -95,9 +95,9 @@
     <p>The Windows version is a terminal program, not a window. It runs the same agent loop, providers and approval rules as the Mac app, and asks you about each action in the terminal.</p>
 
     <h3 id="download">Download and verify</h3>
-    <p>A release will carry <code>Tristan-&lt;version&gt;-windows-x64.zip</code> and <code>Tristan-&lt;version&gt;-windows-x64.zip.sha256</code> next to the Mac DMG. The zip holds <code>tristan.exe</code>, the Swift runtime and Foundation DLLs it needs, the Visual C++ runtime DLLs, <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. It is about 30 MB. Keep all the files in one folder.</p>
-    <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to. 1.2.3 is an example: use the release you downloaded.</span>
-$version = '1.2.3'
+    <p>Get <code>Tristan-0.6.0-windows-x64.zip</code> (30,224,547 bytes) and <code>Tristan-0.6.0-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>. The zip holds 23 files, about 80 MB unpacked: <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs (<code>MSVCP140</code>, <code>VCRUNTIME140</code>, <code>VCRUNTIME140_1</code>), <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. Keep all the files in one folder. Both checksum files were downloaded and checked with <code>shasum -a 256 -c</code> on a Mac; that is the same hash you compare below.</p>
+    <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to. 0.6.0 is the first release: use the version you downloaded.</span>
+$version = '0.6.0'
 $zip = "Tristan-$version-windows-x64.zip"
 
 <span class="c"># 1. Check the download: the two hashes must be the same</span>
@@ -110,10 +110,10 @@ Expand-Archive $zip -DestinationPath $dir
 
 <span class="c"># 3. Put it on your PATH (your user only), then open a new terminal</span>
 [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ";$dir", 'User')</pre>
-    <p class="note">The exe is not code-signed, so Windows SmartScreen or your antivirus may warn about it. Signing is on the <a href="#next">roadmap</a>.</p>
+    <p class="note">The exe is not code-signed, so Windows SmartScreen or your antivirus may warn about it. We have not seen what a real Windows desktop shows. Signing is on the <a href="#next">roadmap</a>.</p>
 
     <h3 id="first-run">First run</h3>
-    <pre data-copy>tristan --version     <span class="c"># the release version; a development build says 0.0.0-dev</span>
+    <pre data-copy>tristan --version     <span class="c"># 0.6.0 for this release; a development build says 0.0.0-dev</span>
 tristan providers     <span class="c"># which providers are ready, and what to set for the others</span>
 tristan --help</pre>
     <p><code>tristan providers</code> prints one line per provider: <code>ready</code>, or <code>not ready:</code> with the fix. It checks that tools are present and settings look right. It does not check that you are logged in.</p>
@@ -255,7 +255,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
       <li><span class="pill no">Not on Windows</span> Not built for Windows in this milestone.</li>
     </ul>
     <div class="tablewrap"><table id="matrix"><caption>Every provider and feature on Windows</caption><thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">What the evidence is</th></tr></thead><tbody>
-<tr><th scope="row"><code>tristan.exe</code> build and zip</th><td><span class="pill ok">Verified in CI</span></td><td>Built in release mode, zipped with its DLLs and licence notices. The unpacked zip runs <code>--version</code> and <code>providers</code> with only the Windows system folders on <code>PATH</code>, and the SHA-256 matches. The runner still has the Visual C++ runtime in System32, so this is not a fresh Windows install.</td></tr>
+<tr><th scope="row"><code>tristan.exe</code> build and zip</th><td><span class="pill ok">Verified in CI</span></td><td>Built in release mode, zipped with its DLLs and licence notices. The unpacked zip runs <code>--version</code> and <code>providers</code> with only the Windows system folders on <code>PATH</code>, and the SHA-256 matches. The runner still has the Visual C++ runtime in System32, so this is not a fresh Windows install. The released zip was also downloaded on a Mac: its file list, notices and SHA-256 were checked. It has not been run on a Windows 10 or 11 desktop.</td></tr>
 <tr><th scope="row">Ollama</th><td><span class="pill">Needs a live check</span></td><td>Against a mocked Ollama on <code>127.0.0.1</code> that streams two chunks 700 ms apart: configured only through <code>tristan config</code>, reported ready, and <code>tristan run</code> exits 0 with the full answer. Never run against a real Ollama on Windows.</td></tr>
 <tr><th scope="row">Azure OpenAI</th><td><span class="pill">Needs a live check</span></td><td>The real <code>az.cmd</code> was found through <code>PATHEXT</code>, run through cmd.exe, and its “not logged in” answer explained. The real HTTP client sent the <code>Bearer</code> token or <code>api-key</code> header to an in-process stub and parsed CRLF server-sent events. The key was read from Credential Manager. No real Azure endpoint was called.</td></tr>
 <tr><th scope="row">Amazon Bedrock</th><td><span class="pill">Needs a live check</span></td><td>The real <code>aws.exe</code> read the request from <code>file://C:/…</code> (a third slash breaks it), and its <code>export-credentials</code> output with CRLF parsed. A fake <code>aws</code> drove a full mission with an approval, plus the CLI fallback. No real AWS credentials were used.</td></tr>
@@ -270,14 +270,14 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
 <tr><th scope="row">Settings, <code>config</code> and <code>secret</code></th><td><span class="pill ok">Verified in CI</span></td><td>The JSON file, a corrupt file failing closed, the key allowlist, refusing <code>kidsMode</code>, and <code>secret set</code> refusing piped input.</td></tr>
 <tr><th scope="row">Kids mode</th><td><span class="pill ok">Verified in CI</span></td><td>Routing and refusals, the PIN rules and the PIN delay, with a scripted PIN. Typing the PIN at a real console is in the row above.</td></tr>
 <tr><th scope="row">History and sessions</th><td><span class="pill ok">Verified in CI</span></td><td>Filters, re-run rules, and the registry with process liveness through <code>OpenProcess</code>.</td></tr>
-<tr><th scope="row">Release workflow</th><td><span class="pill">Needs a live check</span></td><td>The Windows release job has never run. Its steps are copied from the Windows workflow, which runs them with made-up tags on every push.</td></tr>
+<tr><th scope="row">Release workflow</th><td><span class="pill ok">Verified in CI</span></td><td>It has run once: <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>, <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">run 42409091093</a>, from commit <code>6146693</code> on <code>main</code>, on 7 November 2026. The Windows job’s tests, zip packaging and SHA-256 and notices checks ran inside it, and it published the Mac DMG, the Windows zip and both checksums. A second run for a different tag has not happened. Running the extracted <code>tristan.exe</code> on a pristine Windows install is still unverified.</td></tr>
 <tr><th scope="row">HUD window, notch, themes and Markdown rendering</th><td><span class="pill no">Not on Windows</span></td><td>Plain terminal text only.</td></tr>
 <tr><th scope="row">Voice, wake word, spoken lines</th><td><span class="pill no">Not on Windows</span></td><td>Out of scope for this milestone.</td></tr>
 <tr><th scope="row">Spotify, notifications, launch at login</th><td><span class="pill no">Not on Windows</span></td><td>Out of scope for this milestone.</td></tr>
 <tr><th scope="row">Windows Hello for the parent unlock</th><td><span class="pill no">Not on Windows</span></td><td>The PIN is the only unlock.</td></tr>
 <tr><th scope="row">iPhone remote link to a Windows host</th><td><span class="pill no">Not on Windows</span></td><td>The link uses Apple’s Network framework with TLS-PSK.</td></tr>
 <tr><th scope="row">Offline fallback, DEMO provider, session memory</th><td><span class="pill no">Not on Windows</span></td><td><code>tristan run</code> does not use them: it runs one mission at a time with no memory of earlier ones.</td></tr>
-<tr><th scope="row">Installer, MSIX or winget package</th><td><span class="pill no">Not on Windows</span></td><td>A zip is the only package.</td></tr>
+<tr><th scope="row">Installer, MSIX or winget package</th><td><span class="pill no">Not on Windows</span></td><td>A zip is the only package (released in 0.6.0).</td></tr>
 <tr><th scope="row">ARM64 Windows</th><td><span class="pill no">Not on Windows</span></td><td>x64 only.</td></tr>
 </tbody></table></div>
   </div>
@@ -290,9 +290,9 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
     <h2>What is next</h2>
     <p class="note"><b>Plans, not promises.</b> These come from the items we deferred during the work and from the backlog. None of them has a date.</p>
     <ul class="roadmap">
+      <li>Run the released zip on a real Windows 10 or 11 desktop<small>What SmartScreen shows and how a pristine install behaves are still unchecked (the zip itself was released on 7 November 2026)</small></li>
       <li>Live provider checks on a real Windows PC<small>One real mission per provider, typing at a real console, Ctrl+C, and whether Claude Code passes the MCP <code>env</code> block</small></li>
-      <li>Merge and the first release with the zip<small>Then the release workflow’s Windows job runs for the first time</small></li>
-      <li>Job Object process-tree kill<small><code>taskkill /T</code> can miss orphaned grandchildren; a Job Object that kills everything on close would not</small></li>
+            <li>Job Object process-tree kill<small><code>taskkill /T</code> can miss orphaned grandchildren; a Job Object that kills everything on close would not</small></li>
       <li>Installer or winget package<small>Today a zip and a manual <code>PATH</code> change</small></li>
       <li>Code signing for <code>tristan.exe</code><small>Fewer SmartScreen warnings</small></li>
       <li>Auto-update<small>Not on the Mac either</small></li>
@@ -328,7 +328,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
     </ol>
 
     <h3 id="timeline">Timeline</h3>
-    <p>Times are commit times from <code>git log</code> (UTC−6). The work ran from the evening of 6 November 2026 to the morning of 7 November 2026.</p>
+    <p>Times are commit times from <code>git log</code> (UTC−6). The work ran from the evening of 6 November 2026 to the release on 7 November 2026.</p>
     <ol class="timeline">
       <li><time datetime="2026-11-06T20:13-06:00">6 Nov, 20:13</time> Design spec committed (<code>42d75ef</code>), then the 20-task plan at 20:17 (<code>027f956</code>). The branch starts here.</li>
       <li><time datetime="2026-11-06T20:26-06:00">6 Nov, 20:26</time> Task 1 pins the Mac approval policy and sandbox in tests (<code>4058992</code>). The <code>TristanCore</code> split lands at 20:36 (<code>d84b9be</code>).</li>
@@ -345,10 +345,12 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
       <li><time datetime="2026-11-07T05:02-06:00">7 Nov, 05:02–06:27</time> The final fix wave: escaped streamed output, kids mode failing closed, the <code>waitUntilExit</code> hangs (<code>51e2ec2</code> to <code>719c1fc</code>). Green run <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42372590777">42372590777</a>.</li>
       <li><time datetime="2026-11-07">7 Nov</time> This page and <code>scripts/setup-ollama.ps1</code> (Task 19).</li>
       <li><time datetime="2026-11-07">7 Nov</time> The whole-branch review and its one fix wave: the iOS project regenerated with a CI drift check, the approval prompt naming PowerShell on Windows, and a minimum test count for the Windows and release test steps (from <code>d9942c6</code>). Green run <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42382067145">42382067145</a>.</li>
+      <li><time datetime="2026-11-07">7 Nov</time> The Windows work was merged to <code>main</code> by pull request (#27). A release-prep pull request (#28) made the timing-sensitive tests tolerant and bumped <code>VERSION</code> to 0.6.0. <code>main</code> is now protected: changes land only by pull request, and <code>build-and-test</code>, <code>ios</code>, <code>windows</code> and <code>gitleaks</code> must pass.</li>
+      <li><time datetime="2026-11-07">7 Nov</time> <b>First release.</b> The first run of <code>release.yml</code> (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">run 42409091093</a>, from <code>6146693</code>) published <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>: the Mac DMG, rebuilt from the refactored core, and the Windows zip, each with a SHA-256. Both checksums were checked on a Mac.</li>
     </ol>
 
     <h3 id="bugs">Bugs the reviews and the Windows runner caught</h3>
-    <p>Every one of these was found before anything was released. Each is summarised from the working ledger or a task report, neither of which is in the repository; the fixes are in the commits.</p>
+    <p>Every one of these was found before the first release. Each is summarised from the working ledger or a task report, neither of which is in the repository; the fixes are in the commits.</p>
     <div class="tablewrap"><table><caption>Real problems found during the port, and what changed</caption><thead><tr><th scope="col">Problem</th><th scope="col">Found by</th><th scope="col">What changed</th></tr></thead><tbody>
 <tr><th scope="row">PowerShell expression mode</th><td>Review of Task 8</td><td>A first word such as <code>-join</code>, <code>return</code>, a digit or <code>using</code> starts an expression or statement, not a program, and could have been saved as an Always rule. Program names must now start with a letter, and keywords are on the never list.</td></tr>
 <tr><th scope="row">Unicode separators</th><td>Review of Task 8</td><td>Characters such as U+2028 and U+0085 could act as hidden statement separators. Any control, format or non-ASCII space character now makes a command ask.</td></tr>
@@ -398,7 +400,6 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># or
     </ol>
     <pre data-copy>git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
-git switch windows-cli                       <span class="c"># until the work is merged</span>
 swift --version                              <span class="c"># CI: Swift version 6.4.2 (swift-6.4.2-RELEASE)</span>
 swift build --product tristan
 swift test --filter TristanCoreTests
@@ -409,7 +410,7 @@ pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span c
     <p>The Mac app is not built on Windows: <code>Package.swift</code> declares the <code>Tristan</code> app and its tests only on macOS. On a Mac the command is <code>tristan-cli</code> and needs the full Xcode (<code>DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift build</code>).</p>
 
     <h3 id="ci">How CI is wired</h3>
-    <p><code>.github/workflows/windows.yml</code> runs on pushes to <code>main</code> and <code>windows-cli</code>, on pull requests and by hand. It has a read-only token (<code>permissions: contents: read</code>), checks out without keeping credentials, uses no secrets, and pins every action by commit (the Swift setup action’s own internal steps are not pinned). A newer push cancels an older run on the same branch.</p>
+    <p><code>.github/workflows/windows.yml</code> runs on pushes to <code>main</code>, on pull requests and by hand. It is one of the four checks <code>main</code> requires. It has a read-only token (<code>permissions: contents: read</code>), checks out without keeping credentials, uses no secrets, and pins every action by commit (the Swift setup action’s own internal steps are not pinned). A newer push cancels an older run on the same branch.</p>
     <div class="tablewrap"><table><caption>The <code>windows</code> job, step by step</caption><thead><tr><th scope="col">Step</th><th scope="col">What it proves</th></tr></thead><tbody>
 <tr><th scope="row">setup-ollama.ps1 checks</th><td>The script parses with the PowerShell parser. <code>-StartOnly</code> on a machine without Ollama says so and exits 0 (unlike <code>setup-ollama.sh --start-only</code>, which exits 2). Bad arguments fail with a clear message. A server that answers the chat request with something other than JSON gives a clear failure. <code>cmdkey /delete</code> removes a made-up <code>com.tristan.app/…</code> entry.</td></tr>
 <tr><th scope="row">Install Swift, Toolchain</th><td>Swift 6.4.2 through <code>compnerd/gha-setup-swift</code>, with the version printed.</td></tr>
@@ -426,19 +427,19 @@ pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span c
 
     <h3 id="releases">How releases are cut</h3>
     <ol class="steps">
-      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. The Windows work has never been tagged.</li>
+      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. <code>v0.6.0</code> is the only tag so far.</li>
       <li><b>Secret scan.</b> gitleaks over the whole history. A leak stops the release.</li>
       <li><b>Windows job</b> (read-only token): the same toolchain pins, both test suites, then the version. The leading <code>v</code> is dropped, and every character other than a letter, digit, dot or dash becomes a dash, case-sensitively (<code>v1.2.3_rc1</code> gives <code>1.2.3-rc1</code>; a bare <code>v</code> gives <code>0.0.0</code>). It packages, unpacks into a clean folder, checks <code>--version</code>, the checksum and the notices, and uploads the zip. A version that still does not start with a letter or digit (the tag <code>v-1</code>) stops it.</li>
       <li><b>Mac job</b> (<code>macos-15</code>, Xcode 16.2): runs <code>swift test</code> and builds the DMG with the tag as its version. It waits for the Windows job, downloads the zip, and creates <b>one</b> GitHub Release with generated notes, the DMG, the zip and a SHA-256 for each.</li>
     </ol>
-    <p class="note warn"><b>The release workflow has not been run yet.</b> Its Windows steps are proven only by the identical lines in the Windows workflow, run with made-up tags.</p>
+    <p class="note"><b>The release workflow has run once.</b> <a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42409091093">Run 42409091093</a> succeeded for <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>, and its Windows steps are the same lines the Windows workflow runs with made-up tags. Other tag shapes have only been tried in that workflow.</p>
 
     <h3 id="ci-limits">What CI cannot prove</h3>
     <ul class="plain">
       <li><b>Live logins and services:</b> real Claude Code (including whether it passes the MCP <code>env</code> block), the real Copilot CLI, <code>az login</code> tokens against Azure OpenAI, Bedrock with real AWS credentials, a real Ollama.</li>
       <li><b>A person at a console:</b> typing <code>y</code> / <code>n</code> / <code>a</code>, the echo-free PIN prompt, <kbd>Ctrl+C</kbd> through the console handler, how <code>NUL</code> and mintty look to the terminal check.</li>
       <li><b>Desktop Windows:</b> CI runs Windows Server 2025; Windows 10 and 11 desktop editions have not run it.</li>
-      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the zip on a fresh PC” is strong evidence, not proof.</li>
+      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the zip on a fresh PC” is strong evidence, not proof. The released zip was only inspected on a Mac, and SmartScreen’s reaction to the unsigned exe has not been seen.</li>
       <li><b>Other environments:</b> consoles with a non-UTF-8 code page, Credential Manager under an interactive or roaming profile or enterprise policy, UNC working folders, case-sensitive folders, drives without 8.3 names, ARM64.</li>
     </ul>
 
@@ -462,7 +463,7 @@ pwsh -NoProfile -File scripts\package-windows.ps1 -Version 0.0.0-local   <span c
 <tr><th scope="row"><code>scripts/package-windows.ps1</code>, <code>scripts/setup-ollama.ps1</code>, <code>scripts/ci/</code></th><td>Packaging, Ollama setup, the fakes, the Ollama mock and the spike tools.</td></tr>
 <tr><th scope="row"><code>docs/ci-and-release.md</code></th><td>CI and releases for the Mac and Windows.</td></tr>
 </tbody></table></div>
-    <p style="margin-top:18px">The branch is <a href="https://github.com/mariotristan/jarvis-tristan/tree/windows-cli">windows-cli</a>, and every Windows run is public on the <a href="https://github.com/mariotristan/jarvis-tristan/actions/workflows/windows.yml">Actions page</a>. Questions and findings are welcome as <a href="https://github.com/mariotristan/jarvis-tristan/issues">issues</a>.</p>
+    <p style="margin-top:18px">The code is on <a href="https://github.com/mariotristan/jarvis-tristan/tree/main">main</a>, and every Windows run is public on the <a href="https://github.com/mariotristan/jarvis-tristan/actions/workflows/windows.yml">Actions page</a>. Questions and findings are welcome as <a href="https://github.com/mariotristan/jarvis-tristan/issues">issues</a>.</p>
   </div>
 </section>
   <div class="wrap"><div class="pager"><a href="install.html">← Install</a><a href="index.html">Home →</a></div></div>
