@@ -147,30 +147,41 @@ package struct ToolSandbox {
 
     #if !os(iOS)
     func run(_ command: String, timeout: TimeInterval = 60) async -> ToolCallResult {
-        await withCheckedContinuation { continuation in
-            let shell = ShellRunner.command(for: command, flavor: .current)
-            let process: Process
-            do { process = try ProcessLauncher.prepare(shell.tool, shell.arguments, directory: root, extraEnvironment: [:], addToolPaths: false) } catch {
-                continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
-                return
+        // The box stops the command with everything it started, on timeout or when the mission is cancelled.
+        let box = ProcessBox()
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let shell = ShellRunner.command(for: command, flavor: .current)
+                let process: Process
+                do { process = try ProcessLauncher.prepare(shell.tool, shell.arguments, directory: root, extraEnvironment: [:], addToolPaths: false) } catch {
+                    continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
+                    return
+                }
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = pipe
+                process.standardInput = FileHandle.nullDevice
+                do {
+                    guard try box.start(process) else {
+                        continuation.resume(returning: .init(text: "Command cancelled", isError: true))
+                        return
+                    }
+                } catch {
+                    continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
+                    return
+                }
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { if process.isRunning { box.terminate() } }
+                DispatchQueue.global().async {
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    var text = String(decoding: data, as: UTF8.self)
+                    if text.count > Self.maxOutput { text = String(text.prefix(Self.maxOutput)) + "\n[output truncated]" }
+                    let status = process.terminationStatus
+                    continuation.resume(returning: .init(text: text + "\n[exit status \(status)]", isError: status != 0))
+                }
             }
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
-            process.standardInput = FileHandle.nullDevice
-            do { try process.run() } catch {
-                continuation.resume(returning: .init(text: "Could not run command: \(error.localizedDescription)", isError: true))
-                return
-            }
-            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { if process.isRunning { process.terminate() } }
-            DispatchQueue.global().async {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                var text = String(decoding: data, as: UTF8.self)
-                if text.count > Self.maxOutput { text = String(text.prefix(Self.maxOutput)) + "\n[output truncated]" }
-                let status = process.terminationStatus
-                continuation.resume(returning: .init(text: text + "\n[exit status \(status)]", isError: status != 0))
-            }
+        } onCancel: {
+            box.terminate()
         }
     }
 

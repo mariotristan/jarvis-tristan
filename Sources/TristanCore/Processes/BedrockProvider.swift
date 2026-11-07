@@ -32,13 +32,18 @@ package struct AWSCLIConverseClient: ConverseClient {
         process.standardError = try FileHandle(forWritingTo: errFile)
         process.standardInput = FileHandle.nullDevice
 
+        let box = ProcessBox()
         let status: Int32 = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
-                do { try process.run() } catch { continuation.resume(throwing: BedrockError(message: "Could not launch the AWS CLI: \(error.localizedDescription)")) }
+                do {
+                    if try !box.start(process) { continuation.resume(throwing: CancellationError()) }
+                } catch {
+                    continuation.resume(throwing: BedrockError(message: "Could not launch the AWS CLI: \(error.localizedDescription)"))
+                }
             }
         } onCancel: {
-            if process.isRunning { process.terminate() }
+            box.terminate()
         }
 
         try Task.checkCancellation()

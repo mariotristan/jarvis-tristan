@@ -88,7 +88,6 @@ package struct CopilotProvider: AgentProvider {
                     c.yield(.failed(Self.launchFailure(error)))
                     c.finish(); return
                 }
-                guard box.set(process) else { c.finish(); return }
                 let out = Pipe()
                 let errFile = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-\(UUID().uuidString.prefix(8)).err")
                 FileManager.default.createFile(atPath: errFile.path, contents: nil)
@@ -97,7 +96,9 @@ package struct CopilotProvider: AgentProvider {
                 process.standardError = (try? FileHandle(forWritingTo: errFile)) ?? FileHandle.nullDevice
                 process.standardInput = FileHandle.nullDevice
 
-                do { try process.run() } catch {
+                do {
+                    guard try box.start(process) else { c.finish(); return }
+                } catch {
                     c.yield(.failed(Self.launchFailure(error)))
                     c.finish(); return
                 }

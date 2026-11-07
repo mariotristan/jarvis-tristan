@@ -45,13 +45,14 @@ package struct ClaudeCodeProvider: AgentProvider {
                     c.yield(.failed("Could not launch claude: \(error.localizedDescription)"))
                     server.stop(); c.finish(); return
                 }
-                guard box.set(process) else { server.stop(); c.finish(); return }
                 let out = Pipe()
                 process.standardOutput = out
                 process.standardError = FileHandle.nullDevice
                 process.standardInput = FileHandle.nullDevice
 
-                do { try process.run() } catch {
+                do {
+                    guard try box.start(process) else { server.stop(); c.finish(); return }
+                } catch {
                     c.yield(.failed("Could not launch claude: \(error.localizedDescription)"))
                     server.stop(); c.finish(); return
                 }

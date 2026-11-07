@@ -206,27 +206,63 @@ package enum ProcessLauncher {
     }
 }
 
-/// Holds a process that is created after cancellation handlers are installed, so a cancel that arrives first still
-/// stops it (or stops it from being used at all).
+/// Holds a process that is created after cancellation handlers are installed, so a cancel that arrives first, or while
+/// the process is starting, still stops it (with its children). Live boxes are registered so a command-line Ctrl+C
+/// can stop every provider process at once.
 package final class ProcessBox: @unchecked Sendable {
     private let lock = NSLock()
     private var process: Process?
     private var cancelled = false
 
+    private static let registryLock = NSLock()
+    nonisolated(unsafe) private static var live: [ObjectIdentifier: ProcessBox] = [:]
+
     package init() {}
 
-    /// Stores the process. False when the box was already cancelled; the caller should then not start it.
-    package func set(_ process: Process) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        self.process = process
-        return !cancelled
+    /// Starts the process unless the box was already cancelled; false means it was not started. `run()` happens under
+    /// the box's lock, so a `terminate()` racing with the start waits for it and then stops the started process.
+    /// Attach pipes and handlers before calling this.
+    package func start(_ process: Process) throws -> Bool {
+        try start(process, launch: { try $0.run() })
     }
 
+    /// `launch` starts the process; tests slow it down to land a cancel in the middle.
+    func start(_ process: Process, launch: (Process) throws -> Void) throws -> Bool {
+        lock.lock()
+        guard !cancelled else { lock.unlock(); return false }
+        do { try launch(process) } catch { lock.unlock(); throw error }
+        self.process = process
+        lock.unlock()
+        // Registered outside the box's lock: pruning takes other boxes' locks, never while holding this one.
+        Self.registryLock.lock()
+        Self.live = Self.live.filter { $0.value.isRunning }
+        Self.live[ObjectIdentifier(self)] = self
+        Self.registryLock.unlock()
+        return true
+    }
+
+    private var isRunning: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return !cancelled && (process?.isRunning ?? false)
+    }
+
+    /// Stops the process and its descendants (or keeps it from ever starting).
     package func terminate() {
         lock.lock()
         cancelled = true
         let process = self.process
         lock.unlock()
-        if let process, process.isRunning { process.terminate() }
+        Self.registryLock.lock()
+        Self.live[ObjectIdentifier(self)] = nil
+        Self.registryLock.unlock()
+        if let process { ProcessTree.terminate(process) }
+    }
+
+    /// Stops every running box (the command-line tool's Ctrl+C backstop).
+    package static func terminateAll() {
+        registryLock.lock()
+        let boxes = Array(live.values)
+        registryLock.unlock()
+        for box in boxes { box.terminate() }
     }
 }
