@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backlog—T.R.I.S.T.A.N.</title>
+<meta name="description" content="Every open T.R.I.S.T.A.N. issue, sized from smallest to largest in AI tokens and dollars, so you can pick one up.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/backlog.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Backlog—T.R.I.S.T.A.N.">
+<meta property="og:description" content="Every open T.R.I.S.T.A.N. issue, sized from smallest to largest in AI tokens and dollars.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/backlog.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="local-models.html">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html">Install</a>
+        <a href="windows.html">Windows</a>
+        <a href="backlog.html" aria-current="page">Backlog</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Guide · Backlog</span>
+      <h1>What’s left to build, smallest first.</h1>
+      <p class="lead">Every open issue, sized in the AI tokens it should take to build with a coding agent. Start at the top for a quick win, or look at the bottom to see what the big pieces are.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <div class="facts">
+      <div><b>63</b><span>open issues sized</span></div>
+      <div><b>~344M</b><span>tokens in total</span></div>
+      <div><b>~$193</b><span>at list prices</span></div>
+      <div><b>32 · 30 · 1</b><span>small · medium · large</span></div>
+    </div>
+    <p class="note" style="margin-top:28px"><b>An estimate, not a promise.</b> Sizes come from what similar changes cost to build with Claude Code. A point is a best guess; the real number could be half or double. Dollars are at Claude API list prices on Opus 5.5, about $0.56 per million tokens, and this counts tokens, not calendar time. Small is under 5M tokens, medium 5 to 20M, large 20 to 40M. Three umbrella issues (the whole backlog, Windows support and the Windows app epic) are left out so nothing is counted twice. Each issue also carries the estimate as a comment.</p>
+  </div>
+</section>
+
+<section class="soft">
+  <div class="wrap">
+    <h2>By area</h2>
+    <div class="tablewrap" style="margin-top:18px"><table>
+      <caption>Tokens include about 0.3M per issue for a final review.</caption>
+      <thead><tr><th scope="col">Area</th><th scope="col" class="num">Issues</th><th scope="col" class="num">Tokens</th><th scope="col" class="num">Cost</th></tr></thead>
+      <tbody>
+<tr><th scope="row">Validation</th><td class="num">6</td><td class="num">9.8M</td><td class="num">$5</td></tr>
+<tr><th scope="row">Release</th><td class="num">4</td><td class="num">13.2M</td><td class="num">$7</td></tr>
+<tr><th scope="row">Mac and iPhone</th><td class="num">11</td><td class="num">48.3M</td><td class="num">$27</td></tr>
+<tr><th scope="row">Cross-platform</th><td class="num">10</td><td class="num">91M</td><td class="num">$51</td></tr>
+<tr><th scope="row">Windows app</th><td class="num">32</td><td class="num">182.1M</td><td class="num">$102</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Every issue, smallest to largest</h2>
+    <div class="filters" role="group" aria-label="Filter by size" hidden>
+      <button type="button" aria-pressed="true" data-filter="all">All</button>
+      <button type="button" aria-pressed="false" data-filter="S">Small</button>
+      <button type="button" aria-pressed="false" data-filter="M">Medium</button>
+      <button type="button" aria-pressed="false" data-filter="L">Large</button>
+    </div>
+    <div class="tablewrap" style="margin-top:18px"><table class="backlog">
+      <thead><tr><th scope="col">Issue</th><th scope="col">What</th><th scope="col">Area</th><th scope="col">Type</th><th scope="col" class="num">Tokens</th><th scope="col" class="num">Cost</th><th scope="col">Size</th></tr></thead>
+      <tbody>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/1">#1</a></td><td>Validate Bedrock against live AWS (streaming and CLI fallback)</td><td>Validation</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/2">#2</a></td><td>Validate Azure OpenAI against a real deployment (Mac and iOS standalone)</td><td>Validation</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/3">#3</a></td><td>Run the iPhone and iPad app on a physical device over real Wi-Fi</td><td>Validation</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/4">#4</a></td><td>Validate voice, wake word, notifications, Spotify and the notch on a real Mac session</td><td>Validation</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/5">#5</a></td><td>Copilot: run ASK mode live, and watch for a per-action approval hook</td><td>Validation</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/9">#9</a></td><td>Universal (Apple Silicon and Intel) release build</td><td>Release</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/59">#59</a></td><td>Validate Claude Code live on Windows 10 and 11 desktops (terminal now, app later)</td><td>Windows app</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/60">#60</a></td><td>Validate GitHub Copilot live on Windows 10 and 11 desktops (terminal now, app later)</td><td>Windows app</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/61">#61</a></td><td>Validate Amazon Bedrock live on Windows 10 and 11 desktops (terminal now, app later)</td><td>Windows app</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/62">#62</a></td><td>Validate Azure OpenAI live on Windows 10 and 11 desktops (terminal now, app later)</td><td>Windows app</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/63">#63</a></td><td>Validate Ollama live on Windows 10 and 11 desktops (terminal now, app later)</td><td>Windows app</td><td><code>followup</code></td><td class="num">1.3M</td><td class="num">$0.73</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/15">#15</a></td><td>Notch: show the playing track</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">1.8M</td><td class="num">$1.01</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/18">#18</a></td><td>Claude: option to ask even for actions already allowed in your own Claude Code settings</td><td>Mac and iPhone</td><td><code>followup</code></td><td class="num">1.8M</td><td class="num">$1.01</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/64">#64</a></td><td>Validate releases on pristine Windows 10 and 11 desktops (SmartScreen, installer wizard, console)</td><td>Windows app</td><td><code>followup</code></td><td class="num">1.8M</td><td class="num">$1.01</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/26">#26</a></td><td>Kids mode: extra configuration through markdown files</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">2.3M</td><td class="num">$1.29</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/6">#6</a></td><td>Copilot: turn the CLI&#x27;s output into mission-log steps</td><td>Validation</td><td><code>script</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/7">#7</a></td><td>Developer ID signing and notarization for the Mac app</td><td>Release</td><td><code>script</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/10">#10</a></td><td>IOS: distribute through TestFlight</td><td>Release</td><td><code>script</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/16">#16</a></td><td>Apple Music support</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/20">#20</a></td><td>Design pass for non-notched and external displays</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/46">#46</a></td><td>Tray icon, launch at login, single instance and quit</td><td>Windows app</td><td><code>page</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/50">#50</a></td><td>Toast notifications with Approve and Deny</td><td>Windows app</td><td><code>page</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/75">#75</a></td><td>Resume past sessions from a history panel</td><td>Cross-platform</td><td><code>page</code></td><td class="num">3.3M</td><td class="num">$1.85</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/33">#33</a></td><td>Decide the UI stack (decision record and spikes)</td><td>Windows app</td><td><code>research</code></td><td class="num">3.8M</td><td class="num">$2.13</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/58">#58</a></td><td>Documentation, website and screenshots</td><td>Windows app</td><td><code>research</code></td><td class="num">3.8M</td><td class="num">$2.13</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/13">#13</a></td><td>IOS: approvals while the app is in the background</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/17">#17</a></td><td>Per-session approval mode and scoped always-allow rules</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/48">#48</a></td><td>Voice output (spoken lines, greeting, kids voice)</td><td>Windows app</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/52">#52</a></td><td>Kids mode (Windows Hello or PIN parent unlock)</td><td>Windows app</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/56">#56</a></td><td>Accessibility and localisation scaffolding</td><td>Windows app</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/70">#70</a></td><td>Mission board: needs you, working, done (with a timer per mission)</td><td>Cross-platform</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="S"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/74">#74</a></td><td>Usage and quota bar for Claude and other providers</td><td>Cross-platform</td><td><code>page</code></td><td class="num">4.3M</td><td class="num">$2.41</td><td><span class="size size-S">S</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/8">#8</a></td><td>Homebrew cask and auto-update</td><td>Release</td><td><code>script</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/41">#41</a></td><td>The overlay pill (Windows replacement for the notch)</td><td>Windows app</td><td><code>page</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/42">#42</a></td><td>Session tabs, full screen and the history panel</td><td>Windows app</td><td><code>page</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/45">#45</a></td><td>Global hotkey, push-to-talk key and the shortcut recorder</td><td>Windows app</td><td><code>script</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/51">#51</a></td><td>Media control and now playing (Spotify and other players)</td><td>Windows app</td><td><code>page</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/53">#53</a></td><td>Offline fallback and Ollama management</td><td>Windows app</td><td><code>page</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/73">#73</a></td><td>A workspace per branch: one git worktree per task</td><td>Cross-platform</td><td><code>script</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/76">#76</a></td><td>Documented local API and status events for third-party clients</td><td>Cross-platform</td><td><code>research</code></td><td class="num">5.3M</td><td class="num">$2.97</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/11">#11</a></td><td>IPhone and iPad remote: control several sessions</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">6.3M</td><td class="num">$3.53</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/12">#12</a></td><td>Remote: Bonjour discovery and per-device pairing keys</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">6.3M</td><td class="num">$3.53</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/19">#19</a></td><td>Markdown renderer: images, HTML, footnotes and nested quotes</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">6.3M</td><td class="num">$3.53</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/38">#38</a></td><td>The HUD window (layout, command bar, providers, folder, Esc)</td><td>Windows app</td><td><code>page</code></td><td class="num">6.3M</td><td class="num">$3.53</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/40">#40</a></td><td>Code stream with Markdown rendering and code cards</td><td>Windows app</td><td><code>page</code></td><td class="num">6.3M</td><td class="num">$3.53</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/43">#43</a></td><td>Approvals (cards, always-allow rules, modes and guard rails)</td><td>Windows app</td><td><code>page</code></td><td class="num">6.3M</td><td class="num">$3.53</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/24">#24</a></td><td>Command-line version (run missions and approve from the terminal)</td><td>Cross-platform</td><td><code>script</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/35">#35</a></td><td>Headless host process and local UI channel</td><td>Windows app</td><td><code>script</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/36">#36</a></td><td>App skeleton that builds in CI and connects to the host</td><td>Windows app</td><td><code>script</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/37">#37</a></td><td>UI test strategy, theme snapshots and CI</td><td>Windows app</td><td><code>script</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/44">#44</a></td><td>Settings window (providers, secrets, themes, general)</td><td>Windows app</td><td><code>page</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/47">#47</a></td><td>Sound cues, audio engine and ducking, with measured quality</td><td>Windows app</td><td><code>script</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/57">#57</a></td><td>ARM64 Windows (app, host and installer)</td><td>Windows app</td><td><code>script</code></td><td class="num">7.3M</td><td class="num">$4.09</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/25">#25</a></td><td>Individual user profiles (settings, history and approvals per person)</td><td>Mac and iPhone</td><td><code>page</code></td><td class="num">8.3M</td><td class="num">$4.65</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/39">#39</a></td><td>Reactor, backdrop and the 32 themes</td><td>Windows app</td><td><code>page</code></td><td class="num">8.3M</td><td class="num">$4.65</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/55">#55</a></td><td>Packaging, code signing, winget and updates for the app</td><td>Windows app</td><td><code>script</code></td><td class="num">8.3M</td><td class="num">$4.65</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/72">#72</a></td><td>Missions can start helper missions (reviewer reports back)</td><td>Cross-platform</td><td><code>script</code></td><td class="num">8.3M</td><td class="num">$4.65</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/49">#49</a></td><td>Voice input (push-to-talk and the &quot;Hey Tristan&quot; wake word)</td><td>Windows app</td><td><code>script</code></td><td class="num">10.3M</td><td class="num">$5.77</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/69">#69</a></td><td>Missions keep running when the app quits (background host)</td><td>Cross-platform</td><td><code>script</code></td><td class="num">10.3M</td><td class="num">$5.77</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/71">#71</a></td><td>Remote machines: one HUD for missions on several hosts over SSH</td><td>Cross-platform</td><td><code>script</code></td><td class="num">12.3M</td><td class="num">$6.89</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/34">#34</a></td><td>Move the session hub out of the Mac app into a portable host</td><td>Windows app</td><td><code>script</code></td><td class="num">15.3M</td><td class="num">$8.57</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="M"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/54">#54</a></td><td>IPhone and iPad remote for a Windows host (TLS-PSK, discovery, pairing, firewall)</td><td>Windows app</td><td><code>script</code></td><td class="num">15.3M</td><td class="num">$8.57</td><td><span class="size size-M">M</span></td></tr>
+<tr data-size="L"><td><a href="https://github.com/mariotristan/jarvis-tristan/issues/22">#22</a></td><td>Linux support, starting with Omarchy (Arch and Hyprland)</td><td>Cross-platform</td><td><code>script</code></td><td class="num">30.3M</td><td class="num">$16.97</td><td><span class="size size-L">L</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="small" style="margin-top:18px">Type is the kind of work the estimate was based on: <code>followup</code> (a change to something that exists), <code>page</code> (a new feature or screen), <code>script</code> (tooling or plumbing with tests) and <code>research</code> (a decision or a write-up).</p>
+    <p><a href="https://github.com/mariotristan/jarvis-tristan/issues/21">See the backlog on GitHub</a></p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="windows.html">← Windows</a><a href="index.html">Home →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="backlog.html">Backlog</a>
+      <a href="audio-crackle.html">Audio crackle bug</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+<script src="assets/backlog.js"></script>
+</body>
+</html>
