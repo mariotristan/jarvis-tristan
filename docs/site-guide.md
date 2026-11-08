@@ -59,7 +59,7 @@ When one of these changes, search the whole repository for the old value before 
 |------|------------|
 | Version (`VERSION`) and the file names `Tristan-<version>…` | `docs/index.html` (download line, install steps), `docs/install.html`, `docs/windows.html`, `README.md` |
 | Test counts | `README.md`, `docs/index.html`, `docs/windows.html` |
-| Theme count (32) | `README.md`, `docs/index.html` |
+| Theme count (32) | `README.md` (two places), `docs/index.html`, `docs/themes.html` (one picture per theme) |
 | Providers and what is verified | `docs/providers.html`, `docs/index.html`, `docs/windows.html` (the matrix), `README.md` (Known limitations) |
 | Open issues and sizes | `docs/backlog.html` (rows, totals, area table) |
 | Timeline | `docs/how-we-build.html`, and `docs/windows.html` for the Windows port |
@@ -80,6 +80,7 @@ When you add a check by hand, also say what it did **not** cover (for example th
 ## 7. Images, video and sound
 
 - Screenshots come from the app itself: `swift build` then `.build/debug/Tristan --snapshot docs/screenshots`. Do not edit them by hand, and do not show real paths, names or tokens in them.
+- The theme pictures come from `.build/debug/Tristan --snapshot-themes docs/screenshots/themes`, one JPEG per theme (1000 pixels wide, about 130 KB). Run it again when a theme is added or its colours change, and update `docs/themes.html` and the README grid. It does not change your saved theme.
 - Demo videos are made by `scripts/record-demo.sh` (and `record-demo.sh kids`). They overwrite the tracked MP4s in `docs/demo/`: when you only test the recorder, copy the originals aside and `git checkout docs/demo` afterwards. Quit the installed app first.
 - The kids demo uses the scripted DEMO provider only and never a real model. Kids mode always asks before an action, and a demo must not bypass that.
 - Demo mode never touches the real Keychain.
