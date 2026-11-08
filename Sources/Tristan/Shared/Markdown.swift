@@ -404,7 +404,7 @@ struct CodeCard: View {
                 if isMarkdown && !showSource {
                     MarkdownView(text: content)
                 } else {
-                    Text(content.isEmpty ? " " : content)
+                    Text(highlighted)
                         .font(.system(size: 12 * scale, design: .monospaced)).foregroundStyle(Theme.green)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
@@ -414,6 +414,26 @@ struct CodeCard: View {
         }
         .background(Theme.codeWash, in: RoundedRectangle(cornerRadius: Theme.corner))
         .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.green.opacity(0.35), lineWidth: 1))
+    }
+
+    /// The code with its tokens coloured from the theme. Plain text keeps the card's own colour; an unfinished block
+    /// (still streaming) is coloured as far as it has got.
+    private var highlighted: AttributedString {
+        guard !content.isEmpty else { return AttributedString(" ") }
+        var result = AttributedString()
+        for token in SyntaxHighlighter.tokenize(content, language: language) {
+            var piece = AttributedString(token.text)
+            switch token.kind {
+            case .plain: break
+            case .keyword: piece.foregroundColor = Theme.amber
+            case .string: piece.foregroundColor = Theme.cyan
+            case .comment: piece.foregroundColor = Theme.green.opacity(0.5)
+            case .number: piece.foregroundColor = Theme.amber.opacity(0.75)
+            case .key: piece.foregroundColor = Theme.cyan
+            }
+            result.append(piece)
+        }
+        return result
     }
 
     private func copy() {

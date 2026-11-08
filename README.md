@@ -328,7 +328,7 @@ Sources/Tristan/              The Mac app (macOS only)
 ├── RemoteServer.swift, QRCode.swift   Mac side of the iPhone/iPad remote and its pairing code
 ├── Snapshot.swift, DemoAutopilot.swift   README screenshots and the recorded demo
 └── Shared/                   Compiled by the Mac and iOS apps: themes, the markdown parser and views, the remote protocol and client
-Tests/TristanTests/           124 tests for the Mac app (macOS only)
+Tests/TristanTests/           137 tests for the Mac app (macOS only)
 Tests/TristanCoreTests/       206 tests on the Mac, 230 on Windows (files whose names start with Windows run only there)
 Tests/TristanCLITests/        95 tests on the Mac, 109 on Windows
 ios/                          The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
@@ -360,7 +360,7 @@ In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool th
 ### Running the tests
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 425 tests: TristanTests, TristanCoreTests, TristanCLITests
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 438 tests: TristanTests, TristanCoreTests, TristanCLITests
 ```
 
 On Windows: `swift test --filter TristanCoreTests` and `swift test --filter TristanCLITests` (the Mac app and its tests are only declared on macOS).
@@ -400,7 +400,7 @@ The Bedrock agent loop is tested end to end with a scripted fake model: approval
 - **Launch at login** uses the system login-item service, which may ask you to approve an ad-hoc signed app in System Settings.
 - **Several sessions:** two real **Claude Code** sessions ran at the same time, each with its own approval, in its own folder (see the headless check `Tristan --headless-sessions`). Two real **Copilot** sessions also ran together in `AUTO` mode, each creating its own file in its own folder (same driver, `... copilot auto`); in `ASK` mode Copilot's blanket-permission launch was only tested with a stand-in process, not live. Each Copilot run gets its own log directory so concurrent runs never share one. The iPhone and iPad remote controls only the Mac's active session, so approvals for a session in the background reach the phone only after you switch to it on the Mac.
 - **Full screen:** the window and Dock behaviour is verified by a real self-test (`Tristan --fullscreen-selftest`) and a unit test, and the layout by a screenshot, but I have not watched it on your display, and the notch inset is only known for the one notched screen it ran on.
-- **Markdown:** the renderer covers what agents produce (no images, HTML, footnotes or nested quotes, and no syntax highlighting). It is covered by parser tests, a fuzz test and an every-prefix streaming test.
+- **Markdown:** the renderer covers what agents produce (no images, HTML, footnotes or nested quotes); code cards are coloured for Swift, TypeScript and JavaScript, Python, shell, JSON and YAML, and other languages stay one colour. It is covered by parser tests, a fuzz test and an every-prefix streaming test.
 - **iOS standalone mode has never called a real Azure OpenAI or Bedrock endpoint** (Azure OpenAI works live from the Mac app, but the phone's own client is not yet tried): the model is scripted in the tests and in the simulator demo. The Files folder picker and Keychain-stored AWS keys are only tested through unit tests.
 - **The iOS app has only run in the simulator** (see [iPhone and iPad](#iphone-and-ipad)): no physical device, no real Wi-Fi, no camera, microphone or haptics. The secure link and the remote commands are tested end to end on loopback, and the remote design rules (no remote YOLO, folder allow-list, replay for late joiners, wrong secret refused) have automated tests.
 - **The app is not notarized** (see [Install](#install)); there is no auto-update.
@@ -439,7 +439,7 @@ Next (every item is a GitHub issue; start from the [backlog overview](https://gi
 - [ ] Live validation of Bedrock, Copilot's `ASK` mode, wake word, notifications and the iOS app on a real device (needs real credentials and a human in front of the hardware)
 - [ ] iOS: Bonjour discovery of the Mac, per-device pairing keys, Live Activities for approvals
 - [ ] Several sessions on the iPhone and iPad remote (it controls the Mac's active session for now)
-- [ ] Syntax highlighting in code cards
+- [x] Syntax highlighting in code cards ([#14](https://github.com/mariotristan/jarvis-tristan/issues/14)), a small built-in scanner for Swift, TypeScript and JavaScript, Python, shell, JSON and YAML
 - [ ] Per-action approvals for Copilot, if the CLI gains a permission prompt hook
 - [ ] Developer ID signing and notarization (needs a paid Apple Developer account), then a Homebrew cask and auto-update
 - [ ] Track title in the notch, and Apple Music support
