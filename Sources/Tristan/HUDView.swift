@@ -103,8 +103,15 @@ struct HUDView: View {
                     .padding(.vertical, 2).padding(.horizontal, 6)
                     .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(session.approvalMode.tint, lineWidth: 1))
                     .foregroundStyle(session.approvalMode.tint)
+                Text("MODEL \(session.modelLabel)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .tracking(1.5)
+                    .lineLimit(1).truncationMode(.middle)
+                    .foregroundStyle(Theme.cyan.opacity(0.7))
+                    .help("The model this provider uses. Change it in Configuration.")
+                    .task(id: session.provider) { await session.refreshModelLabel() }
             }
-            .frame(minWidth: 240, alignment: .trailing)
+            .frame(minWidth: 240, maxWidth: 320, alignment: .trailing)
         }
         .frame(height: orbSize + 8)
         .animation(.easeInOut(duration: 0.35), value: thinking)

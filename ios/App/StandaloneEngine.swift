@@ -247,6 +247,7 @@ final class StandaloneEngine: ObservableObject {
         case .status(let text): if phase != .awaitingApproval { status = text }
         case .log(let text): add(text, "step")
         case .code(let text): code += text
+        case .model: break   // the iPhone app does not show the model yet
         case .done(let text):
             phase = .done; status = "MISSION COMPLETE"; add(text, "ok")
             remember(status: "done", summary: text)

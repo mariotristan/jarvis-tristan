@@ -19,6 +19,14 @@ final class ClaudeProviderTests: XCTestCase {
         XCTAssertTrue(ClaudeStream.parse("\r\n").isEmpty)
     }
 
+    func testInitReportsTheModelWhenTheCLISaysWhich() {
+        let events = ClaudeStream.parse("{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"claude-sonnet-x\"}")
+        XCTAssertEqual(events.count, 2, "\(events)")
+        guard events.count == 2, case .model(let name) = events[1] else { return XCTFail("\(events)") }
+        XCTAssertEqual(name, "claude-sonnet-x")
+        XCTAssertEqual(ClaudeStream.parse("{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"\"}").count, 1)
+    }
+
     func testClaudeNotFoundMessageMentionsGitForWindows() {
         let windows = ClaudeCodeProvider.launchFailure(ToolNotFound(name: "claude"), windows: true)
         XCTAssertTrue(windows.hasPrefix("Could not launch claude: claude was not found on PATH."), windows)

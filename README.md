@@ -38,7 +38,7 @@ You give T.R.I.S.T.A.N. a task ("add login to the API"). It works inside a proje
 
 > **Just for fun.** T.R.I.S.T.A.N. is a hobby project and a learning experiment that I build together with my kids. We pick the features, draw the themes, and try things to see what happens. That is why there is a Paw Patrol-style theme, a kids safe mode and a lot of sound effects. It is not a commercial product, and it comes with no promises beyond the [MIT license](LICENSE). Ideas, issues and pull requests are very welcome.
 
-> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 460 automated tests pass (443 Swift package tests on the Mac, counted on 8 November 2026: 142 for the app, 206 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is released in [0.6.1](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1) as an installer and a zip. It is built and tested on a Windows machine in CI, but the installer has not been run on a real Windows 10 or 11 desktop, and no live provider has run on Windows (the 0.6.2 zip was run once by hand on Windows 11 for ARM64 in a virtual machine: version, providers and help only): see [Windows](#windows).
+> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 468 automated tests pass (451 Swift package tests on the Mac, counted on 8 November 2026: 149 for the app, 206 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is released in [0.6.1](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1) as an installer and a zip. It is built and tested on a Windows machine in CI, but the installer has not been run on a real Windows 10 or 11 desktop, and no live provider has run on Windows (the 0.6.2 zip was run once by hand on Windows 11 for ARM64 in a virtual machine: version, providers and help only): see [Windows](#windows).
 
 ## Demo videos
 
@@ -141,6 +141,7 @@ Agent CLIs are powerful but plain. T.R.I.S.T.A.N. is a nicer front door for them
 - **Mission history.** Every finished, failed or aborted mission is saved (task, provider, mode, a short summary and the folder, never code or file contents) and can be searched, filtered by outcome and re-run in one click. The file is private to you (`0600`) in Application Support.
 - **Spotify (optional).** A now-playing strip with previous, play/pause, next and volume for the Spotify desktop app. Say or type short commands such as "play music", "pause", "next song", "volume 40", "what's playing" or "play my focus playlist" (set a playlist link in Configuration). These never start a coding mission and work while one is running. The music is turned down while T.R.I.S.T.A.N. talks or listens and restored afterwards. Works with free and Premium accounts, and needs no login or API keys (see [Spotify](#spotify)).
 - **Mac notifications** when approval is needed or a mission ends while T.R.I.S.T.A.N. is in the background. Clicking one brings the HUD forward.
+- **The model in use.** Under the mode label the HUD shows `MODEL` and the model of the selected provider, when the app opens and when you switch provider: the configured model or deployment (Bedrock, Azure, Copilot), the installed model Ollama will use, and for Claude Code the model pinned in its settings (or `ANTHROPIC_MODEL`), else the one it reported before. The first time Claude is selected with nothing pinned and no model remembered, T.R.I.S.T.A.N. starts `claude` once in a temporary folder to read the model from its first message and stops it there, so it should cost nothing or a one-word reply (not measured). It is skipped in kids mode. During a mission the line shows the model the provider reports. The iPhone app and the `tristan` command do not show it yet.
 - **Global shortcut.** `⌥ Space` shows or hides the HUD from any app, and `Esc` stops a running mission first, then leaves full screen, then hides the HUD. Pick a preset or record your own combination in Configuration; T.R.I.S.T.A.N. tells you if another app already owns it.
 - **Launch at login** switch for the installed app.
 - **iPhone and iPad remote.** Start missions, watch the HUD, approve or deny actions and control Spotify from your phone or iPad, over an encrypted connection to the Mac (see [iPhone and iPad](#iphone-and-ipad)).
@@ -349,7 +350,7 @@ Sources/Tristan/              The Mac app (macOS only)
 ├── RemoteServer.swift, QRCode.swift   Mac side of the iPhone/iPad remote and its pairing code
 ├── Snapshot.swift, DemoAutopilot.swift   README screenshots and the recorded demo
 └── Shared/                   Compiled by the Mac and iOS apps: themes, the markdown parser and views, the remote protocol and client
-Tests/TristanTests/           142 tests for the Mac app (macOS only)
+Tests/TristanTests/           149 tests for the Mac app (macOS only)
 Tests/TristanCoreTests/       206 tests on the Mac, 230 on Windows (files whose names start with Windows run only there)
 Tests/TristanCLITests/        95 tests on the Mac, 109 on Windows
 ios/                          The iPhone and iPad app (XcodeGen project, standalone engine, 17 tests)
@@ -381,7 +382,7 @@ In `ASK` mode T.R.I.S.T.A.N. starts Claude Code with a permission-prompt tool th
 ### Running the tests
 
 ```bash
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 443 tests: TristanTests, TristanCoreTests, TristanCLITests
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test   # 451 tests: TristanTests, TristanCoreTests, TristanCLITests
 ```
 
 On Windows: `swift test --filter TristanCoreTests` and `swift test --filter TristanCLITests` (the Mac app and its tests are only declared on macOS).
@@ -451,7 +452,7 @@ Done:
 - [x] 30 themes with a picker and Match system, a welcome line per theme and session, a spoken greeting that follows the time and day, and easier ways to quit
 - [x] The orb fills the screen by default with an ABORT button and Esc to stop a mission, an offline fallback to Ollama, sound in the demo videos, a cleaner voice (see the [audio crackle report](https://mariotristan.github.io/jarvis-tristan/audio-crackle.html)), a secret scan in CI and an uninstall script
 - [x] A rainbow Pride theme (32 themes now)
-- [x] Automated tests (460: 443 on the Mac and 17 for iOS; 339 also run on Windows)
+- [x] Automated tests (468: 451 on the Mac and 17 for iOS; 339 also run on Windows)
 
 Next (every item is a GitHub issue; start from the [backlog overview](https://github.com/mariotristan/jarvis-tristan/issues/21)):
 

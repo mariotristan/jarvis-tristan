@@ -22,6 +22,7 @@ func render(_ event: AgentEvent) -> (stdout: String?, stderr: String?) {
     case .code(let text): return (safe(text), nil)
     case .done(let text): return ("Done: \(safe(text))\n", nil)
     case .failed(let text): return (nil, "Failed: \(safe(text))\n")
+    case .model: return (nil, nil)   // the command prints nothing new; the HUD shows it
     }
 }
 
@@ -55,7 +56,7 @@ enum Mission {
             case .code: isCode = true
             case .done(let text): outcome = .ok; final = ("done", text)
             case .failed(let text): outcome = .failed; final = ("failed", text)
-            case .log: break
+            case .log, .model: break
             }
             let (out, err) = render(event)
             // Streamed code may stop mid-line; anything else starts on a fresh line.

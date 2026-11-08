@@ -10,8 +10,10 @@ final class MissionSession: ObservableObject, Identifiable {
     @Published var log: [LogEntry] = []
     @Published var code = ""
     @Published var status = "STANDING BY"
+    /// The model the provider reported for the current mission, if it said (otherwise the HUD shows the setting).
+    @Published var modelInUse: String?
     @Published var pending: ApprovalRequest?
-    @Published var provider: ProviderKind
+    @Published var provider: ProviderKind { didSet { if provider != oldValue { modelInUse = nil } } }
     @Published var workingDirectory: URL
     @Published var draft = ""
     /// What this session has already done. It survives the end of a mission and goes in front of the next task.
@@ -64,6 +66,7 @@ final class MissionSession: ObservableObject, Identifiable {
             return
         }
         missionID = UUID().uuidString
+        modelInUse = nil
         log = []
         code = ""
         currentTask = prompt
@@ -210,6 +213,7 @@ final class MissionSession: ObservableObject, Identifiable {
         case .status(let text): if phase != .awaitingApproval { status = text }
         case .log(let text): add(text, .step)
         case .code(let text): code += text
+        case .model(let name): modelInUse = name; hub?.modelReported(provider, name)
         case .done(let text):
             phase = .done; status = "MISSION COMPLETE"; add(text, .ok)
             remember(status: "done", summary: text)

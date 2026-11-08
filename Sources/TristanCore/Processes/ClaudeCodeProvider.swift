@@ -164,7 +164,9 @@ package enum ClaudeStream {
               let type = obj["type"] as? String else { return [] }
         switch type {
         case "system":
-            return obj["subtype"] as? String == "init" ? [.log("Session started")] : []
+            guard obj["subtype"] as? String == "init" else { return [] }
+            if let model = obj["model"] as? String, !model.isEmpty { return [.log("Session started"), .model(model)] }
+            return [.log("Session started")]
         case "assistant":
             guard let msg = obj["message"] as? [String: Any],
                   let content = msg["content"] as? [[String: Any]] else { return [] }
