@@ -106,7 +106,7 @@ Get-Content "$setup.sha256"
 
 <span class="c"># 2. Run it. Leave "Add Tristan to my PATH" ticked, then open a new terminal</span>
 .\$setup</pre>
-    <p class="note">The setup is not code-signed, so Windows SmartScreen or your antivirus may warn about it. We have not seen what a real Windows desktop shows, so we cannot tell you which button to press; if you trust the download (the checksum matched), choose to run it anyway. Signing is on the <a href="#next">roadmap</a>.</p>
+    <p class="note">The setup is not code-signed, so Windows SmartScreen or your antivirus may warn about it. We have not seen what SmartScreen shows on a real Windows desktop (the one desktop run so far used the zip and a script download, so it never saw the warning), so we cannot tell you which button to press; if you trust the download (the checksum matched), choose to run it anyway. Signing is on the <a href="#next">roadmap</a>.</p>
     <p><b>Silent install</b>, for scripts. The switches are <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</code>, <code>/CURRENTUSER</code> or <code>/ALLUSERS</code>, <code>/DIR="..."</code>, <code>/TASKS="addtopath"</code> and <code>/LOG="..."</code>:</p>
     <pre data-copy>.\Tristan-0.6.2-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
     <p>This is the path CI exercises: silent installs only, on Windows Server 2025. The wizard screens have not been clicked through.</p>
@@ -269,6 +269,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># on
       <li><span class="pill ok">Verified on a real Windows runner in CI</span> Tests or checks ran on GitHub Actions <code>windows-latest</code> (Windows Server 2025 image) and passed.</li>
       <li><span class="pill">Implemented, needs a live-account check</span> The code is there and its Windows plumbing was exercised with fakes or stubs, but it has not run against the real service, or with a person at a real console.</li>
       <li><span class="pill no">Not on Windows</span> Not built for Windows in this milestone.</li>
+      <li><span class="pill">Checked by hand on Windows 11</span> One person ran it on a Windows 11 desktop (a virtual machine). It is a smoke check by hand, not a test suite, and the row says exactly what was run.</li>
     </ul>
     <div class="tablewrap"><table id="matrix"><caption>Every provider and feature on Windows</caption><thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">What the evidence is</th></tr></thead><tbody>
 <tr><th scope="row"><code>tristan.exe</code> build and zip</th><td><span class="pill ok">Verified in CI</span></td><td>Built in release mode, zipped with its DLLs and licence notices. The unpacked zip runs <code>--version</code> and <code>providers</code> with only the Windows system folders on <code>PATH</code>, and the SHA-256 matches. The runner still has the Visual C++ runtime in System32, so this is not a fresh Windows install. The released zips (0.6.0 and 0.6.1) were also downloaded on a Mac: file list, notices and SHA-256 were checked. It has not been run on a Windows 10 or 11 desktop.</td></tr>
@@ -293,9 +294,9 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># on
 <tr><th scope="row">Windows Hello for the parent unlock</th><td><span class="pill no">Not on Windows</span></td><td>The PIN is the only unlock.</td></tr>
 <tr><th scope="row">iPhone remote link to a Windows host</th><td><span class="pill no">Not on Windows</span></td><td>The link uses Apple’s Network framework with TLS-PSK.</td></tr>
 <tr><th scope="row">Offline fallback, DEMO provider, session memory</th><td><span class="pill no">Not on Windows</span></td><td><code>tristan run</code> does not use them: it runs one mission at a time with no memory of earlier ones.</td></tr>
-<tr><th scope="row">Installer (Inno Setup)</th><td><span class="pill ok">Verified in CI</span></td><td>Built and tested in CI and again in the release workflow, and published in v0.6.1 as <code>Tristan-0.6.1-windows-x64-setup.exe</code>. It is built from the same files as the zip. With silent installs only, the test checks a per-user install with the PATH option (files, <code>--version</code>, <code>PATH</code> value and type), an upgrade over it, the uninstall (folder, Add/Remove Programs entry and <code>PATH</code> restored exactly, <code>%APPDATA%\Tristan</code> kept), an install without the PATH option and an all-users install. <b>Not verified:</b> the wizard screens (nobody has clicked through them), what SmartScreen shows for the unsigned setup, and any run on a Windows 10 or 11 desktop. Code signing, MSIX and winget are on the roadmap.</td></tr>
+<tr><th scope="row">Installer (Inno Setup)</th><td><span class="pill ok">Verified in CI</span></td><td>Built and tested in CI and again in the release workflow, and published in v0.6.1 as <code>Tristan-0.6.1-windows-x64-setup.exe</code>. It is built from the same files as the zip. With silent installs only, the test checks a per-user install with the PATH option (files, <code>--version</code>, <code>PATH</code> value and type), an upgrade over it, the uninstall (folder, Add/Remove Programs entry and <code>PATH</code> restored exactly, <code>%APPDATA%\Tristan</code> kept), an install without the PATH option and an all-users install. <b>Not verified:</b> the wizard screens (nobody has clicked through them), what SmartScreen shows for the unsigned setup, and any run of the installer on a Windows 10 or 11 desktop. The zip, not the installer, was run on Windows 11 (see the ARM64 row). Code signing, MSIX and winget are on the roadmap.</td></tr>
 <tr><th scope="row">MSIX or winget package</th><td><span class="pill no">Not on Windows</span></td><td>The installer and the zip (both in v0.6.1) are the only packages. No MSIX or winget package exists yet; both are on the roadmap.</td></tr>
-<tr><th scope="row">ARM64 Windows</th><td><span class="pill no">Not on Windows</span></td><td>x64 only.</td></tr>
+<tr><th scope="row">ARM64 Windows</th><td><span class="pill">Checked by hand on Windows 11</span></td><td>There is no native ARM64 build; the release is x64 only. On 8 November 2026 the released 0.6.2 zip was run on Windows 11 Enterprise for ARM64 (build 10.0.26300, in a Parallels virtual machine on a Mac). The download matched its published SHA-256, it unpacked, <code>tristan --version</code> printed <code>0.6.2</code>, and <code>tristan providers</code> and <code>tristan run --help</code> worked, so Windows runs the x64 program under its built-in emulation. The machine had none of the provider tools installed, so no mission ran. Speed under emulation was not measured, and the installer was not run there.</td></tr>
 </tbody></table></div>
   </div>
 </section>
@@ -307,14 +308,14 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># on
     <h2>What is next</h2>
     <p class="note"><b>Plans, not promises.</b> These come from the items we deferred during the work and from the backlog. None of them has a date.</p>
     <ul class="roadmap">
-      <li>Run the released installer and zip on a real Windows 10 or 11 desktop<small>Click through the wizard, see what SmartScreen shows, and check how a pristine install behaves (both were released on 7 November 2026 and are still unchecked there)</small></li>
+      <li>Run the released installer and zip on a real Windows 10 or 11 desktop<small>Click through the wizard, see what SmartScreen shows, and check how a pristine install behaves. The 0.6.2 zip has been unpacked and run once on Windows 11 (ARM64, in a virtual machine); the installer, the wizard and SmartScreen are still unchecked</small></li>
       <li>Live provider checks on a real Windows PC<small>One real mission per provider, typing at a real console, Ctrl+C, and whether Claude Code passes the MCP <code>env</code> block</small></li>
             <li>Job Object process-tree kill<small><code>taskkill /T</code> can miss orphaned grandchildren; a Job Object that kills everything on close would not</small></li>
       <li><span class="pill ok">Done</span> Installer, as a <code>setup.exe</code><small>Inno Setup, released in 0.6.1: per user without administrator rights, optional <code>PATH</code> entry. Signing and a winget or MSIX package remain, below</small></li>
       <li>winget or MSIX package<small>Not started; the <code>setup.exe</code> is the only installer</small></li>
       <li>Code signing for <code>tristan.exe</code> and the installer<small>Fewer SmartScreen warnings</small></li>
       <li>Auto-update<small>Not on the Mac either</small></li>
-      <li>ARM64 Windows<small>Out of scope so far</small></li>
+      <li>ARM64 Windows<small>The x64 zip runs under emulation on Windows 11 ARM64 (checked once, by hand). A native ARM64 build is not planned yet</small></li>
       <li>A Windows HUD<small>Options are open in <a href="https://github.com/mariotristan/jarvis-tristan/issues/23">issue 23</a></small></li>
       <li>A text interface (TUI)<small>Would bring rendered Markdown and themes to the terminal</small></li>
       <li>Linux<small><a href="https://github.com/mariotristan/jarvis-tristan/issues/22">Issue 22</a>; the same <code>tristan</code> command, not yet built in CI</small></li>
@@ -370,6 +371,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># on
       <li><time datetime="2026-11-07T16:49-06:00">7 Nov, 16:49</time> The proof that docs-only changes skip the build jobs, recorded in the docs (#65, <code>67f8b59</code>).</li>
       <li><time datetime="2026-11-07T17:21-06:00">7 Nov, 17:21</time> Release prep 0.6.1: <code>VERSION</code> bumped (#66, <code>38c90d4</code>).</li>
       <li><time datetime="2026-11-07T17:44-06:00">7 Nov, about 17:44</time> <b>Second release, with the installer.</b> The second run of <code>release.yml</code> with the Windows job (<a href="https://github.com/mariotristan/jarvis-tristan/actions/runs/42425315224">run 42425315224</a>, from <code>38c90d4</code>) published <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">v0.6.1</a>: the Mac DMG, the Windows zip and the Windows installer, each with a SHA-256. All three checksums were verified on a Mac; the installer itself was tested only with silent installs.</li>
+          <li><time datetime="2026-11-08">8 Nov</time> <b>First run on a Windows 11 desktop.</b> The released 0.6.2 zip was downloaded, checked against its SHA-256, unpacked and run on Windows 11 for ARM64 in a virtual machine: <code>--version</code>, <code>providers</code> and <code>run --help</code> worked under x64 emulation. No mission ran, and the installer and SmartScreen are still unchecked.</li>
     </ol>
 
     <h3 id="bugs">Bugs the reviews and the Windows runner caught</h3>
@@ -464,10 +466,10 @@ pwsh -NoProfile -File scripts\package-windows-installer.ps1 -Version 0.0.0-local
     <ul class="plain">
       <li><b>Live logins and services:</b> real Claude Code (including whether it passes the MCP <code>env</code> block), the real Copilot CLI, <code>az login</code> tokens against Azure OpenAI, Bedrock with real AWS credentials, a real Ollama.</li>
       <li><b>A person at a console:</b> typing <code>y</code> / <code>n</code> / <code>a</code>, the echo-free PIN prompt, <kbd>Ctrl+C</kbd> through the console handler, how <code>NUL</code> and mintty look to the terminal check.</li>
-      <li><b>Desktop Windows:</b> CI runs Windows Server 2025; Windows 10 and 11 desktop editions have not run it.</li>
+      <li><b>Desktop Windows:</b> CI runs Windows Server 2025. The 0.6.2 zip has run once, by hand, on a Windows 11 ARM64 virtual machine (version, providers and help only). Windows 10, and Windows 11 on x64 hardware, have not run it.</li>
       <li><b>The installer’s wizard:</b> only silent installs and uninstalls run in CI, including inside the release workflow that built the released installer. Nobody has clicked through the wizard, seen the final uninstall message, or seen what SmartScreen says about the unsigned setup.</li>
-      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the installer or the zip on a fresh PC” is strong evidence, not proof. The released installer and zip were only inspected on a Mac, and SmartScreen’s reaction to the unsigned files has not been seen.</li>
-      <li><b>Other environments:</b> consoles with a non-UTF-8 code page, Credential Manager under an interactive or roaming profile or enterprise policy, UNC working folders, case-sensitive folders, drives without 8.3 names, ARM64.</li>
+      <li><b>A pristine Windows install:</b> the runner has the Swift toolchain and the Visual C++ runtime installed, so “runs from the installer or the zip on a fresh PC” is strong evidence, not proof. The 0.6.2 zip was run on a Windows 11 virtual machine, but that machine was not a clean install, the file was fetched from a script (which does not mark it as downloaded from the internet), and the installer was not run, so SmartScreen’s reaction to the unsigned files has still not been seen.</li>
+      <li><b>Other environments:</b> consoles with a non-UTF-8 code page, Credential Manager under an interactive or roaming profile or enterprise policy, UNC working folders, case-sensitive folders, drives without 8.3 names, and native ARM64 hardware (only the emulated x64 zip was run, in a virtual machine).</li>
     </ul>
 
     <h3 id="differently">What we would do differently</h3>
