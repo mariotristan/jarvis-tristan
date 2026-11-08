@@ -359,11 +359,14 @@ final class Session: ObservableObject {
         refreshMic()
     }
 
-    /// Said (when voice feedback is on) and written to the log once when the app opens.
+    /// Said (when voice feedback is on) and written to the log once when the app opens, followed by a random fact.
     func greet(at date: Date = Date()) {
         let line = Greeting.line(at: date)
+        let fact = Greeting.fact(kids: kidsMode)
         active.note(line)
+        active.note(fact)
         fx.say(line)
+        fx.say(fact, interrupt: false)
     }
 
     func cancel() { active.cancel() }
@@ -408,8 +411,9 @@ final class Session: ObservableObject {
         let prefix = several ? "\(label(for: session)): " : ""
         Notifier.shared.post(title: prefix + (success ? "Mission complete" : "Mission failed"), body: summary)
         if success {
-            // Tasks given by voice get the result read back; others get a short confirmation.
-            let line = session.spokenReply ? String(summary.prefix(240)) : spoken((kidsMode ? SoundFX.kidsDoneLines : SoundFX.doneLines).randomElement()!, for: session)
+            // A short answer is read out as it is; code and long results get a short confirmation.
+            let line = SpokenAnswer.line(for: summary).map { spoken($0, for: session) }
+                ?? spoken((kidsMode ? SoundFX.kidsDoneLines : SoundFX.doneLines).randomElement()!, for: session)
             fx.say(line, interrupt: false)
         } else {
             fx.say(spoken((kidsMode ? SoundFX.kidsFailLines : SoundFX.failLines).randomElement()!, for: session), interrupt: false)

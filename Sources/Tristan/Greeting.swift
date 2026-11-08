@@ -58,6 +58,38 @@ enum Greeting {
         return "\(opening) It is \(time) on \(day). \(closing)"
     }
 
+    static let facts = [
+        "A day on Venus is longer than its year.",
+        "Honey never spoils. Edible honey has been found in ancient Egyptian tombs.",
+        "Octopuses have three hearts and blue blood.",
+        "The Eiffel Tower grows a few centimetres taller in summer, because heat expands the iron.",
+        "Bananas are berries, but strawberries are not.",
+        "Light from the Sun takes about eight minutes to reach the Earth.",
+        "The first computer bug was a real moth, found in a Harvard computer in 1947.",
+        "Wombats produce cube-shaped droppings.",
+        "There are more possible games of chess than atoms in the observable universe.",
+        "Lightning is about five times hotter than the surface of the Sun.",
+    ]
+
+    static let kidsFacts = [
+        "Did you know? Octopuses have three hearts!",
+        "Did you know? A day on Venus is longer than a whole year there!",
+        "Did you know? Bananas are berries, but strawberries are not!",
+        "Did you know? Butterflies taste with their feet!",
+        "Did you know? Honey never goes bad, even after thousands of years!",
+        "Did you know? A group of flamingos is called a flamboyance!",
+        "Did you know? Wombats make cube-shaped poop!",
+        "Did you know? The Sun is so big that a million Earths could fit inside it!",
+        "Did you know? Sea otters hold hands when they sleep, so they do not drift apart!",
+        "Did you know? A snail can sleep for up to three years!",
+    ]
+
+    /// One fact for the app opening, chosen at random (or by `seed`, for tests).
+    static func fact(kids: Bool, seed: Int? = nil) -> String {
+        let list = kids ? kidsFacts : facts
+        return list[abs(seed ?? Int.random(in: 0..<list.count)) % list.count]
+    }
+
     private static func pick(_ options: [String], _ seed: Int) -> String {
         options.isEmpty ? "" : options[abs(seed) % options.count]
     }
