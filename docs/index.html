@@ -327,7 +327,7 @@ open /Applications/Tristan.app</pre>
     <ol class="steps">
       <li><b>Download</b> <code>Tristan-0.6.2-windows-x64-setup.exe</code> and <code>Tristan-0.6.2-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Check it.</b> Compare the hash PowerShell prints with the one inside the <code>.sha256</code> file (upper or lower case does not matter).</li>
-      <li><b>Run it.</b> If Windows SmartScreen warns, that is because the installer is not code-signed; we have not seen what it shows on a real desktop. It installs for you alone, without administrator rights.</li>
+      <li><b>Run it.</b> If Windows SmartScreen warns, that is because the installer is not code-signed; we have not seen what it shows on a real desktop (the zip was run once on Windows 11, but the installer and SmartScreen were not). It installs for you alone, without administrator rights.</li>
       <li><b>Leave “Add Tristan to my PATH” ticked</b>, then open a <em>new</em> terminal window.</li>
       <li><b>Try it.</b> <code>tristan --version</code> prints 0.6.2, and <code>tristan providers</code> shows which providers are ready.</li>
     </ol>
@@ -397,7 +397,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
         <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
         <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
         <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>
-        <tr><th scope="row">Windows terminal version</th><td><span class="pill">Windows CI only</span></td><td>Released in 0.6.1 as an installer and a zip. Built and tested on Windows Server 2025 in GitHub Actions, against fake provider CLIs and a mocked Ollama. It has not been run on a Windows 10 or 11 desktop, and no provider has run against a live account on Windows. <a href="windows.html#support">What is verified</a></td></tr>
+        <tr><th scope="row">Windows terminal version</th><td><span class="pill">Windows CI only</span></td><td>Released in 0.6.1 as an installer and a zip. Built and tested on Windows Server 2025 in GitHub Actions, against fake provider CLIs and a mocked Ollama. The 0.6.2 zip has been run once, by hand, on Windows 11 for ARM64 in a virtual machine (version, providers and help, under x64 emulation); the installer has not been run on a Windows 10 or 11 desktop, and no provider has run against a live account on Windows. <a href="windows.html#support">What is verified</a></td></tr>
         <tr><th scope="row">Voice, wake word, notifications, Spotify</th><td><span class="pill">Stand-in only</span></td><td>The logic is tested; nobody has used them end to end yet. <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">Issue 4</a></td></tr>
       </tbody>
     </table>
