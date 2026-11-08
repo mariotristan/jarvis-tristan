@@ -70,7 +70,7 @@ Rendered from the real views with sample data (`Tristan --snapshot docs/screensh
 
 ![Several sessions](docs/screenshots/hud-sessions.png)
 
-**Full screen and rendered markdown.** Full screen fills the display with larger text; the code stream renders markdown (headings, lists, tables, quotes, code cards with a copy button) and has a RAW switch.
+**Full screen and rendered markdown.** Full screen fills the display with larger text; the code stream renders markdown (headings, lists, tables, quotes, code cards with syntax colours and a copy button) and has a RAW switch.
 
 ![Full screen](docs/screenshots/hud-fullscreen.png)
 

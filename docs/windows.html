@@ -452,7 +452,7 @@ pwsh -NoProfile -File scripts\package-windows-installer.ps1 -Version 0.0.0-local
 
     <h3 id="releases">How releases are cut</h3>
     <ol class="steps">
-      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. <code>v0.6.1</code> is the latest tag so far.</li>
+      <li><b>Push a tag <code>v*</code></b> (for example <code>v1.2.3</code>). Only the maintainer does this. <code>v0.6.2</code> is the latest tag so far.</li>
       <li><b>Secret scan.</b> gitleaks over the whole history. A leak stops the release.</li>
       <li><b>Windows job</b> (read-only token): the same toolchain pins, both test suites, then the version. The leading <code>v</code> is dropped, and every character other than a letter, digit, dot or dash becomes a dash, case-sensitively (<code>v1.2.3_rc1</code> gives <code>1.2.3-rc1</code>; a bare <code>v</code> gives <code>0.0.0</code>). It packages, unpacks into a clean folder, checks <code>--version</code>, the checksum and the notices, builds the installer from the same files and runs the installer test on it, and uploads the zip and the installer. A version that still does not start with a letter or digit (the tag <code>v-1</code>) stops it.</li>
       <li><b>Mac job</b> (<code>macos-15</code>, Xcode 16.2): runs <code>swift test</code> and builds the DMG with the tag as its version. It waits for the Windows job, downloads the zip and the installer, and creates <b>one</b> GitHub Release with generated notes, the DMG, the zip, the installer and a SHA-256 for each.</li>
