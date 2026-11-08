@@ -64,17 +64,17 @@
     <h2>From a release</h2>
 
     <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.6.2.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download</b> <code>Tristan-0.7.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Open the disk image</b> and drag T.R.I.S.T.A.N. into Applications. Or use Terminal, below.</li>
       <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and T.R.I.S.T.A.N. is not notarized yet (that needs a paid Apple account).</li>
       <li><b>Open T.R.I.S.T.A.N.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>. T.R.I.S.T.A.N. has no Dock icon.</li>
     </ol>
     <pre data-copy><span class="c"># 1. Optional: check the download</span>
-cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.6.2.dmg.sha256
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.7.0.dmg.sha256
 
 <span class="c"># 2. Install</span>
-hdiutil attach Tristan-0.6.2.dmg
-cp -R "/Volumes/Tristan 0.6.2/Tristan.app" /Applications/
+hdiutil attach Tristan-0.7.0.dmg
+cp -R "/Volumes/Tristan 0.7.0/Tristan.app" /Applications/
 
 <span class="c"># 3. Remove the quarantine flag</span>
 xattr -dr com.apple.quarantine /Applications/Tristan.app
@@ -110,34 +110,34 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
     <p><a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a></p>
     <h3>The installer</h3>
     <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.6.2-windows-x64-setup.exe</code> and <code>Tristan-0.6.2-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download</b> <code>Tristan-0.7.0-windows-x64-setup.exe</code> and <code>Tristan-0.7.0-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Check it</b> with <code>Get-FileHash -Algorithm SHA256</code> against the hash in the <code>.sha256</code> file (upper or lower case does not matter).</li>
       <li><b>Run it.</b> If SmartScreen warns, that is the missing code signature. By default it installs for you alone, into <code>%LocalAppData%\Programs\Tristan</code>, without administrator rights. Choose all users in the dialog (or pass <code>/ALLUSERS</code>) to install for everyone.</li>
       <li><b>Leave “Add Tristan to my PATH” ticked.</b> Uninstalling removes the entry again. It installs exactly the files that are in the zip: <code>tristan.exe</code>, the Swift runtime DLLs and the licence notices.</li>
-      <li><b>Try it</b> in a <em>new</em> terminal window. <code>tristan --version</code> prints 0.6.2, and <code>tristan providers</code> shows which providers are ready.</li>
+      <li><b>Try it</b> in a <em>new</em> terminal window. <code>tristan --version</code> prints 0.7.0, and <code>tristan providers</code> shows which providers are ready.</li>
     </ol>
     <pre data-copy><span class="c"># PowerShell</span>
 cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64-setup.exe).Hash
-Get-Content Tristan-0.6.2-windows-x64-setup.exe.sha256
-.\Tristan-0.6.2-windows-x64-setup.exe
+(Get-FileHash -Algorithm SHA256 Tristan-0.7.0-windows-x64-setup.exe).Hash
+Get-Content Tristan-0.7.0-windows-x64-setup.exe.sha256
+.\Tristan-0.7.0-windows-x64-setup.exe
 <span class="c"># then, in a new terminal window:</span>
 tristan --version
 tristan providers
 tristan run --provider ollama "add a README"</pre>
     <p><b>Silent install</b>, for scripts (the switches are <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER</code> or <code>/ALLUSERS</code>, <code>/DIR="..."</code>, <code>/TASKS="addtopath"</code> and <code>/LOG="..."</code>):</p>
-    <pre data-copy>.\Tristan-0.6.2-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
+    <pre data-copy>.\Tristan-0.7.0-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
     <p><b>Uninstall</b> in Settings, Apps (or Add or remove programs). Your settings and history in <code>%APPDATA%\Tristan</code> and your stored secrets in Credential Manager are <b>kept</b>. To remove them too, delete <code>%APPDATA%\Tristan</code> and run <code>tristan secret delete azure-openai-key</code> (and the same for any other key you stored) before you uninstall.</p>
     <h3>Portable, no install: the zip</h3>
     <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.6.2-windows-x64.zip</code> and <code>Tristan-0.6.2-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>, and check it the same way.</li>
+      <li><b>Download</b> <code>Tristan-0.7.0-windows-x64.zip</code> and <code>Tristan-0.7.0-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>, and check it the same way.</li>
       <li><b>Extract it</b> to a folder and add that folder to your <code>PATH</code>. The zip holds <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs and the licence notices (23 files, about 80 MB unpacked).</li>
-      <li><b>Try it.</b> <code>tristan --version</code> prints 0.6.2.</li>
+      <li><b>Try it.</b> <code>tristan --version</code> prints 0.7.0.</li>
     </ol>
     <pre data-copy>cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64.zip).Hash
-Get-Content Tristan-0.6.2-windows-x64.zip.sha256
-Expand-Archive Tristan-0.6.2-windows-x64.zip -DestinationPath $HOME\Tristan
+(Get-FileHash -Algorithm SHA256 Tristan-0.7.0-windows-x64.zip).Hash
+Get-Content Tristan-0.7.0-windows-x64.zip.sha256
+Expand-Archive Tristan-0.7.0-windows-x64.zip -DestinationPath $HOME\Tristan
 $env:Path += ";$HOME\Tristan"      <span class="c"># this window only; add the folder to PATH in Settings to keep it</span>
 tristan --version
 tristan providers</pre>
