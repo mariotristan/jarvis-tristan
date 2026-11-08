@@ -2,6 +2,7 @@ import XCTest
 import AppKit
 import SwiftUI
 @testable import Tristan
+@testable import TristanCore
 
 final class MarkdownParserTests: XCTestCase {
     private func parse(_ text: String) -> [MarkdownBlock] { MarkdownParser.parse(text) }
@@ -97,15 +98,8 @@ final class MarkdownParserTests: XCTestCase {
     }
 }
 
-final class CodeFenceTests: XCTestCase {
-    func testLanguageNamesFromExtensions() {
-        XCTAssertEqual(CodeFence.language(forPath: "README.md"), "markdown")
-        XCTAssertEqual(CodeFence.language(forPath: "src/app.ts"), "typescript")
-        XCTAssertEqual(CodeFence.language(forPath: "a/b/Main.swift"), "swift")
-        XCTAssertEqual(CodeFence.language(forPath: "Makefile"), "text")
-        XCTAssertTrue(CodeFence.isMarkdown("Markdown") && CodeFence.isMarkdown("md") && !CodeFence.isMarkdown("swift"))
-    }
-
+/// CodeFence blocks through the Markdown parser; the parser-free CodeFence tests are in TristanCoreTests.
+final class CodeFenceMarkdownTests: XCTestCase {
     func testAFenceBlockRoundTripsThroughTheParserForAwkwardContent() {
         let samples = ["let x = 1", "", "line\n\nafter a blank", "has ``` three ticks\ninside", "````four````", "~~~ tildes ~~~", "trailing space  \n  indented",
                        "# heading inside\n- list inside", "unicode é 🙂", "last line has no newline"]

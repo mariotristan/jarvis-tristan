@@ -1,4 +1,5 @@
 import SwiftUI
+import TristanCore
 
 struct HUDView: View {
     @EnvironmentObject var session: Session

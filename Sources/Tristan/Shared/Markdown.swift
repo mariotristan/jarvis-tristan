@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(TristanCore)
+import TristanCore
+#endif
 
 // A small markdown engine for the code stream: a block parser that can be unit-tested, plus SwiftUI views.
 // It deliberately renders only what an agent produces (headings, lists, quotes, tables, fenced code, inline styles).
@@ -203,29 +206,6 @@ enum MarkdownParser {
     }
 }
 
-/// Builds the fenced blocks that carry file contents through the code stream, so the whole stream is valid markdown.
-enum CodeFence {
-    static func block(path: String, content: String) -> String {
-        var longest = 0, run = 0
-        for character in content { if character == "`" { run += 1; longest = max(longest, run) } else { run = 0 } }
-        let fence = String(repeating: "`", count: max(3, longest + 1))      // longer than any fence inside the file
-        let body = content.hasSuffix("\n") ? String(content.dropLast()) : content
-        // A model-chosen path must never be able to end the header line (or the fence) early.
-        // (Backticks too: a backtick in the header line would make it look like inline code instead of a fence.)
-        let title = path.unicodeScalars.map { CharacterSet.controlCharacters.contains($0) ? " " : $0 == "`" ? "'" : String($0) }.joined()
-        return "\n\(fence)\(language(forPath: title)) title=\(title)\n\(body)\n\(fence)\n"
-    }
-
-    static func language(forPath path: String) -> String {
-        let ext = String((path as NSString).pathExtension.lowercased().unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) })
-        let names = ["md": "markdown", "markdown": "markdown", "ts": "typescript", "tsx": "tsx", "js": "javascript", "jsx": "jsx",
-                     "py": "python", "rb": "ruby", "rs": "rust", "kt": "kotlin", "yml": "yaml", "sh": "bash", "zsh": "bash"]
-        return names[ext] ?? (ext.isEmpty ? "text" : ext)
-    }
-
-    static func isMarkdown(_ language: String) -> Bool { ["markdown", "md"].contains(language.lowercased()) }
-}
-
 // MARK: inline text
 
 enum MarkdownInline {
@@ -424,7 +404,7 @@ struct CodeCard: View {
                 if isMarkdown && !showSource {
                     MarkdownView(text: content)
                 } else {
-                    Text(content.isEmpty ? " " : content)
+                    Text(highlighted)
                         .font(.system(size: 12 * scale, design: .monospaced)).foregroundStyle(Theme.green)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .textSelection(.enabled)
@@ -434,6 +414,26 @@ struct CodeCard: View {
         }
         .background(Theme.codeWash, in: RoundedRectangle(cornerRadius: Theme.corner))
         .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.green.opacity(0.35), lineWidth: 1))
+    }
+
+    /// The code with its tokens coloured from the theme. Plain text keeps the card's own colour; an unfinished block
+    /// (still streaming) is coloured as far as it has got.
+    private var highlighted: AttributedString {
+        guard !content.isEmpty else { return AttributedString(" ") }
+        var result = AttributedString()
+        for token in SyntaxHighlighter.tokenize(content, language: language) {
+            var piece = AttributedString(token.text)
+            switch token.kind {
+            case .plain: break
+            case .keyword: piece.foregroundColor = Theme.amber
+            case .string: piece.foregroundColor = Theme.cyan
+            case .comment: piece.foregroundColor = Theme.green.opacity(0.5)
+            case .number: piece.foregroundColor = Theme.amber.opacity(0.75)
+            case .key: piece.foregroundColor = Theme.cyan
+            }
+            result.append(piece)
+        }
+        return result
     }
 
     private func copy() {

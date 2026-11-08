@@ -1,6 +1,7 @@
 import XCTest
 import Network
 @testable import Tristan
+@testable import TristanCore
 
 final class RemoteProtocolTests: XCTestCase {
     func testFramesSurviveArbitrarySplittingAndMerging() throws {
@@ -152,7 +153,8 @@ final class RemoteEndToEndTests: XCTestCase {
         XCTAssertEqual(client.approval?.summary, "Write Sources/auth.ts")
         XCTAssertNotNil(client.snapshot.map { $0.phase == .awaitingApproval || $0.phase == .working })
         client.respond(.allow)
-        try await eventually(timeout: 20) { client.snapshot?.phase == .done }
+        // generous: CI stretches the demo's 18 ms sleeps about 3x
+        try await eventually(timeout: 60) { client.snapshot?.phase == .done }
         XCTAssertEqual(client.snapshot?.phase, .done)
         XCTAssertTrue(client.code.contains("export function login"), "code should stream to the phone")
         XCTAssertTrue(client.log.contains { $0.text.contains("Authorization granted") })

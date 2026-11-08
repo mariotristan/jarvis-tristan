@@ -6,8 +6,42 @@ on:
   pull_request:
     branches: [main]
 
+# A newer push to the same pull request cancels the run it supersedes. Runs on main (and anything else) get a group of
+# their own, so they are never cancelled or queued behind each other.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Which jobs this change needs (scripts/ci/changed-paths.sh has the rules). `build-and-test` and `ios` are required
+  # checks on main, so the workflow itself always runs: a job skipped by its `if:` reports success, while a workflow
+  # skipped by a path filter would leave its required checks waiting forever.
+  changes-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      mac: ${{ steps.classify.outputs.mac }}
+      ios: ${{ steps.classify.outputs.ios }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 2 # the PR merge commit (or the pushed commit) and its parents
+          persist-credentials: false
+
+      - name: Classify the changed files
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: bash scripts/ci/changes-job.sh
+
+  # Fail safe: these run unless the classification succeeded AND said `false`. If `changes-ci` fails or its output is
+  # missing they run anyway; `!cancelled()` (not `always()`) so a cancelled run does not start them.
   build-and-test:
+    needs: changes-ci
+    if: ${{ !cancelled() && (needs.changes-ci.result != 'success' || needs.changes-ci.outputs.mac != 'false') }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +72,8 @@ jobs:
           path: dist/*.dmg*
 
   ios:
+    needs: changes-ci
+    if: ${{ !cancelled() && (needs.changes-ci.result != 'success' || needs.changes-ci.outputs.ios != 'false') }}
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +86,18 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
           xcrun simctl list runtimes | grep -i "iOS 18" || true
+
+      # The committed project lists every source file by name, so a file added under Sources/TristanCore or
+      # Sources/Tristan/Shared without regenerating leaves the iOS app unable to compile. Fail early and say why.
+      - name: Check the committed Xcode project matches ios/project.yml
+        run: |
+          brew install xcodegen
+          (cd ios && xcodegen generate)
+          if ! git diff --exit-code -- ios/TristanIOS.xcodeproj || [ -n "$(git status --porcelain -- ios/TristanIOS.xcodeproj)" ]; then
+            echo "::error::ios/TristanIOS.xcodeproj is out of date. Run 'cd ios && xcodegen generate' and commit the result (needed after editing ios/project.yml or adding or removing a file under Sources/TristanCore or Sources/Tristan/Shared)."
+            git status --short -- ios/TristanIOS.xcodeproj
+            exit 1
+          fi
 
       - name: Build and test the iOS app (iPhone simulator)
         run: |

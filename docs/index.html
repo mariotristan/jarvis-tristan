@@ -34,6 +34,7 @@
         <a href="#offline">Offline</a>
         <a href="#guides">Guides</a>
         <a href="#install">Install</a>
+        <a href="windows.html">Windows</a>
         <a href="#status">What’s tested</a>
         <a href="#roadmap">Roadmap</a>
       </nav>
@@ -48,10 +49,11 @@
         <p class="meta small" style="max-width: 34em;"><b>T.R.I.S.T.A.N.</b> stands for <b>T</b>actical <b>R</b>easoning <b>I</b>nterface for <b>S</b>upervising <b>T</b>asks, <b>A</b>gents and <b>N</b>etworks. In plain words: one control panel where you watch your AI agents work and decide what they are allowed to do.</p>
         <div class="cta">
           <a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Mac</a>
+          <a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a>
           <a class="btn ghost" href="#install">How to install</a>
         </div>
         <p class="meta small" style="max-width: 34em;"><b>Just for fun.</b> T.R.I.S.T.A.N. is a hobby and a learning experiment I’m building with my kids. They help pick the features and the themes, which is why there’s a kids mode and a lot of sound effects.</p>
-        <p class="meta small">Version 0.5.0 · Apple Silicon · macOS 14 or later · free and open source (MIT license)</p>
+        <p class="meta small">Version 0.6.2 · Mac: Apple Silicon, macOS 14 or later · Windows: terminal version, installer or zip, x64 · free and open source (MIT license)</p>
       </div>
       <div>
         <img class="shot" src="assets/hud-sessions.png" width="1400" height="924"
@@ -84,7 +86,7 @@
       </article>
       <article class="card">
         <h3>Read it, don’t squint</h3>
-        <p>Output appears the way it would read on a page: headings, lists, tables, and code cards with a copy button. Go full screen when you want to focus, and pick a theme (32 to choose from, light and dark, including a rainbow Pride theme, and some borrowed from movies and comics) if cyan is not your color.</p>
+        <p>Output appears the way it would read on a page: headings, lists, tables, and code cards with syntax colours and a copy button. Go full screen when you want to focus, and pick a theme (32 to choose from, light and dark, including a rainbow Pride theme, and some borrowed from movies and comics) if cyan is not your color.</p>
       </article>
       <article class="card">
         <h3>Take it with you</h3>
@@ -118,7 +120,7 @@
 
     <div class="facts" role="list">
       <div role="listitem"><b>5</b><span>AI providers in one window</span></div>
-      <div role="listitem"><b>207</b><span>automated tests</span></div>
+      <div role="listitem"><b>425</b><span>automated tests on the Mac</span></div>
       <div role="listitem"><b>0</b><span>accounts needed to try the demo</span></div>
       <div role="listitem"><b>MIT</b><span>license, free to use and change</span></div>
     </div>
@@ -288,6 +290,7 @@
       <a class="card" href="iphone-ipad.html"><h3>iPhone and iPad</h3><p>Pair with a QR code, how the link is secured, standalone mode and its limits.</p><p class="more">Read the guide →</p></a>
       <a class="card" href="audio-crackle.html"><h3>The crackling voice</h3><p>A bug report: six causes, how each was measured, what fixed it and what is still unproven.</p><p class="more">Read the report →</p></a>
       <a class="card" href="install.html"><h3>Install</h3><p>Requirements, the download, building from source and every script in the repo.</p><p class="more">Read the guide →</p></a>
+      <a class="card" href="windows.html"><h3>Windows</h3><p>The <code>tristan</code> terminal command: install, providers, approvals, what is verified, what is next, and how we build it in the open.</p><p class="more">Read the guide →</p></a>
     </div>
   </div>
 </section>
@@ -296,21 +299,21 @@
   <div class="wrap">
     <span class="eyebrow">Install</span>
     <h2>Up and running in a few minutes.</h2>
-    <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task.</p>
+    <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task. On Windows there is a terminal version instead, with an installer: see <a href="#install-windows">the Windows steps</a> below and the <a href="windows.html">Windows guide</a>.</p>
 
     <ol class="steps">
-      <li><b>Download.</b> Get <code>Tristan-0.5.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download.</b> Get <code>Tristan-0.6.2.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Open the disk image</b> and drag T.R.I.S.T.A.N. into Applications. Or use Terminal, below.</li>
       <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and T.R.I.S.T.A.N. isn’t notarized yet (that needs a paid Apple account). This one line clears the flag.</li>
       <li><b>Open T.R.I.S.T.A.N.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>.</li>
     </ol>
 
     <pre data-copy><span class="c"># 1. Optional: check the download</span>
-cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.5.0.dmg.sha256
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.6.2.dmg.sha256
 
 <span class="c"># 2. Install</span>
-hdiutil attach Tristan-0.5.0.dmg
-cp -R "/Volumes/Tristan 0.5.0/Tristan.app" /Applications/
+hdiutil attach Tristan-0.6.2.dmg
+cp -R "/Volumes/Tristan 0.6.2/Tristan.app" /Applications/
 
 <span class="c"># 3. Remove the quarantine flag</span>
 xattr -dr com.apple.quarantine /Applications/Tristan.app
@@ -318,7 +321,41 @@ xattr -dr com.apple.quarantine /Applications/Tristan.app
 <span class="c"># 4. Open it</span>
 open /Applications/Tristan.app</pre>
 
-    <p>Rather build it yourself? You need Xcode.</p>
+    <h3 id="install-windows">On Windows: the <code>tristan</code> terminal command</h3>
+    <p>This is a terminal version, not a window. It comes as an installer (recommended) or as a portable zip, and it is x64 only, for Windows 10 or 11. MSIX, winget and code signing are on the roadmap.</p>
+    <ol class="steps">
+      <li><b>Download</b> <code>Tristan-0.6.2-windows-x64-setup.exe</code> and <code>Tristan-0.6.2-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Check it.</b> Compare the hash PowerShell prints with the one inside the <code>.sha256</code> file (upper or lower case does not matter).</li>
+      <li><b>Run it.</b> If Windows SmartScreen warns, that is because the installer is not code-signed; we have not seen what it shows on a real desktop. It installs for you alone, without administrator rights.</li>
+      <li><b>Leave “Add Tristan to my PATH” ticked</b>, then open a <em>new</em> terminal window.</li>
+      <li><b>Try it.</b> <code>tristan --version</code> prints 0.6.2, and <code>tristan providers</code> shows which providers are ready.</li>
+    </ol>
+    <pre data-copy>cd ~\Downloads
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64-setup.exe).Hash
+Get-Content Tristan-0.6.2-windows-x64-setup.exe.sha256
+.\Tristan-0.6.2-windows-x64-setup.exe
+<span class="c"># then, in a new terminal window:</span>
+tristan --version
+tristan providers</pre>
+    <p><b>Silent install</b> (no wizard; per user, with the PATH entry):</p>
+    <pre data-copy>.\Tristan-0.6.2-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
+    <p><b>Uninstall</b> in Settings, Apps. Your settings and history in <code>%APPDATA%\Tristan</code> and your stored secrets are kept. If you want them gone, delete that folder and run <code>tristan secret delete azure-openai-key</code> (and any other key you stored) before you uninstall.</p>
+    <p><b>Portable, no install:</b> the zip <code>Tristan-0.6.2-windows-x64.zip</code> holds the same files.</p>
+    <ol class="steps">
+      <li><b>Download</b> <code>Tristan-0.6.2-windows-x64.zip</code> and <code>Tristan-0.6.2-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>, and check it the same way.</li>
+      <li><b>Extract it</b> to a folder and add that folder to your <code>PATH</code>.</li>
+      <li><b>Try it.</b> <code>tristan --version</code> prints 0.6.2.</li>
+    </ol>
+    <pre data-copy>cd ~\Downloads
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64.zip).Hash
+Get-Content Tristan-0.6.2-windows-x64.zip.sha256
+Expand-Archive Tristan-0.6.2-windows-x64.zip -DestinationPath $HOME\Tristan
+$env:Path += ";$HOME\Tristan"      <span class="c"># this window only; add the folder to PATH in Settings to keep it</span>
+tristan --version
+tristan providers</pre>
+    <p class="meta small">Neither file is code-signed. In CI the installer was tested only with silent installs, on Windows Server 2025; nobody has gone through the wizard screens, and nothing has run on a Windows 10 or 11 desktop. Details and limits are in the <a href="windows.html">Windows guide</a>.</p>
+
+    <p>Rather build the Mac app yourself? You need Xcode.</p>
     <pre data-copy>git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
 scripts/install.sh</pre>
@@ -359,12 +396,13 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
         <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
         <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
         <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>
+        <tr><th scope="row">Windows terminal version</th><td><span class="pill">Windows CI only</span></td><td>Released in 0.6.1 as an installer and a zip. Built and tested on Windows Server 2025 in GitHub Actions, against fake provider CLIs and a mocked Ollama. It has not been run on a Windows 10 or 11 desktop, and no provider has run against a live account on Windows. <a href="windows.html#support">What is verified</a></td></tr>
         <tr><th scope="row">Voice, wake word, notifications, Spotify</th><td><span class="pill">Stand-in only</span></td><td>The logic is tested; nobody has used them end to end yet. <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">Issue 4</a></td></tr>
       </tbody>
     </table>
     </div>
 
-    <p style="margin-top: 28px; max-width: 46em; color: var(--muted)">A few limits to know about: the download is for Apple Silicon Macs only, it isn’t notarized yet, and iPhone approvals only arrive while the app is open in front.</p>
+    <p style="margin-top: 28px; max-width: 46em; color: var(--muted)">A few limits to know about: the Mac download is for Apple Silicon only and isn’t notarized yet, the Windows download is a terminal version, as an installer or a zip (x64 only, not code-signed), and iPhone approvals only arrive while the app is open in front.</p>
     <p><a class="btn" href="https://github.com/mariotristan/jarvis-tristan/issues?q=is%3Aopen+label%3Avalidation">Help us check these</a></p>
   </div>
 </section>
@@ -376,14 +414,13 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
     <p class="intro">Every item is a GitHub issue with a short brief, so anyone can pick one up. The first two are the easiest places to start.</p>
 
     <ul class="roadmap">
-      <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/14">Syntax highlighting in code cards</a><small>Good first issue</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/6">Turn Copilot’s output into log steps</a><small>Good first issue</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/11">Control several sessions from your phone</a><small>iPhone and iPad</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/7">Signing and notarization</a><small>Removes the download warning</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/9">Intel Mac support</a><small>Universal build</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/24">A command-line version</a><small>Run and approve from the terminal</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/22">Linux support, starting with Omarchy</a><small>Arch and Hyprland</small></li>
-      <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/23">Windows support</a><small>Shares its first step with Linux</small></li>
+      <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/23">Windows support</a><small>The terminal version is released in 0.6.1 with an installer (<a href="windows.html">Windows guide</a>)</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/16">Apple Music support</a><small>Alongside Spotify</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/17">Different trust level per session</a><small>Ask in one folder, auto in another</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/25">Individual user profiles</a><small>Settings and history per person</small></li>
@@ -405,6 +442,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
       <a href="kids-mode.html">Kids mode</a>
       <a href="iphone-ipad.html">iPhone and iPad</a>
       <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download</a>

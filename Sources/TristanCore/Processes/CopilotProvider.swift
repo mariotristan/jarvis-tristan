@@ -1,0 +1,169 @@
+import Foundation
+
+/// Builds the `copilot` command line. Kept separate so the permission mapping can be tested without launching anything.
+///
+/// Copilot's headless mode (`-p`) cannot ask per action; it only honours `--allow-tool`, `--deny-tool` and
+/// `--allow-all-tools` (denials always win). Approval modes therefore map like this:
+/// - ASK: one up-front approval, then all tools are allowed except the deny list.
+/// - AUTO: file writes and a short list of routine commands are allowed; anything else is refused by the CLI.
+/// - YOLO: everything is allowed, including the commands the other modes deny.
+package enum CopilotArguments {
+    static let deniedShell = ["rm", "sudo", "dd", "chmod", "chown", "mv", "kill", "killall", "shred", "mkfs", "diskutil",
+                              "launchctl", "curl", "wget", "ssh", "scp", "git push", "git reset"]
+    static let routineShell = ["git status", "git diff", "git log", "git add", "git commit", "ls", "cat", "pwd", "grep",
+                               "head", "tail", "wc", "echo", "mkdir", "touch", "swift build", "swift test", "npm test", "npm run"]
+
+    /// `logDirectory` gives this run its own log folder, so several Copilot sessions running at once never write to the
+    /// same place.
+    static func make(task: String, mode: ApprovalMode, model: String, logDirectory: String? = nil) -> [String] {
+        var args = ["-p", task, "--no-color", "--stream", "on", "--disallow-temp-dir"]
+        if let logDirectory { args += ["--log-dir", logDirectory] }
+        if !model.isEmpty { args += ["--model", model] }
+        switch mode {
+        case .yolo:
+            args.append("--allow-all-tools")
+        case .ask:
+            args.append("--allow-all-tools")
+            args += denyRules
+        case .auto:
+            args += ["--allow-tool", "write"]
+            for command in routineShell { args += ["--allow-tool", "shell(\(command):*)"] }
+            args += denyRules
+        }
+        return args
+    }
+
+    private static var denyRules: [String] {
+        deniedShell.flatMap { ["--deny-tool", "shell(\($0):*)"] }
+    }
+
+    /// The CLI colours output even when asked not to in some versions, so strip escape codes defensively. Carriage
+    /// returns go too: CR LF (Windows line ends) becomes LF, and a lone CR returns to the start of the line as in a
+    /// terminal, so of `Thinking…\rDone` only `Done` is kept (the last non-empty piece of the line). Any line break
+    /// left at the end is dropped.
+    static func stripANSI(_ text: String) -> String {
+        var plain = text.replacingOccurrences(of: "\u{001B}\\[[0-9;?]*[ -/]*[@-~]", with: "", options: .regularExpression)
+        guard plain.unicodeScalars.contains("\r") else { return plain }
+        // By scalar: "\r\n" is one Character in Swift, so a Character-based split could miss it.
+        let scalars = Array(plain.unicodeScalars)
+        var lines: [[Unicode.Scalar]] = [[]]
+        for (index, scalar) in scalars.enumerated() {
+            if scalar == "\r", index + 1 < scalars.count, scalars[index + 1] == "\n" { continue }
+            if scalar == "\n" { lines.append([]) } else { lines[lines.count - 1].append(scalar) }
+        }
+        plain = lines.map { line -> String in
+            let pieces = line.split(separator: "\r", omittingEmptySubsequences: true)
+            return String(String.UnicodeScalarView(pieces.last ?? []))
+        }.joined(separator: "\n")
+        while plain.hasSuffix("\n") { plain.removeLast() }
+        return plain
+    }
+}
+
+/// Drives the GitHub Copilot CLI (`copilot -p`) and streams its output into the HUD.
+package struct CopilotProvider: AgentProvider {
+    var mode: ApprovalMode = .ask
+    var model: String = Settings.string("copilot.model") ?? ""
+    /// Tests replace the launch command so no real CLI is needed.
+    var launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))?
+    /// Builds the process; tests replace it to see how launch errors are reported.
+    var prepare: @Sendable (_ tool: String, _ arguments: [String], _ directory: URL, _ environment: [String: String]) throws -> Process = {
+        try ProcessLauncher.prepare($0, $1, directory: $2, extraEnvironment: $3)
+    }
+
+    package init(mode: ApprovalMode = .ask, model: String = Settings.string("copilot.model") ?? "",
+                 launchOverride: (@Sendable ([String]) -> (executable: URL, arguments: [String]))? = nil) {
+        self.mode = mode
+        self.model = model
+        self.launchOverride = launchOverride
+    }
+
+    package func run(task: String, workingDirectory: URL, approve: @escaping Approver) -> AsyncStream<AgentEvent> {
+        AsyncStream { c in
+            let box = ProcessBox()
+            let worker = Task {
+                if mode == .ask {
+                    c.yield(.status("AWAITING AUTHORIZATION"))
+                    let ok = await approve(ApprovalRequest(
+                        summary: "Run Copilot CLI with its tools allowed?",
+                        detail: "Copilot cannot ask before each action when run headlessly. It will be able to edit files and run commands in \(workingDirectory.path). rm, sudo, curl, ssh, git push and similar stay blocked."))
+                    guard ok else { c.yield(.failed("Denied by operator")); c.finish(); return }
+                } else {
+                    c.yield(.log("Approval mode \(mode.rawValue): mapped to Copilot's tool permissions"))
+                }
+
+                let logDirectory = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-logs-\(UUID().uuidString.prefix(8))")
+                try? ProcessLauncher.createPrivateFolder(logDirectory)
+                defer { try? FileManager.default.removeItem(at: logDirectory) }
+                let arguments = CopilotArguments.make(task: task, mode: mode, model: model,
+                                                      logDirectory: ProcessLauncher.nativePath(logDirectory))
+                let process: Process
+                do {
+                    if let override = launchOverride {
+                        let launch = override(arguments)
+                        process = try prepare(ProcessLauncher.nativePath(launch.executable), launch.arguments, workingDirectory, ["NO_COLOR": "1"])
+                    } else {
+                        process = try prepare("copilot", arguments, workingDirectory, ["NO_COLOR": "1"])
+                    }
+                } catch {
+                    c.yield(.failed(Self.launchFailure(error)))
+                    c.finish(); return
+                }
+                let out = Pipe()
+                let errFile = FileManager.default.temporaryDirectory.appendingPathComponent("tristan-copilot-\(UUID().uuidString.prefix(8)).err")
+                FileManager.default.createFile(atPath: errFile.path, contents: nil)
+                defer { try? FileManager.default.removeItem(at: errFile) }
+                process.standardOutput = out
+                process.standardError = (try? FileHandle(forWritingTo: errFile)) ?? FileHandle.nullDevice
+                process.standardInput = FileHandle.nullDevice
+                let exit = ExitWatch(process)   // never waitUntilExit: it can miss the exit and never return
+
+                do {
+                    guard try box.start(process) else { c.finish(); return }
+                } catch {
+                    c.yield(.failed(Self.launchFailure(error)))
+                    c.finish(); return
+                }
+                exit.started(process)
+                c.yield(.status("ONLINE"))
+                c.yield(.log("Copilot CLI started"))
+
+                var transcript = ""
+                do {
+                    for try await rawLine in out.fileHandleForReading.bytes.lines {
+                        let line = CopilotArguments.stripANSI(rawLine)
+                        transcript += line + "\n"
+                        c.yield(.status("RESPONDING"))
+                        c.yield(.code(line + "\n"))
+                    }
+                } catch {}
+                let status = exit.wait(for: process)
+
+                if Task.isCancelled { c.finish(); return }
+                if status == 0 {
+                    let summary = transcript.split(separator: "\n\n").last.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    c.yield(.done(summary.isEmpty ? "Copilot finished" : String(summary.suffix(240))))
+                } else {
+                    let stderr = ((try? String(contentsOf: errFile, encoding: .utf8)) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                    c.yield(.failed(stderr.isEmpty ? "Copilot CLI exited with status \(status). Is it logged in? Run `copilot` once to sign in."
+                                                   : String(CopilotArguments.stripANSI(stderr).suffix(300))))
+                }
+                c.finish()
+            }
+            c.onTermination = { _ in
+                worker.cancel()
+                box.terminate()
+            }
+        }
+    }
+
+    static func launchFailure(_ error: Error, windows: Bool = ProcessLauncher.isWindows) -> String {
+        if error is UnsafeArguments {
+            return "Could not launch the Copilot CLI safely: \(error.localizedDescription). Remove those characters from the task and retry."
+        }
+        if windows, error is ToolNotFound {
+            return "Could not launch the Copilot CLI: \(error.localizedDescription). Install it with `npm install -g @github/copilot` (it needs Node.js 22 or later), then open a new terminal."
+        }
+        return "Could not launch the Copilot CLI: \(error.localizedDescription). Install it with `npm install -g @github/copilot`."
+    }
+}

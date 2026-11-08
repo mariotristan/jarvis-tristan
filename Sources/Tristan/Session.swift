@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import AVFoundation
 import Combine
+import TristanCore
 
 
 struct LogEntry: Identifiable {

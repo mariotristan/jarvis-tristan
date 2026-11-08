@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Install—T.R.I.S.T.A.N.</title>
-<meta name="description" content="Requirements, the download, building from source, and what to do when macOS complains.">
+<meta name="description" content="Requirements, the Mac and Windows downloads (installer or zip), building from source, and what to do when macOS complains.">
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/install.html">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
 <meta name="theme-color" content="#1A0A0D">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Install—T.R.I.S.T.A.N.">
-<meta property="og:description" content="Requirements, the download, building from source, and what to do when macOS complains.">
+<meta property="og:description" content="Requirements, the Mac and Windows downloads (installer or zip), building from source, and what to do when macOS complains.">
 <meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/install.html">
 <meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
 <link rel="stylesheet" href="assets/site.css">
@@ -31,6 +31,7 @@
         <a href="kids-mode.html">Kids safe mode</a>
         <a href="iphone-ipad.html">iPhone and iPad</a>
         <a href="install.html" aria-current="page">Install</a>
+        <a href="windows.html">Windows</a>
       </nav>
     </div>
     <div class="titlebox">
@@ -51,6 +52,7 @@
       <li><b>To build from source:</b> the full Xcode, not just the command line tools, because SwiftUI’s macros need the full toolchain. <code>scripts/bundle.sh</code> finds <code>/Applications/Xcode.app</code> even if <code>xcode-select</code> points elsewhere.</li>
       <li><b>For the Claude provider:</b> the Claude Code CLI, installed and signed in.</li>
       <li><b>Nothing else</b> to try it: pick DEMO and type any task.</li>
+      <li><b>On Windows 10 or 11 (x64):</b> there is no app, but there is a <code>tristan</code> terminal command, released in 0.6.1 as an installer and a zip. CI has so far run it only on Windows Server 2025. See <a href="#windows">Windows</a> below.</li>
     </ul>
   </div>
 </section>
@@ -59,17 +61,17 @@
     <h2>From a release</h2>
 
     <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.5.0.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Download</b> <code>Tristan-0.6.2.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
       <li><b>Open the disk image</b> and drag T.R.I.S.T.A.N. into Applications. Or use Terminal, below.</li>
       <li><b>Remove the download warning, once.</b> macOS flags apps from the internet, and T.R.I.S.T.A.N. is not notarized yet (that needs a paid Apple account).</li>
       <li><b>Open T.R.I.S.T.A.N.</b> Look for the pill at the camera notch, the icon in the menu bar, or press <kbd>⌥ Space</kbd>. T.R.I.S.T.A.N. has no Dock icon.</li>
     </ol>
     <pre data-copy><span class="c"># 1. Optional: check the download</span>
-cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.5.0.dmg.sha256
+cd ~/Downloads &amp;&amp; shasum -a 256 -c Tristan-0.6.2.dmg.sha256
 
 <span class="c"># 2. Install</span>
-hdiutil attach Tristan-0.5.0.dmg
-cp -R "/Volumes/Tristan 0.5.0/Tristan.app" /Applications/
+hdiutil attach Tristan-0.6.2.dmg
+cp -R "/Volumes/Tristan 0.6.2/Tristan.app" /Applications/
 
 <span class="c"># 3. Remove the quarantine flag</span>
 xattr -dr com.apple.quarantine /Applications/Tristan.app
@@ -98,6 +100,47 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test</pre>
     <p>Maintainers: <code>scripts/make-dmg.sh</code> builds the disk image, and <code>git tag vX.Y.Z &amp;&amp; git push origin vX.Y.Z</code> publishes a release. See <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/ci-and-release.md">docs/ci-and-release.md</a>.</p>
   </div>
 </section>
+<section class="soft">
+  <div class="wrap">
+    <h2 id="windows">Windows: the <code>tristan</code> command</h2>
+    <p>On Windows, T.R.I.S.T.A.N. is a terminal command, not a window. You run a mission on any of the five providers and answer each approval in Windows Terminal, PowerShell or cmd. It is released as <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">0.6.1</a>, as an installer (recommended) and as a portable zip. It is built and tested on Windows Server 2025 in CI, but it has not been run on a real Windows 10 or 11 desktop, and no provider has run against a live account on Windows. The installer is not code-signed, so Windows SmartScreen may warn when you run it (we have not seen what it shows on a real desktop). In CI only silent installs were tried; nobody has gone through the wizard screens. MSIX, winget and code signing are on the roadmap.</p>
+    <p><a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a></p>
+    <h3>The installer</h3>
+    <ol class="steps">
+      <li><b>Download</b> <code>Tristan-0.6.2-windows-x64-setup.exe</code> and <code>Tristan-0.6.2-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
+      <li><b>Check it</b> with <code>Get-FileHash -Algorithm SHA256</code> against the hash in the <code>.sha256</code> file (upper or lower case does not matter).</li>
+      <li><b>Run it.</b> If SmartScreen warns, that is the missing code signature. By default it installs for you alone, into <code>%LocalAppData%\Programs\Tristan</code>, without administrator rights. Choose all users in the dialog (or pass <code>/ALLUSERS</code>) to install for everyone.</li>
+      <li><b>Leave “Add Tristan to my PATH” ticked.</b> Uninstalling removes the entry again. It installs exactly the files that are in the zip: <code>tristan.exe</code>, the Swift runtime DLLs and the licence notices.</li>
+      <li><b>Try it</b> in a <em>new</em> terminal window. <code>tristan --version</code> prints 0.6.2, and <code>tristan providers</code> shows which providers are ready.</li>
+    </ol>
+    <pre data-copy><span class="c"># PowerShell</span>
+cd ~\Downloads
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64-setup.exe).Hash
+Get-Content Tristan-0.6.2-windows-x64-setup.exe.sha256
+.\Tristan-0.6.2-windows-x64-setup.exe
+<span class="c"># then, in a new terminal window:</span>
+tristan --version
+tristan providers
+tristan run --provider ollama "add a README"</pre>
+    <p><b>Silent install</b>, for scripts (the switches are <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER</code> or <code>/ALLUSERS</code>, <code>/DIR="..."</code>, <code>/TASKS="addtopath"</code> and <code>/LOG="..."</code>):</p>
+    <pre data-copy>.\Tristan-0.6.2-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
+    <p><b>Uninstall</b> in Settings, Apps (or Add or remove programs). Your settings and history in <code>%APPDATA%\Tristan</code> and your stored secrets in Credential Manager are <b>kept</b>. To remove them too, delete <code>%APPDATA%\Tristan</code> and run <code>tristan secret delete azure-openai-key</code> (and the same for any other key you stored) before you uninstall.</p>
+    <h3>Portable, no install: the zip</h3>
+    <ol class="steps">
+      <li><b>Download</b> <code>Tristan-0.6.2-windows-x64.zip</code> and <code>Tristan-0.6.2-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>, and check it the same way.</li>
+      <li><b>Extract it</b> to a folder and add that folder to your <code>PATH</code>. The zip holds <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs and the licence notices (23 files, about 80 MB unpacked).</li>
+      <li><b>Try it.</b> <code>tristan --version</code> prints 0.6.2.</li>
+    </ol>
+    <pre data-copy>cd ~\Downloads
+(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64.zip).Hash
+Get-Content Tristan-0.6.2-windows-x64.zip.sha256
+Expand-Archive Tristan-0.6.2-windows-x64.zip -DestinationPath $HOME\Tristan
+$env:Path += ";$HOME\Tristan"      <span class="c"># this window only; add the folder to PATH in Settings to keep it</span>
+tristan --version
+tristan providers</pre>
+    <p>The <a href="windows.html">Windows guide</a> covers setting up each provider with <code>tristan config</code> and <code>tristan secret</code>, approvals, kids mode, building from source, what is verified and what is not, and how it was built.</p>
+  </div>
+</section>
 <section>
   <div class="wrap">
     <h2 id="uninstall">Uninstall, and removing test versions</h2>
@@ -120,6 +163,8 @@ scripts/uninstall.sh --purge --build      <span class="c"># also settings, histo
 <tr><th scope="row"><code>scripts/bundle.sh</code></th><td>Builds a release binary and wraps it into <code>Tristan.app</code>.</td></tr>
 <tr><th scope="row"><code>scripts/make-dmg.sh</code></th><td>Builds <code>dist/Tristan-&lt;version&gt;.dmg</code> and a checksum next to it.</td></tr>
 <tr><th scope="row"><code>scripts/setup-ollama.sh</code></th><td>Installs and starts Ollama and pulls a model. With <code>--start-only</code> it only starts an installed Ollama (the app runs this for the <a href="local-models.html#offline">offline fallback</a>). See <a href="local-models.html">Local models</a>.</td></tr>
+<tr><th scope="row"><code>scripts/setup-ollama.ps1</code></th><td>Windows: checks for Ollama (with a <code>winget</code> hint if it is missing), starts it, pulls a model and sets it for <code>tristan</code>. With <code>-StartOnly</code> it only starts an installed Ollama. See <a href="windows.html#configure">Windows</a>.</td></tr>
+<tr><th scope="row"><code>scripts/package-windows.ps1</code></th><td>Windows: builds <code>tristan.exe</code> and writes <code>dist\Tristan-&lt;version&gt;-windows-x64.zip</code> with its DLLs, licence notices and a checksum; <code>scripts/package-windows-installer.ps1</code> then builds <code>Tristan-&lt;version&gt;-windows-x64-setup.exe</code> from the same files. See <a href="windows.html#build-from-source">Windows</a>.</td></tr>
 <tr><th scope="row"><code>scripts/install-voices.sh</code></th><td>Opens System Settings so you can download an Enhanced voice, waits for it and plays a sample. Fixes crackly speech. See the <a href="audio-crackle.html">crackle report</a>.</td></tr>
 <tr><th scope="row"><code>scripts/uninstall.sh</code></th><td>Quits the app and removes installed copies and mounted disk images. <code>--purge</code> also removes settings, history and Keychain items, <code>--build</code> removes build output, <code>--dry-run</code> only lists.</td></tr>
 <tr><th scope="row"><code>scripts/record-demo.sh</code></th><td>Films the built-in demo (<code>Tristan --demo</code>) for the videos: the window and the app’s own sound, via <code>scripts/record-window.swift</code>.</td></tr>
@@ -142,7 +187,7 @@ scripts/uninstall.sh --purge --build      <span class="c"># also settings, histo
     <p>Shortcuts: <kbd>⌥ Space</kbd> opens the window, <kbd>⌥ ⇧ Space</kbd> held is push-to-talk, <kbd>⌘T</kbd> opens a new session, <kbd>⌘1</kbd>…<kbd>⌘9</kbd> switch, <kbd>⌘W</kbd> closes.</p>
   </div>
 </section>
-  <div class="wrap"><div class="pager"><a href="iphone-ipad.html">← iPhone and iPad</a><a href="index.html">Home →</a></div></div>
+  <div class="wrap"><div class="pager"><a href="iphone-ipad.html">← iPhone and iPad</a><a href="windows.html">Windows →</a></div></div>
 </main>
 
 <footer>
@@ -155,6 +200,7 @@ scripts/uninstall.sh --purge --build      <span class="c"># also settings, histo
       <a href="kids-mode.html">Kids safe mode</a>
       <a href="iphone-ipad.html">iPhone and iPad</a>
       <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>

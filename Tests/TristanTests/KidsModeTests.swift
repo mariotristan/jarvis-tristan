@@ -1,5 +1,6 @@
 import XCTest
 @testable import Tristan
+@testable import TristanCore
 
 @MainActor
 final class KidsModeTests: XCTestCase {
@@ -79,22 +80,5 @@ final class KidsModeTests: XCTestCase {
         XCTAssertTrue(DemoAnswers.answer(for: question)?.contains("Why is the sky blue?") == true)
         XCTAssertTrue(DemoAnswers.answer(for: "What is the biggest planet?")?.contains("Jupiter") == true)
         XCTAssertNil(DemoAnswers.answer(for: "write a README"))
-    }
-}
-
-final class NoKeychainTests: XCTestCase {
-    override func tearDown() { NoKeychain.enabled = false }
-
-    func testDemoModeKeepsSecretsInMemoryAndNeverTouchesTheKeychain() {
-        let account = "test.nokeychain.\(UUID().uuidString)"
-        NoKeychain.enabled = true
-        XCTAssertTrue(KeychainStore.set("secret", account: account))
-        XCTAssertEqual(KeychainStore.get(account), "secret")
-        XCTAssertTrue(KeychainStore.set("", account: account))
-        XCTAssertNil(KeychainStore.get(account), "an empty value removes it")
-
-        XCTAssertTrue(KeychainStore.set("only in memory", account: account))
-        NoKeychain.enabled = false
-        XCTAssertNil(KeychainStore.get(account), "nothing reached the real Keychain")
     }
 }
