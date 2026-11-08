@@ -28,6 +28,7 @@
 		56B56E16B2FF121DAB889337 /* KidsRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC34365FBED77B74D341BA4 /* KidsRouting.swift */; };
 		570A49A3B4AF221C217BB156 /* AgentLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6374B2183C1D6B7D42020890 /* AgentLoop.swift */; };
 		59CE38F1E0C319D1EA753119 /* ParentPIN.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DA7315B782F9AA23AD95CA /* ParentPIN.swift */; };
+		5B4FE58B96E2FC8196514DD7 /* SyntaxHighlighter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9111718396BF574E1948C8B /* SyntaxHighlighter.swift */; };
 		65201C183783F268B6553BF4 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5B1314F02BA919CCFAF0625 /* Dictation.swift */; };
 		72106B77D041D9CA7B291507 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A36896FD24E9406C9AEE3E /* Settings.swift */; };
 		8F927C3D9AEA61BFAC5055E4 /* SettingsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46CABAA59D874D19970805E3 /* SettingsSheet.swift */; };
@@ -88,6 +89,7 @@
 		A74C896707EE5F174F963132 /* BedrockBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockBackend.swift; sourceTree = "<group>"; };
 		B5B1314F02BA919CCFAF0625 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
 		B7A36896FD24E9406C9AEE3E /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		B9111718396BF574E1948C8B /* SyntaxHighlighter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyntaxHighlighter.swift; sourceTree = "<group>"; };
 		BA739799B0FAB592131BBD0C /* TristanIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TristanIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C27B7A4F26154899E4A5C0B7 /* MissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissionView.swift; sourceTree = "<group>"; };
 		C6240DC60C87D5020A954A3E /* ConversationMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMemory.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 				8EBAC21D086D0B894F5EA995 /* RemoteClient.swift */,
 				CB108F14913907B7644A627A /* RemoteProtocol.swift */,
 				47C337467126136D11EA96EE /* RemoteTransport.swift */,
+				B9111718396BF574E1948C8B /* SyntaxHighlighter.swift */,
 				EE01EE8CD0ED0621E30F0CCF /* Theme.swift */,
 				17B1AA031985D649FAB05834 /* Themes.swift */,
 			);
@@ -315,6 +318,7 @@
 				8F927C3D9AEA61BFAC5055E4 /* SettingsSheet.swift in Sources */,
 				C578342821ACED9218718838 /* ShellFlavor.swift in Sources */,
 				BF162DC78072904A96537AD2 /* StandaloneEngine.swift in Sources */,
+				5B4FE58B96E2FC8196514DD7 /* SyntaxHighlighter.swift in Sources */,
 				3CFE0E3221DAFFB55174FAA1 /* Theme.swift in Sources */,
 				560A61C258F2EA035010311A /* Themes.swift in Sources */,
 				124D72E17424B1C595E70919 /* TristanApp.swift in Sources */,
