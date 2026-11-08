@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How we build—T.R.I.S.T.A.N.</title>
+<meta name="description" content="How T.R.I.S.T.A.N. was built: the Mac app first, then the iPhone and iPad remote and Windows, with a dated timeline from the first commit and the rules a newcomer or a coding agent should follow.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/how-we-build.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#1A0A0D">
+<meta property="og:type" content="website">
+<meta property="og:title" content="How we build—T.R.I.S.T.A.N.">
+<meta property="og:description" content="How T.R.I.S.T.A.N. was built, with a timeline from the first commit.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/how-we-build.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="subhero">
+  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
+  <div class="wrap">
+    <div class="topbar">
+      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
+      <nav aria-label="Main">
+        <a href="index.html">Home</a>
+        <a href="providers.html">Providers</a>
+        <a href="approvals.html">Approvals</a>
+        <a href="local-models.html">Local models</a>
+        <a href="kids-mode.html">Kids safe mode</a>
+        <a href="iphone-ipad.html">iPhone and iPad</a>
+        <a href="install.html">Install</a>
+        <a href="windows.html">Windows</a>
+        <a href="backlog.html">Backlog</a>
+        <a href="how-we-build.html" aria-current="page">How we build</a>
+      </nav>
+    </div>
+    <div class="titlebox">
+      <span class="eyebrow">Guide · How we build</span>
+      <h1>How T.R.I.S.T.A.N. gets built.</h1>
+      <p class="lead">The Mac app came first, in one long day. Then the iPhone and iPad remote, the kids safe mode, the offline fallback and the Windows terminal version. This page has the timeline, notes on the Mac app, and the rules we follow so anyone, person or coding agent, can pick the work up.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+  <div class="wrap">
+    <nav class="toc" aria-labelledby="toc-title">
+      <h2 id="toc-title" class="toc-title">On this page</h2>
+      <ol>
+        <li><a href="#numbers">The project in numbers</a></li>
+        <li><a href="#timeline">Timeline</a></li>
+        <li><a href="#mac">Notes on the Mac app</a>
+          <ol>
+            <li><a href="#mac-what">What it is</a></li>
+            <li><a href="#mac-order">The order it was built in</a></li>
+            <li><a href="#mac-code">Where the code lives</a></li>
+            <li><a href="#mac-windows">What Windows reuses</a></li>
+            <li><a href="#mac-limits">What is still missing</a></li>
+          </ol>
+        </li>
+        <li><a href="#rules">The rules we follow</a></li>
+        <li><a href="#join">Pick up the work</a></li>
+      </ol>
+    </nav>
+    <div class="facts" id="numbers">
+      <div><b>7</b><span>releases in two days</span></div>
+      <div><b>96</b><span>commits on <code>main</code></span></div>
+      <div><b>17</b><span>merged pull requests</span></div>
+      <div><b>79</b><span>commits on the first day</span></div>
+    </div>
+    <p class="note" style="margin-top:28px"><b>Counted on 8 November 2026</b> from <code>git rev-list --count main</code>, the tags and the merged pull requests. The first commit is 6 November 2026 at 00:40, the latest release is v0.6.2 at 21:46 on 7 November. 94 of the 96 commits name a Claude model as co-author, as the commit message says: this is a project built with AI coding agents, and the person who owns it reviews what they do.</p>
+  </div>
+</section>
+
+<section id="timeline" class="soft">
+  <div class="wrap">
+    <h2>Timeline</h2>
+    <p>Times are commit and tag times from <code>git log</code> and <code>git tag</code> (UTC−6). Releases link to their GitHub page. Newest at the bottom.</p>
+    <ol class="timeline">
+      <li><time datetime="2026-11-06T00:40-06:00">6 Nov, 00:40</time> <b>The first commit</b> (<code>3c44386</code>): a SwiftUI HUD with a mission log, a code stream and the arc reactor, the notch overlay, ask-first approvals, a global hotkey, and the DEMO and Claude Code providers. 17 files, 1,164 lines.</li>
+      <li><time datetime="2026-11-06T00:52-06:00">6 Nov, 00:52–01:43</time> Approvals and the first providers. Per-action approvals, approval modes, voice and the T.R.I.S.T.A.N. acronym (<code>2b3d8fa</code>), “Always allow” rules (<code>642514e</code>), Bedrock with sound effects (<code>27c3b5a</code>), then Azure OpenAI, Copilot, history, notifications, the wake word and settings (<code>e137898</code>).</li>
+      <li><time datetime="2026-11-06T02:22-06:00">6 Nov, 02:22–02:31</time> The installable DMG, Spotify, Bedrock streaming, the shortcut recorder and history search (<code>135e0f7</code>), then the first CI and release workflows (<code>5e7bdd8</code>).</li>
+      <li><time datetime="2026-11-06T02:38-06:00">6 Nov, 02:38–04:14</time> <b>The iPhone and iPad remote.</b> A written design first (<code>6b132b8</code>), then the app (<code>b43e17b</code>), its CI job, a standalone mode that runs missions on the device (<code>fc6e1c6</code>), and full screen with several sessions at once (<code>1c36bcb</code>).</li>
+      <li><time datetime="2026-11-06T04:36-06:00">6 Nov, 04:36</time> <b>First release, <a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.1.0">v0.1.0</a>.</b> Four hours after the first commit.</li>
+      <li><time datetime="2026-11-06T05:15-06:00">6 Nov, 05:15</time> The project website goes up on GitHub Pages (<code>c0caa29</code>).</li>
+      <li><time datetime="2026-11-06T05:56-06:00">6 Nov, 05:56</time> <b><a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.2.0">v0.2.0</a>.</b> Session memory, a steadier notch, the primary display and true full screen (<code>ae0a7a1</code>).</li>
+      <li><time datetime="2026-11-06T10:56-06:00">6 Nov, 10:29–10:56</time> Easier to quit, 17 themes, welcomes and a spoken greeting. <b><a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.3.0">v0.3.0</a>.</b></li>
+      <li><time datetime="2026-11-06T11:34-06:00">6 Nov, 11:34–12:52</time> Kids safe mode with a parent unlock (<code>c33e47b</code>), then a scripted demo that records itself (<code>scripts/record-demo.sh</code>), demo videos and a Paw Patrol theme. The version was bumped to 0.4.0 (<code>42fdd74</code>) but 0.4.0 was never tagged, so there is no release for it.</li>
+      <li><time datetime="2026-11-06T13:21-06:00">6 Nov, 13:21–13:46</time> The Ollama provider with a local-only kids mode and a kids voice (<code>29aac74</code>), and six guide pages on the site. <b><a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.5.0">v0.5.0</a>.</b></li>
+      <li><time datetime="2026-11-06T14:37-06:00">6 Nov, 14:37</time> A gitleaks secret scan runs on every push and gates releases (<code>2d716b9</code>).</li>
+      <li><time datetime="2026-11-06T15:28-06:00">6 Nov, 15:05–16:52</time> The offline fallback (<code>479f394</code>): with no internet, cloud missions run on Ollama. A long afternoon of audio fixes followed (a silent loop to keep the output open, music ducking, a quieter voice), and the audio crackle bug report went on the site (<code>4291fb0</code>).</li>
+      <li><time datetime="2026-11-06T18:00-06:00">6 Nov, 18:00</time> A rainbow Pride theme brings the count to 32 themes (<code>3e19353</code>).</li>
+      <li><time datetime="2026-11-06T20:13-06:00">6 Nov, 20:13 – 7 Nov, 06:27</time> <b>The Windows port</b> is built on a branch: a design spec, a plan of 20 tasks, and a portable core split out of the Mac app. Every step is in <a href="windows.html#timeline">the Windows timeline</a>.</li>
+      <li><time datetime="2026-11-07T13:26-06:00">7 Nov, 13:26</time> The Windows work lands on <code>main</code> as one pull request (<a href="https://github.com/mariotristan/jarvis-tristan/pull/27">#27</a>, <code>a4ee8f0</code>). Pull requests and the protected <code>main</code> start here; before this, work went straight to <code>main</code>.</li>
+      <li><time datetime="2026-11-07T14:02-06:00">7 Nov, 14:02</time> <b><a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.0">v0.6.0</a>.</b> The first release with the Windows zip, built by the release workflow (<a href="https://github.com/mariotristan/jarvis-tristan/pull/28">#28</a> prepared it).</li>
+      <li><time datetime="2026-11-07T15:38-06:00">7 Nov, 15:38–16:49</time> The Windows installer (<a href="https://github.com/mariotristan/jarvis-tristan/pull/30">#30</a>), CI that runs each job only when its files changed (<a href="https://github.com/mariotristan/jarvis-tristan/pull/31">#31</a>), and the proof that docs-only changes skip the builds (<a href="https://github.com/mariotristan/jarvis-tristan/pull/65">#65</a>).</li>
+      <li><time datetime="2026-11-07T17:27-06:00">7 Nov, 17:27</time> <b><a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1">v0.6.1</a>.</b> The first release with the installer.</li>
+      <li><time datetime="2026-11-07T20:46-06:00">7 Nov, 20:46–21:16</time> The demo videos are re-recorded with the cleaner audio (<a href="https://github.com/mariotristan/jarvis-tristan/pull/68">#68</a>, <a href="https://github.com/mariotristan/jarvis-tristan/pull/77">#77</a>, <a href="https://github.com/mariotristan/jarvis-tristan/pull/78">#78</a>).</li>
+      <li><time datetime="2026-11-07T21:46-06:00">7 Nov, 21:46</time> <b><a href="https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.2">v0.6.2</a>.</b> The latest release: the DMG, the Windows installer and zip, and a SHA-256 for each.</li>
+      <li><time datetime="2026-11-07T23:19-06:00">7 Nov, 23:19</time> Syntax colours in the code cards (<a href="https://github.com/mariotristan/jarvis-tristan/pull/81">#81</a>).</li>
+      <li><time datetime="2026-11-08T00:26-06:00">8 Nov, 00:26</time> The backlog page: every open issue, sized in tokens and dollars (<a href="https://github.com/mariotristan/jarvis-tristan/pull/83">#83</a>).</li>
+      <li><time datetime="2026-11-08T07:51-06:00">8 Nov, 07:51</time> The first run on a Windows 11 desktop (an ARM64 virtual machine), recorded with what it did and did not cover (<a href="https://github.com/mariotristan/jarvis-tristan/pull/87">#87</a>).</li>
+    </ol>
+    <p class="small">The Windows port has its own, more detailed timeline, with a list of the bugs its reviews caught, in <a href="windows.html#how-we-build">How we build, on the Windows page</a>.</p>
+  </div>
+</section>
+
+<section id="mac">
+  <div class="wrap">
+    <span class="eyebrow">Part 2</span>
+    <h2>Notes on the Mac app</h2>
+    <p>The Mac app is the original. Everything else (the iPhone remote, the Windows command, the site) came after it and borrows from it.</p>
+
+    <h3 id="mac-what">What it is</h3>
+    <ul>
+      <li>A native macOS app in Swift: a SwiftUI HUD window plus AppKit for the notch overlay, the menu bar item, the global hotkey and full screen.</li>
+      <li>It needs an Apple Silicon Mac and macOS 14 or later. The DMG is ad-hoc signed, not notarized, and there is no auto-update yet (issues <a href="https://github.com/mariotristan/jarvis-tristan/issues/7">#7</a>, <a href="https://github.com/mariotristan/jarvis-tristan/issues/8">#8</a> and <a href="https://github.com/mariotristan/jarvis-tristan/issues/9">#9</a>).</li>
+      <li>It does not replace an agent. It runs Claude Code, Copilot, Amazon Bedrock, Azure OpenAI or a local Ollama model, shows what they are doing, and asks you before each action.</li>
+      <li>The Mac app is the most complete version: voice and the wake word, Spotify control, kids safe mode, 32 themes, the offline fallback and the server the iPhone app connects to.</li>
+    </ul>
+
+    <h3 id="mac-order">The order it was built in</h3>
+    <ol class="steps">
+      <li><b>A HUD that looks right and a safe loop.</b> The first commit already had the HUD, the notch, approvals and a DEMO provider, so there was always something to run without an account.</li>
+      <li><b>Safety next.</b> Per-action approvals, approval modes and narrow “always allow” rules came in the first twenty minutes, before most providers.</li>
+      <li><b>Providers one by one,</b> each behind the same interface: Claude Code, Bedrock, Azure OpenAI, Copilot, then Ollama.</li>
+      <li><b>Packaging and CI early.</b> The DMG and the workflows were in place before the first release.</li>
+      <li><b>The phone, the kids and the polish.</b> The iPhone and iPad remote, kids safe mode, themes, sound, the demo recorder and the website.</li>
+      <li><b>Windows last,</b> by splitting the portable core out of the Mac app (<a href="windows.html#port">How we ported it</a>).</li>
+    </ol>
+    <p class="note"><b>No design spec for the Mac app.</b> It grew from the first commit, with its reasons in commit messages and issues. The iPhone and iPad remote has a written design (<code>docs/superpowers/specs/2026-11-06-ios-remote-design.md</code>) and the Windows port has a spec, a plan and spike notes in the same folder.</p>
+
+    <h3 id="mac-code">Where the code lives</h3>
+    <div class="tablewrap"><table><caption>Source folders and who compiles them</caption><thead><tr><th scope="col">Folder</th><th scope="col">What is in it</th><th scope="col">Built for</th></tr></thead><tbody>
+<tr><th scope="row"><code>Sources/Tristan</code></th><td>The Mac app: HUD, notch, voice, wake word, Spotify, kids mode, settings, the remote server, the demo autopilot</td><td>Mac</td></tr>
+<tr><th scope="row"><code>Sources/Tristan/Shared</code></th><td>Code the Mac app and the iPhone app share (themes, the remote protocol)</td><td>Mac, iPhone and iPad</td></tr>
+<tr><th scope="row"><code>Sources/TristanCore</code></th><td>The portable core: agent loop, tools, providers, memory, history, approval policy</td><td>Mac, iPhone and iPad, Windows</td></tr>
+<tr><th scope="row"><code>Sources/TristanCLICore</code>, <code>TristanCLI</code></th><td>The <code>tristan</code> terminal command</td><td>Windows (and Mac for tests)</td></tr>
+<tr><th scope="row"><code>ios/</code></th><td>The iPhone and iPad app</td><td>iPhone and iPad</td></tr>
+</tbody></table></div>
+
+    <h3 id="mac-windows">What Windows reuses</h3>
+    <p>The Windows version runs the same <code>TristanCore</code> as the Mac: the agent loop, all five providers, the approval rules, history and kids routing. Getting there meant moving code out of the Mac app into the core, behind small seams for settings, secrets and starting processes, with the Mac approval policy pinned by tests first so the move could not weaken it. The HUD, the notch, voice, the wake word, Spotify and the iPhone link stay Mac-only for now. The Windows window is a backlog of its own (<a href="https://github.com/mariotristan/jarvis-tristan/issues/32">#32</a>).</p>
+
+    <h3 id="mac-limits">What is still missing</h3>
+    <ul>
+      <li>Notarization and auto-update (<a href="https://github.com/mariotristan/jarvis-tristan/issues/7">#7</a>, <a href="https://github.com/mariotristan/jarvis-tristan/issues/8">#8</a>), and an Intel build (<a href="https://github.com/mariotristan/jarvis-tristan/issues/9">#9</a>).</li>
+      <li>Live checks of several things that only have fake-backed tests: Bedrock against real AWS, Copilot’s ASK mode, the wake word, notifications and the notch on a real session (<a href="https://github.com/mariotristan/jarvis-tristan/issues/1">#1</a>, <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">#4</a>, <a href="https://github.com/mariotristan/jarvis-tristan/issues/5">#5</a>).</li>
+      <li>The version number is not shown in the Mac app yet (<a href="https://github.com/mariotristan/jarvis-tristan/issues/84">#84</a>).</li>
+      <li>The full list is on the <a href="backlog.html">backlog page</a>.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="rules" class="soft">
+  <div class="wrap">
+    <span class="eyebrow">Part 3</span>
+    <h2>The rules we follow</h2>
+    <p>These keep the project honest and easy to pick up. The full version, with the page template, the checklists and the pull request flow, is <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/site-guide.md">the site guide</a>.</p>
+    <ol class="steps">
+      <li><b>Say what was checked.</b> Every claim says what ran, where, and what did not. The status labels (verified in CI, checked by hand, needs a live-account check, not on this platform) are used strictly.</li>
+      <li><b>Real dates and numbers.</b> Counts, versions and times come from the repository, and every place that repeats them is updated together.</li>
+      <li><b>Nothing private in public.</b> No secrets, accounts, machine names, employers or clients in pages, commits, issues or screenshots.</li>
+      <li><b>Pull requests only.</b> <code>main</code> is protected. Docs-only pull requests skip the build jobs. Tags and releases happen only when the owner decides.</li>
+      <li><b>Tests never start a real provider tool.</b> They use the fakes in <code>scripts/ci/fakes</code>.</li>
+      <li><b>Plain, accessible pages.</b> Hand-written HTML, no framework, no external scripts, readable on a phone and with a keyboard.</li>
+      <li><b>Quality over loudness.</b> Audio is measured, never assumed, and a person listens before it is called done.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="join">
+  <div class="wrap">
+    <span class="eyebrow">Part 4</span>
+    <h2>Pick up the work</h2>
+    <p>The repository carries short instruction files for the common coding tools, and all of them point to the same rules, so a person or an agent starts from the same page.</p>
+    <div class="tablewrap"><table><caption>Instruction files in the repository</caption><thead><tr><th scope="col">Tool</th><th scope="col">File</th></tr></thead><tbody>
+<tr><th scope="row">Claude Code</th><td><code>CLAUDE.md</code></td></tr>
+<tr><th scope="row">Codex, Jules, Amp, Factory and other tools that read <code>AGENTS.md</code></th><td><code>AGENTS.md</code></td></tr>
+<tr><th scope="row">GitHub Copilot</th><td><code>.github/copilot-instructions.md</code></td></tr>
+<tr><th scope="row">Cursor</th><td><code>.cursor/rules/tristan.mdc</code></td></tr>
+<tr><th scope="row">Gemini CLI</th><td><code>GEMINI.md</code></td></tr>
+<tr><th scope="row">Windsurf</th><td><code>.windsurfrules</code></td></tr>
+<tr><th scope="row">Cline</th><td><code>.clinerules</code></td></tr>
+<tr><th scope="row">Aider</th><td><code>CONVENTIONS.md</code> and <code>.aider.conf.yml</code></td></tr>
+</tbody></table></div>
+    <ol class="steps">
+      <li>Pick an issue from the <a href="backlog.html">backlog</a>, smallest first.</li>
+      <li>Read <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/docs/site-guide.md">the site guide</a> and <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/AGENTS.md"><code>AGENTS.md</code></a>.</li>
+      <li>Work on a branch, run the checks it names, and open a pull request.</li>
+    </ol>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="backlog.html">← Backlog</a><a href="index.html">Home →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="backlog.html">Backlog</a>
+      <a href="how-we-build.html">How we build</a>
+      <a href="audio-crackle.html">Audio crackle bug</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+<script src="assets/backlog.js"></script>
+</body>
+</html>

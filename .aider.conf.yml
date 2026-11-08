@@ -1,0 +1,4 @@
+# Aider: load the project rules into every session (read-only).
+read:
+  - AGENTS.md
+  - docs/site-guide.md

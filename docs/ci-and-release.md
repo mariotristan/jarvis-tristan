@@ -53,7 +53,7 @@ Each job runs only when the files it builds changed. CI and Windows always start
 
 | Changed | `build-and-test` | `ios` | `windows` |
 |---------|:-:|:-:|:-:|
-| `docs/`, top-level `*.md`, `.gitignore` | | | |
+| `docs/`, top-level `*.md`, `.gitignore`, and the coding-tool instruction files (`.github/copilot-instructions.md`, `.cursor/*`, `.windsurfrules`, `.clinerules`, `.aider.conf.yml`) | | | |
 | `Sources/Tristan/` (not `Shared/`), `Tests/TristanTests/`, `scripts/*.sh` | yes | | |
 | `Sources/Tristan/Shared/` | yes | yes | |
 | `ios/` | | yes | |
