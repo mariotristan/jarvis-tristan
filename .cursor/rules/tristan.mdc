@@ -1,0 +1,13 @@
+---
+description: Rules for T.R.I.S.T.A.N.: honesty about what was checked, no employer or personal data in public text, pull-request flow, and how the static site is written
+alwaysApply: true
+---
+
+Read `AGENTS.md` at the repository root, and `docs/site-guide.md` before you change anything under `docs/`, the README or an issue.
+
+- Say what was run and what was not checked; absolute dates; real numbers from the repository.
+- Keep the author's employer, clients, secrets, account names and machine names out of everything public.
+- Branch and pull request only; never push to `main`; no tags or releases unless the owner asks.
+- Never start a real `claude`, `copilot`, `aws`, `az` or `ollama` in a test.
+- The site is hand-written static HTML in `docs/` (no framework, no external scripts); accessible; phone width; one em dash in the title and none in body text; the name is T.R.I.S.T.A.N.
+- Run `bash scripts/check-site.sh` before you open the pull request.

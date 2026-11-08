@@ -44,6 +44,11 @@ case_ none        README.md
 case_ none        docs/windows.html README.md
 case_ none        .gitignore
 case_ none        CONTRIBUTING.md
+# Instruction files for coding tools: documentation too.
+case_ none        AGENTS.md CLAUDE.md GEMINI.md CONVENTIONS.md
+case_ none        .github/copilot-instructions.md .cursor/rules/site.mdc .windsurfrules .clinerules .aider.conf.yml
+# A workflow next to them is still a workflow.
+case_ "mac ios"   .github/copilot-instructions.md .github/workflows/ci.yml
 # A pattern without / only matches at the top: Markdown inside a source folder is not documentation.
 case_ "mac"       Sources/Tristan/notes.md
 case_ "mac ios windows" Sources/TristanCore/README.md

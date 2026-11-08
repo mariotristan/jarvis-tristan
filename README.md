@@ -25,6 +25,9 @@
   <a href="https://mariotristan.github.io/jarvis-tristan/kids-mode.html">Kids safe mode</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html">iPhone and iPad</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/install.html">Install</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/windows.html">Windows</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/backlog.html">Backlog</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/how-we-build.html">How we build</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/audio-crackle.html">Audio crackle bug</a>
 </p>
 
@@ -34,7 +37,7 @@ You give T.R.I.S.T.A.N. a task ("add login to the API"). It works inside a proje
 
 > **Just for fun.** T.R.I.S.T.A.N. is a hobby project and a learning experiment that I build together with my kids. We pick the features, draw the themes, and try things to see what happens. That is why there is a Paw Patrol-style theme, a kids safe mode and a lot of sound effects. It is not a commercial product, and it comes with no promises beyond the [MIT license](LICENSE). Ideas, issues and pull requests are very welcome.
 
-> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 441 automated tests pass (424 Swift package tests on the Mac: 124 for the app, 205 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is released in [0.6.1](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1) as an installer and a zip. It is built and tested on a Windows machine in CI, but the installer has not been run on a real Windows 10 or 11 desktop, and no live provider has run on Windows (the 0.6.2 zip was run once by hand on Windows 11 for ARM64 in a virtual machine: version, providers and help only): see [Windows](#windows).
+> **Status: early experiment.** All five providers are built (Claude Code, Copilot, Bedrock, Azure OpenAI and local models through Ollama) plus a demo provider, together with the HUD, notch overlay, approvals, history, notifications and voice. 455 automated tests pass (438 Swift package tests on the Mac, counted on 8 November 2026: 137 for the app, 206 for the portable core and 95 for the command line; and 17 for the iOS app), and there is an **iPhone and iPad app** (a remote for the Mac, plus a standalone mode) that runs in the simulator, but **only Claude Code and Azure OpenAI have been run against the real service end to end** (Copilot too, in `AUTO` mode). Bedrock, Ollama, Copilot's `ASK` mode, the wake word and notifications are covered by tests with fakes and still need a live run. See [known limitations](#known-limitations) for exactly what is and is not verified. A **Windows terminal version** (`tristan`) is released in [0.6.1](https://github.com/mariotristan/jarvis-tristan/releases/tag/v0.6.1) as an installer and a zip. It is built and tested on a Windows machine in CI, but the installer has not been run on a real Windows 10 or 11 desktop, and no live provider has run on Windows (the 0.6.2 zip was run once by hand on Windows 11 for ARM64 in a virtual machine: version, providers and help only): see [Windows](#windows).
 
 ## Demo videos
 
@@ -447,6 +450,12 @@ Next (every item is a GitHub issue; start from the [backlog overview](https://gi
 - [x] The portable core split into `TristanCore`, and a command-line version, `tristan` ([#24](https://github.com/mariotristan/jarvis-tristan/issues/24)), built and tested on Windows in CI ([#23](https://github.com/mariotristan/jarvis-tristan/issues/23)); released in 0.6.0 as a zip; 0.6.1 adds a `setup.exe` installer ([#30](https://github.com/mariotristan/jarvis-tristan/pull/30))
 - [ ] Windows: live checks of each provider on a real PC, live checks on a real Windows desktop, then signing, winget or MSIX and a Windows HUD (see [What is next](https://mariotristan.github.io/jarvis-tristan/windows.html#next))
 - [ ] Linux starting with Omarchy ([#22](https://github.com/mariotristan/jarvis-tristan/issues/22)), on the same `tristan` command
+
+## Contributing, with or without a coding agent
+
+The site and the rules for working on it are written down so anyone can pick the work up: [How we build](https://mariotristan.github.io/jarvis-tristan/how-we-build.html) has a timeline from the first commit and notes on the Mac app, and [`docs/site-guide.md`](docs/site-guide.md) has the page template, the writing style, the honest status labels and the pull request flow. Open issues are the backlog; the [backlog page](https://mariotristan.github.io/jarvis-tristan/backlog.html) sizes each one.
+
+Short instruction files for the common coding tools all point to the same rules: [`AGENTS.md`](AGENTS.md) (Codex, Jules, Amp, Factory and others), [`CLAUDE.md`](CLAUDE.md) (Claude Code), [`GEMINI.md`](GEMINI.md) (Gemini CLI), [`.github/copilot-instructions.md`](.github/copilot-instructions.md) (GitHub Copilot), [`.cursor/rules/tristan.mdc`](.cursor/rules/tristan.mdc) (Cursor), [`.windsurfrules`](.windsurfrules) (Windsurf), [`.clinerules`](.clinerules) (Cline) and [`CONVENTIONS.md`](CONVENTIONS.md) with [`.aider.conf.yml`](.aider.conf.yml) (Aider). The main rules: say what was actually checked, keep private information out of public text, work on a branch and open a pull request (never push to `main`), and never start a real provider tool from a test. `bash scripts/check-site.sh` checks the site before you open one.
 
 ## Regenerating the screenshots
 

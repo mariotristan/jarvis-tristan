@@ -30,6 +30,12 @@ scripts/ci/changes-job.sh                 mac,ios,windows     the same
 docs/*                                    -                   the Pages site and notes; nothing builds or reads them
 *.md                                      -                   README.md and other top-level Markdown
 .gitignore                                -                   only untracked files; never changes a checkout
+AGENTS.md                                 -                   covered by *.md; listed so the agent files read as one group
+.github/copilot-instructions.md           -                   instructions for GitHub Copilot; nothing builds or reads them
+.cursor/*                                 -                   Cursor rules
+.windsurfrules                            -                   Windsurf rules
+.clinerules                               -                   Cline rules
+.aider.conf.yml                           -                   Aider settings (it only names the files to read)
 LICENSE                                   windows             copied into the Windows zip and shown by the installer
 .github/workflows/ci.yml                  mac,ios             a workflow change runs its own jobs
 .github/workflows/windows.yml             windows             the same
