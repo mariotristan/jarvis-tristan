@@ -230,3 +230,31 @@ ol.timeline time { display: block; font-size: .8125rem; font-weight: 800; letter
 .doc .facts b { font-size: 1.6rem; }
 .doc .facts { margin-top: 20px; }
 @media (max-width: 600px) { .doc .facts { grid-template-columns: 1fr; } }
+
+/* ---------- main menu: a capsule of pills, the current page in gold ---------- */
+.topbar nav { gap: 2px; padding: 4px; font-size: .84rem; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 24px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 8px 24px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.topbar nav a { padding: 7px 11px; border-radius: 999px; font-weight: 500; opacity: 1; color: #F3EDEA; transition: background .15s, color .15s; }
+.topbar nav a:hover { background: rgba(255, 255, 255, .14); color: #fff; text-decoration: none; }
+.topbar nav a[aria-current="page"] { background: var(--gold); color: #1B1214; font-weight: 800; }
+.topbar nav a:focus-visible { outline-offset: 0; }
+.brand { letter-spacing: .14em; padding: 5px 12px 5px 7px; border-radius: 999px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .16); }
+@media (max-width: 900px) { .topbar nav { margin-left: 0; width: 100%; } .topbar { padding-right: 0; } .hero .topbar, .subhero .topbar { padding-right: 70px; } }
+
+/* ---------- backlog page ---------- */
+.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.doc td.num { white-space: nowrap; }
+table.backlog td:nth-child(2) { min-width: 18em; }
+table.backlog td:nth-child(3), table.backlog td:nth-child(4) { white-space: nowrap; }
+.size { display: inline-block; min-width: 2em; text-align: center; padding: 2px 10px; border-radius: 999px; font-size: .8125rem; font-weight: 800; border: 2px solid var(--gold); color: var(--text); }
+.size-M { border-color: var(--red); color: var(--link); }
+.size-L { background: var(--red); border-color: var(--red); color: #fff; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.filters[hidden], tr[hidden] { display: none; }
+.filters button { font: inherit; font-size: .875rem; font-weight: 800; padding: 7px 16px; border-radius: 999px; cursor: pointer; background: transparent; color: var(--text); border: 2px solid var(--line); }
+.filters button[aria-pressed="true"] { background: var(--red); border-color: var(--red); color: #fff; }
+.doc .facts div b { white-space: nowrap; }
+
+.topbar { column-gap: 12px; }
+.brand { letter-spacing: .1em; }
+.topbar.wide nav { margin-left: 0; }
