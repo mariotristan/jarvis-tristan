@@ -371,6 +371,63 @@ final class Session: ObservableObject {
 
     func cancel() { active.cancel() }
 
+    // MARK: the model shown in the HUD
+
+    /// The model each provider last reported, kept across launches so the HUD can show it before a mission starts.
+    @Published private(set) var reportedModels: [String: String] = (UserDefaults.standard.dictionary(forKey: "reportedModels") as? [String: String]) ?? [:]
+    /// The models Ollama has installed, once asked (see `refreshModelLabel`).
+    @Published private(set) var ollamaInstalled: [String]?
+
+    func modelReported(_ kind: ProviderKind, _ name: String) {
+        guard reportedModels[kind.rawValue] != name else { return }
+        reportedModels[kind.rawValue] = name
+        UserDefaults.standard.set(reportedModels, forKey: "reportedModels")
+    }
+
+    /// What the HUD shows under the mode: the model of the running mission, else the best known one for the provider.
+    var modelLabel: String {
+        let kind = provider
+        if let running = active.modelInUse { return running }
+        return kind.modelLabel(remembered: reportedModels[kind.rawValue], pinned: kind == .claude ? ProviderKind.claudePinnedModel() : nil,
+                               installed: ollamaInstalled)
+    }
+
+    /// Starts Claude Code just long enough to read the model it reports, and returns it (nil if it did not say).
+    /// The model is named in the first message the CLI prints, before any request to the model, so the process is
+    /// stopped there. The task is a tiny one and the folder a temporary one in case the CLI does go on.
+    var probeClaudeModel: () async -> String? = {
+        let stream = ClaudeCodeProvider(mode: .auto).run(task: "Reply with the single word OK.",
+                                                         workingDirectory: FileManager.default.temporaryDirectory,
+                                                         approve: { _ in false })
+        let reading = Task<String?, Never> {
+            for await event in stream {
+                if case .model(let name) = event { return name }
+                if case .failed = event { return nil }
+            }
+            return nil
+        }
+        let limit = Task { try? await Task.sleep(for: .seconds(20)); reading.cancel() }
+        let model = await reading.value
+        limit.cancel()
+        return model
+    }
+    private var probedClaude = false
+
+    /// Called when the HUD opens and whenever the provider changes: asks Ollama which models it has, and, once per
+    /// launch, asks Claude Code which model it uses when nothing is pinned and none has been seen before.
+    func refreshModelLabel() async {
+        switch provider {
+        case .ollama:
+            ollamaInstalled = await OllamaStatus.installedModels()
+        case .claude:
+            guard !probedClaude, !kidsMode, ProviderKind.claudePinnedModel() == nil, reportedModels[ProviderKind.claude.rawValue] == nil else { return }
+            probedClaude = true
+            if let model = await probeClaudeModel() { modelReported(.claude, model) }
+        default:
+            break
+        }
+    }
+
     func resolve(_ approved: Bool, always: Bool = false) { active.resolve(approved, always: always) }
 
     /// Answers whichever session is waiting (the active one first). The notch uses this.

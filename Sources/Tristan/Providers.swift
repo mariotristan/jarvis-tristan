@@ -21,6 +21,39 @@ enum ProviderKind: String, CaseIterable, Identifiable {
         case .ollama: return OllamaProvider(mode: mode)
         }
     }
+
+    /// The model a mission on this provider will use, for the HUD, as exactly as can be known without running one.
+    /// Claude Code leaves the choice to its command: a model pinned in its settings wins, then the one it reported
+    /// last time (`remembered`), then "default". Ollama shows the installed model it will pick when `installed` is known.
+    /// `setting` reads a saved setting by key, so tests need no real settings.
+    func modelLabel(setting: (String) -> String? = { Settings.string($0) }, remembered: String? = nil,
+                    pinned: String? = nil, installed: [String]? = nil) -> String {
+        func value(_ key: String) -> String? {
+            let text = (setting(key) ?? "").trimmingCharacters(in: .whitespaces)
+            return text.isEmpty ? nil : text
+        }
+        switch self {
+        case .claude: return pinned ?? remembered ?? "default"
+        case .copilot: return value("copilot.model") ?? "default"
+        case .bedrock: return value("bedrock.model") ?? BedrockConfig.defaultModel
+        case .azure: return value("azure.deployment") ?? "not set"
+        case .ollama:
+            guard let installed else { return value("ollama.model") ?? "auto" }
+            return OllamaStatus.resolveModel(chosen: value("ollama.model") ?? "", installed: installed) ?? "none installed"
+        case .demo: return "scripted"
+        }
+    }
+
+    /// A model that the user pinned for Claude Code, in `ANTHROPIC_MODEL` or the `model` key of its settings file.
+    static func claudePinnedModel(environment: [String: String] = ProcessInfo.processInfo.environment,
+                                  settingsFile: URL = FileManager.default.homeDirectoryForCurrentUser
+                                      .appendingPathComponent(".claude/settings.json")) -> String? {
+        if let env = environment["ANTHROPIC_MODEL"]?.trimmingCharacters(in: .whitespaces), !env.isEmpty { return env }
+        guard let data = try? Data(contentsOf: settingsFile),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let model = (object["model"] as? String)?.trimmingCharacters(in: .whitespaces), !model.isEmpty else { return nil }
+        return model
+    }
 }
 
 /// Scripted provider so the HUD can be played with without spending tokens.

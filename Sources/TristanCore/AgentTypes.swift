@@ -68,6 +68,8 @@ package enum AgentEvent: Sendable {
     case log(String)
     case code(String)
     case done(String)
+    /// The model the provider reports it is using (known once a mission has started).
+    case model(String)
     case failed(String)
 }
 
