@@ -95,9 +95,9 @@
     <p>The Windows version is a terminal program, not a window. It runs the same agent loop, providers and approval rules as the Mac app, and asks you about each action in the terminal.</p>
 
     <h3 id="download">Download and verify</h3>
-    <p>Get <code>Tristan-0.6.1-windows-x64-setup.exe</code> (21,201,665 bytes) and <code>Tristan-0.6.1-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>. It is an Inno Setup 6.7.3 <code>setup.exe</code>. It installs per user by default, into <code>%LocalAppData%\Programs\Tristan</code>, without administrator rights. It installs for all users when you choose that in the dialog or pass <code>/ALLUSERS</code>. It offers a task, <b>Add Tristan to my PATH</b>, ticked by default and removed again when you uninstall. It installs exactly the files that are in the zip: <code>tristan.exe</code>, the Swift runtime DLLs, <code>LICENSE.txt</code>, <code>README.txt</code> and <code>THIRD-PARTY-NOTICES.txt</code>. The checksum files were downloaded and checked with <code>shasum -a 256 -c</code> on a Mac; that is the same hash you compare below (upper or lower case does not matter).</p>
+    <p>Get <code>Tristan-0.6.2-windows-x64-setup.exe</code> (21,198,312 bytes) and <code>Tristan-0.6.2-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>. It is an Inno Setup 6.7.3 <code>setup.exe</code>. It installs per user by default, into <code>%LocalAppData%\Programs\Tristan</code>, without administrator rights. It installs for all users when you choose that in the dialog or pass <code>/ALLUSERS</code>. It offers a task, <b>Add Tristan to my PATH</b>, ticked by default and removed again when you uninstall. It installs exactly the files that are in the zip: <code>tristan.exe</code>, the Swift runtime DLLs, <code>LICENSE.txt</code>, <code>README.txt</code> and <code>THIRD-PARTY-NOTICES.txt</code>. The checksum files were downloaded and checked with <code>shasum -a 256 -c</code> on a Mac; that is the same hash you compare below (upper or lower case does not matter).</p>
     <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to. Use the version you downloaded.</span>
-$setup = 'Tristan-0.6.1-windows-x64-setup.exe'
+$setup = 'Tristan-0.6.2-windows-x64-setup.exe'
 
 <span class="c"># 1. Check the download: the two hashes must be the same</span>
 (Get-FileHash -Algorithm SHA256 $setup).Hash
@@ -107,13 +107,13 @@ Get-Content "$setup.sha256"
 .\$setup</pre>
     <p class="note">The setup is not code-signed, so Windows SmartScreen or your antivirus may warn about it. We have not seen what a real Windows desktop shows, so we cannot tell you which button to press; if you trust the download (the checksum matched), choose to run it anyway. Signing is on the <a href="#next">roadmap</a>.</p>
     <p><b>Silent install</b>, for scripts. The switches are <code>/VERYSILENT /SUPPRESSMSGBOXES /NORESTART</code>, <code>/CURRENTUSER</code> or <code>/ALLUSERS</code>, <code>/DIR="..."</code>, <code>/TASKS="addtopath"</code> and <code>/LOG="..."</code>:</p>
-    <pre data-copy>.\Tristan-0.6.1-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
+    <pre data-copy>.\Tristan-0.6.2-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
     <p>This is the path CI exercises: silent installs only, on Windows Server 2025. The wizard screens have not been clicked through.</p>
 
     <h3 id="portable">Portable, no install: the zip</h3>
-    <p>Get <code>Tristan-0.6.1-windows-x64.zip</code> (30,224,547 bytes) and <code>Tristan-0.6.1-windows-x64.zip.sha256</code> from the same release. The zip holds 23 files, about 80 MB unpacked: <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs (<code>MSVCP140</code>, <code>VCRUNTIME140</code>, <code>VCRUNTIME140_1</code>), <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. Keep all the files in one folder.</p>
+    <p>Get <code>Tristan-0.6.2-windows-x64.zip</code> (30,224,533 bytes) and <code>Tristan-0.6.2-windows-x64.zip.sha256</code> from the same release. The zip holds 23 files, about 80 MB unpacked: <code>tristan.exe</code>, the Swift runtime and Foundation DLLs, ICU, the Visual C++ runtime DLLs (<code>MSVCP140</code>, <code>VCRUNTIME140</code>, <code>VCRUNTIME140_1</code>), <code>LICENSE.txt</code>, <code>THIRD-PARTY-NOTICES.txt</code> and <code>README.txt</code>. Keep all the files in one folder.</p>
     <pre data-copy><span class="c"># PowerShell, in the folder you downloaded to</span>
-$zip = 'Tristan-0.6.1-windows-x64.zip'
+$zip = 'Tristan-0.6.2-windows-x64.zip'
 
 <span class="c"># 1. Check the download: the two hashes must be the same</span>
 (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
@@ -127,7 +127,7 @@ Expand-Archive $zip -DestinationPath $dir
 [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'User') + ";$dir", 'User')</pre>
 
     <h3 id="first-run">First run</h3>
-    <pre data-copy>tristan --version     <span class="c"># 0.6.1 for this release; a development build says 0.0.0-dev</span>
+    <pre data-copy>tristan --version     <span class="c"># 0.6.2 for this release; a development build says 0.0.0-dev</span>
 tristan providers     <span class="c"># which providers are ready, and what to set for the others</span>
 tristan --help</pre>
     <p><code>tristan providers</code> prints one line per provider: <code>ready</code>, or <code>not ready:</code> with the fix. It checks that tools are present and settings look right. It does not check that you are logged in.</p>
@@ -412,7 +412,7 @@ Remove-Item -Recurse "$env:LOCALAPPDATA\Programs\Tristan"   <span class="c"># on
       <li><b>Runs before the first green:</b> 4 failed runs (compile errors in runs 1, 2 and 4, and 22 test failures in run 3), then green.</li>
       <li><b>Rulings:</b> 17 (R1 to R17, the last one setting the scope of the final fix wave), recorded in the working ledger, which is not in the repository.</li>
       <li><b>Commits:</b> 64 on the branch before this page. From the plan to the last fix took about ten hours of wall-clock time.</li>
-      <li><b>Zip and installer:</b> the 0.6.1 zip is about 30 MB (30,224,547 bytes) and the installer about 21 MB (21,201,665 bytes). <code>tristan.exe</code> is 19.2 MB and the ICU data DLL 38.2 MB unpacked.</li>
+      <li><b>Zip and installer:</b> the 0.6.2 zip is about 30 MB (30,224,533 bytes) and the installer about 21 MB (21,198,312 bytes). <code>tristan.exe</code> is 19.2 MB and the ICU data DLL 38.2 MB unpacked.</li>
     </ul>
 
     <h3 id="build-from-source">Build, test and package from source on Windows</h3>
