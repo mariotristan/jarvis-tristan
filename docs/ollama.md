@@ -45,11 +45,43 @@ T.R.I.S.T.A.N. edits files and runs commands through **tool calls**, so a coding
 
 | Model | Good for |
 |-------|----------|
-| `llama3.1` (default) | A solid all-rounder that handles tools. |
-| `qwen2.5-coder` | Coding tasks. |
+| `llama3.1` (default) | Handles tool calls well in the round one benchmark below, but it ran a command for a plain question we asked, so expect it to reach for tools when you only wanted an answer. |
+| `qwen2.5-coder` | Writes good code, but in the round one benchmark below it wrote its tool calls as plain text, so it could not do the file and command tasks. |
 | Any other | Try it. A model without tool support gets a clear message in the log; it still answers plain questions. |
 
 Small models are more likely to fumble tool calls than a cloud model, so expect simple edits to work better than long multi-step tasks.
+
+## Which model? Round one, 8 November 2026
+
+Issue [#86](https://github.com/mariotristan/jarvis-tristan/issues/86) asked which local models come closest to a cloud agent. This is a small first round: five models on one Mac. It did **not** compare any model with a cloud provider, the seven tasks are short and easy, and every pass or fail is a rule in the script, not a person's judgement.
+
+Machine: Apple M4 Pro, 48 GB, Ollama 0.40.14. Each model got each task 3 times (`temperature` 0, fixed seed) through `/api/chat` with tools. The runs are close to identical repeats, so 3/3 means steady, not three independent samples. Tasks: three tool calls (read a file, start a small edit, run a listing command; the script only checks the call and never runs it), a plain question that must not call a tool, a spoken status line (at most 25 words, no Markdown), a small coding task (run in a throwaway Python process, `re` is the only import allowed) and finding one codeword in about 8,000 to 10,500 tokens.
+
+| Model | Read, edit, run | Plain question | Spoken line | Code | Long context | Speed | Loaded size |
+|-------|-----------------|----------------|-------------|------|--------------|-------|-------------|
+| `qwen3:8b` | 3/3, 3/3, 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 36 tokens/s | 9.5 GB |
+| `qwen3:14b` | 3/3, 3/3, 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 24 tokens/s | 13.9 GB |
+| `gemma4:12b-it-q4_K_M` | 3/3, 3/3, 3/3 | 3/3 | 3/3 | 3/3 | 3/3 | 42 tokens/s | not measured |
+| `llama3.1` (8B, the default) | 3/3, 3/3, 3/3 | **0/3** | 3/3 | 3/3 | 3/3 | 40 tokens/s | 9.2 GB |
+| `qwen2.5-coder` (7B) | **0/3, 0/3, 0/3** | 3/3 | 3/3 | 3/3 | 3/3 | 43 tokens/s | 6.6 GB |
+
+- Speed is the median generated tokens per second over all tasks (the Qwen3 models think first and those tokens count). Loaded size is what Ollama reported after the long-context task, so it includes working memory for about 10,000 tokens. The `gemma4` figure looked wrong (about 1 GB) and is left out.
+- Time to first token is **not** published: the runs reused Ollama's prompt cache, so the times were near zero.
+- `llama3.1` asked to run `git help branch` instead of answering "In one sentence, what is a git branch?" in all three runs (one question, so how often it happens is not known). `qwen2.5-coder` replied with `{"name": "read_file", ...}` as text; we did not check whether the app copes with that.
+- A first version of the script marked the Qwen3 and Gemma 4 models down for the wrong reasons. Those two checks were fixed and the cells that had failed or could have been affected were re-run (edit: `gemma4`, `llama3.1`, `qwen2.5-coder`; code: both Qwen3 models, `llama3.1`, `qwen2.5-coder`). Cells that had already passed were kept, because the fixed checks accept everything the first ones did; the other cells come from the first full run, with unchanged checks. The code check was made stricter afterwards and not re-run, so a fresh run may differ slightly.
+
+Candidates by Mac memory (Ollama library **download** sizes for the default 4-bit builds and their listed tool support, checked 8 November 2026; only the models in the table were run). A model used about 1.5 to 1.8 times its download while running in our test (`qwen3:14b`: 9.3 GB became 13.9 GB), so a download size does not prove a fit:
+
+| Mac memory | Models to try | Status |
+|------------|------------------------|--------|
+| 8 GB | `qwen3:4b` (2.5 GB), `gemma4:e4b-it-q4_K_M` (6.6 GB, tight) | Not measured |
+| 16 GB | `qwen3:8b` (5.2 GB), `gemma4:12b-it-q4_K_M` (8.0 GB), `qwen3:14b` (9.3 GB, 13.9 GB loaded, probably too big) | Measured on a 48 GB Mac, headroom on 16 GB not checked |
+| 32 GB | `qwen3-coder:30b` (19 GB), `qwen3.8:27b` (18 GB), `qwen3.6:27b` (17 GB), `gemma4:26b-a4b-it-q4_K_M` (18 GB), `gpt-oss:20b` (14 GB), `devstral` (14 GB) | Not measured, planned in [#90](https://github.com/mariotristan/jarvis-tristan/issues/90) |
+| 48 GB | the 32 GB list plus `gemma4:31b-it-q4_K_M` (20 GB) and `qwen3.6:35b-a3b` (23 GB) | Not measured, planned in #90 |
+
+For now: `qwen3:8b` is a good all-round pick on 16 GB or more (all seven tasks, 36 tokens/s, 9.5 GB loaded), `qwen3:14b` is the best quality measured (same score, slower), and `gemma4:12b-it-q4_K_M` is the fastest that passed everything. These are suggestions from five models and a short test. The setup script still pulls `llama3.1`; to use another model run `scripts/setup-ollama.sh qwen3:8b` and pick it in Configuration. When no local model is good enough, stay on a cloud provider: the offline fallback still asks before every action, and a rule that refuses risky actions on a weak model is not built.
+
+To run it yourself (manual, never part of the tests, needs Python 3 and a running Ollama; it does not set `num_ctx`, so the long-context task needs an Ollama default of at least about 11,000 tokens): `python3 scripts/bench-ollama.py qwen3:8b llama3.1 --runs 3 --json results.json`. Pass `--only tool_edit,code` to run some tasks. Round two is in #90.
 
 ## How it works inside T.R.I.S.T.A.N.
 
