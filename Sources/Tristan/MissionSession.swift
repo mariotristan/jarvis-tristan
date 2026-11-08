@@ -30,7 +30,6 @@ final class MissionSession: ObservableObject, Identifiable {
     private var recorded = false
     private var remembered = false
     var announcedApproval = false
-    private(set) var spokenReply = false
     private(set) var currentTask = ""
 
     var busy: Bool { phase == .working || phase == .awaitingApproval }
@@ -64,7 +63,6 @@ final class MissionSession: ObservableObject, Identifiable {
             if viaVoice { add("A mission is running. Abort it or wait before giving another task.", .warn) }
             return
         }
-        spokenReply = viaVoice
         missionID = UUID().uuidString
         log = []
         code = ""
