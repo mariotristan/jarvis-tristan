@@ -138,6 +138,49 @@ enum Snapshot {
         save(notchView, width: 640, height: 220, name: "notch-approval.png")
     }
 
+    /// `Tristan --snapshot-themes <dir>` renders the same sample mission once per theme into `<dir>/<theme id>.jpg`, for the
+    /// Themes page and the README. The chosen palette is restored afterwards.
+    static func runThemes(into directory: URL) {
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let original = ThemeStore.palette
+        defer { ThemeStore.palette = original }
+        for palette in ThemeStore.all {
+            let session = Session(history: nil)
+            // After the Session exists: creating one applies the saved theme. Setting `themeChoice` is avoided on purpose, it
+            // would overwrite the person's real choice in UserDefaults.
+            ThemeStore.palette = palette
+            session.provider = .claude
+            session.workingDirectory = URL(fileURLWithPath: "/Users/you/code/my-api")
+            session.phase = .working
+            session.status = "WRITING CODE"
+            session.log = [
+                entry("Task: add login to the API", .info),
+                entry("Scanning my-api", .step),
+                entry("Authorization granted", .ok),
+                entry("Read routes.ts", .step),
+                entry("Write auth.ts", .step),
+            ]
+            session.code = """
+            ## Adding login to the API
+
+            I read `routes.ts` first, then made two changes:
+
+            - created **auth.ts** with a `login` function
+            - wired a `POST /login` route
+
+            > Next I will run the full suite.
+
+            """ + CodeFence.block(path: "Sources/auth.ts", content: """
+            export function login(user: User): string {
+              const token = sign({ sub: user.id });
+              return token;
+            }
+            """)
+            write(HUDView().environmentObject(session), width: 900, height: 594,
+                  to: directory.appendingPathComponent("\(palette.id).jpg"), jpegWidth: 1000)
+        }
+    }
+
     private static func entry(_ text: String, _ kind: LogEntry.Kind) -> LogEntry { LogEntry(text: text, kind: kind) }
 
     /// Renders the app icon (a dark squircle with the arc reactor) at 1024 points, for `scripts/bundle.sh` to turn into an .icns.
@@ -150,7 +193,8 @@ enum Snapshot {
         write(view, width: width, height: height, to: snapshotDirectory.appendingPathComponent(name))
     }
 
-    private static func write<V: View>(_ view: V, width: CGFloat, height: CGFloat, to url: URL) {
+    /// With `jpegWidth` the picture is scaled to that many pixels wide and saved as a JPEG, which keeps 32 theme shots small.
+    private static func write<V: View>(_ view: V, width: CGFloat, height: CGFloat, to url: URL, jpegWidth: Int? = nil) {
         // Render through a real (offscreen) window: ImageRenderer skips ScrollViews and TextFields.
         let size = NSSize(width: width, height: height)
         let host = NSHostingView(rootView: view.frame(width: width, height: height))
@@ -165,7 +209,22 @@ enum Snapshot {
         RunLoop.current.run(until: Date().addingTimeInterval(0.6))
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { print("render failed: \(url.lastPathComponent)"); return }
         host.cacheDisplay(in: host.bounds, to: rep)
-        guard let png = rep.representation(using: .png, properties: [:]) else { print("render failed: \(url.lastPathComponent)"); return }
+        var output = rep.representation(using: .png, properties: [:])
+        if let jpegWidth {
+            let target = NSSize(width: CGFloat(jpegWidth), height: CGFloat(jpegWidth) * height / width)
+            if let small = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(target.width), pixelsHigh: Int(target.height),
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+               let context = NSGraphicsContext(bitmapImageRep: small) {
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = context
+                context.imageInterpolation = .high
+                rep.draw(in: NSRect(origin: .zero, size: target))
+                NSGraphicsContext.restoreGraphicsState()
+                output = small.representation(using: .jpeg, properties: [.compressionFactor: 0.82])
+            }
+        }
+        guard let png = output else { print("render failed: \(url.lastPathComponent)"); return }
         window.orderOut(nil)
         try? png.write(to: url)
         print("wrote \(url.path)")

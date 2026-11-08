@@ -184,6 +184,12 @@ if args.contains("--fullscreen-selftest") {
 
 let app = NSApplication.shared
 
+if let flag = args.firstIndex(of: "--snapshot-themes") {
+    let path = args.indices.contains(flag + 1) ? args[flag + 1] : "docs/screenshots/themes"
+    MainActor.assumeIsolated { Snapshot.runThemes(into: URL(fileURLWithPath: path)) }
+    exit(0)
+}
+
 if let flag = args.firstIndex(of: "--snapshot") {
     let path = args.indices.contains(flag + 1) ? args[flag + 1] : "docs/screenshots"
     let dir = URL(fileURLWithPath: path)
