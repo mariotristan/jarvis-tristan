@@ -81,14 +81,79 @@ pwsh -File scripts\setup-ollama.ps1 -StartOnly      <span class="c"># only start
     <h2>Choosing a model</h2>
 
     <p>T.R.I.S.T.A.N. edits files and runs commands through <b>tool calls</b>, so a coding task needs a model that supports them. Questions (and kids mode) work with any model.</p><div class="tablewrap"><table><caption>Starting points</caption><thead><tr><th scope="col">Model</th><th scope="col">Good for</th></tr></thead><tbody>
-<tr><th scope="row"><code>llama3.1</code> (default)</th><td>A solid all-rounder that handles tools.</td></tr>
-<tr><th scope="row"><code>qwen2.5-coder</code></th><td>Coding tasks.</td></tr>
+<tr><th scope="row"><code>llama3.1</code> (default)</th><td>Handles tool calls well in our <a href="#round-one">round one benchmark</a>, but it also ran a command for a plain question we asked, so expect it to reach for tools when you only wanted an answer.</td></tr>
+<tr><th scope="row"><code>qwen2.5-coder</code></th><td>Good at writing code, but in our <a href="#round-one">round one benchmark</a> it wrote its tool calls as plain text, so it could not do the file and command tasks.</td></tr>
 <tr><th scope="row">Any other</th><td>Try it. A model without tool support gets a clear message in the log and still answers plain questions.</td></tr>
 </tbody></table></div>
     <p style="margin-top:18px">Small models fumble tool calls more often than a cloud model, so expect simple edits to work better than long multi-step tasks. A short name such as <code>qwen</code> matches an installed <code>qwen:7b</code>.</p>
   </div>
 </section>
 <section class="soft">
+  <div class="wrap">
+    <h2 id="round-one">Which model? Round one, 8 November 2026</h2>
+    <p>Issue <a href="https://github.com/mariotristan/jarvis-tristan/issues/86">#86</a> asked which local models come closest to a cloud agent. This is the first, small round. We measured five models on one Mac and listed the bigger ones for the next round. It is a guide, not a ranking.</p>
+    <p class="note warn"><b>What this is not.</b> It did not compare any model with a cloud provider, so it cannot say how close a local model gets. The seven tasks are short and easy, so passing all of them does not mean a model can do a long job. Nothing here was judged by a person reading the answers: every pass or fail is a rule in the script.</p>
+
+    <h3>What we ran it on</h3>
+    <p>An Apple M4 Pro with 48 GB of memory, Ollama 0.40.14, on 8 November 2026. Each model got each task three times with <code>temperature</code> 0 and a fixed seed, using Ollama’s <code>/api/chat</code> with tools. The three runs are close to identical repeats, so 3/3 is a check that the answer is steady, not three independent samples. The models were downloaded for the test and removed afterwards, except <code>llama3.1</code> and <code>qwen2.5-coder</code>, which were already installed.</p>
+
+    <h3>The seven tasks</h3>
+    <ul class="plain">
+      <li><b>Read, edit, run.</b> Three tool tasks: read a file, start a small edit (a read of <code>src/app.py</code> or an edit call counts), and run a harmless listing command. The tool call must arrive as a structured call with valid arguments. The script only checks the call. It never runs it.</li>
+      <li><b>Plain question.</b> “What is a git branch?” with tools on offer. The model must answer in words and call nothing.</li>
+      <li><b>Spoken line.</b> One status line of at most 25 words with no Markdown, the style the voice reads out.</li>
+      <li><b>Code.</b> Write <code>is_palindrome</code>. The code is run against three checks in a throwaway Python process, and only if it imports nothing but <code>re</code>.</li>
+      <li><b>Long context.</b> Find one codeword hidden in about 8,000 to 10,500 tokens of filler.</li>
+    </ul>
+
+    <h3>Results</h3>
+    <div class="tablewrap"><table><caption>Round one: passes out of 3 runs per task, measured on an M4 Pro (48 GB)</caption>
+<thead><tr><th scope="col">Model (tag)</th><th scope="col">Read, edit, run</th><th scope="col">Plain question</th><th scope="col">Spoken line</th><th scope="col">Code</th><th scope="col">Long context</th><th scope="col">Speed</th><th scope="col">Loaded size</th></tr></thead><tbody>
+<tr><th scope="row"><code>qwen3:8b</code></th><td>3/3, 3/3, 3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td class="num">36 tokens/s</td><td class="num">9.5 GB</td></tr>
+<tr><th scope="row"><code>qwen3:14b</code></th><td>3/3, 3/3, 3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td class="num">24 tokens/s</td><td class="num">13.9 GB</td></tr>
+<tr><th scope="row"><code>gemma4:12b-it-q4_K_M</code></th><td>3/3, 3/3, 3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td class="num">42 tokens/s</td><td class="num">not measured</td></tr>
+<tr><th scope="row"><code>llama3.1</code> (8B, the default)</th><td>3/3, 3/3, 3/3</td><td><b>0/3</b></td><td>3/3</td><td>3/3</td><td>3/3</td><td class="num">40 tokens/s</td><td class="num">9.2 GB</td></tr>
+<tr><th scope="row"><code>qwen2.5-coder</code> (7B)</th><td><b>0/3, 0/3, 0/3</b></td><td>3/3</td><td>3/3</td><td>3/3</td><td>3/3</td><td class="num">43 tokens/s</td><td class="num">6.6 GB</td></tr>
+</tbody></table></div>
+    <ul class="plain">
+      <li><b>Speed</b> is the median of generated tokens per second across all tasks. The Qwen3 models think before they answer and those tokens count, so their speed is for the whole answer, not only the visible part.</li>
+      <li><b>Loaded size</b> is what Ollama reported for the model after the long-context task, so it includes the working memory for about 10,000 tokens. The <code>gemma4</code> figure looked wrong (about 1 GB), so it is left out.</li>
+      <li><b>Time to first token is not published.</b> The runs reused Ollama’s prompt cache, so those times were close to zero and meant nothing. Round two measures it cold.</li>
+    </ul>
+
+    <h3>What we saw</h3>
+    <ul class="plain">
+      <li><b><code>llama3.1</code> called a tool for a plain question.</b> Asked “In one sentence, what is a git branch?” with tools on offer, it asked to run <code>git help branch</code> instead of answering, in all three runs. That is one question, so we do not know how often it happens. The approval card is what stops a command from running.</li>
+      <li><b><code>qwen2.5-coder</code> writes the tool call as text.</b> The reply was <code>{"name": "read_file", ...}</code> as plain words, not a structured call. We did not check whether T.R.I.S.T.A.N. copes with that, so treat it as unable to use tools for now.</li>
+      <li><b>The Qwen3 and Gemma 4 models passed everything</b> in this round. The Qwen3 models are slower because they think first. A first version of the script marked them down for the wrong reasons (it rejected a correct answer that used <code>import re</code>, and it did not accept reading the file before editing it). We fixed those two checks and re-ran the cells that had failed or could have been affected: the edit task for <code>gemma4</code>, <code>llama3.1</code> and <code>qwen2.5-coder</code>, and the code task for both Qwen3 models, <code>llama3.1</code> and <code>qwen2.5-coder</code>. Cells that had already passed were kept, because the fixed checks accept everything the first ones did. The other cells (read, run, plain question, spoken line, long context) come from the first full run, and their checks are unchanged. Afterwards we replaced the code check with a stricter parser and fixed some crash handling. Those later changes were not used for any cell, so a fresh run may differ slightly.</li>
+    </ul>
+
+    <h3>The shortlist by memory</h3>
+    <p>These are the Ollama library’s <b>download</b> sizes for the default 4-bit builds, and the tool support listed there, both checked on 8 November 2026. They are not proof that a model fits. While it runs a model used about 1.5 to 1.8 times its download in our test (9.3 GB became 13.9 GB for <code>qwen3:14b</code>, 5.2 GB became 9.5 GB for <code>qwen3:8b</code>), with about 10,000 tokens of context. Leave room for macOS and your other apps. Only the models in the results table were run.</p>
+    <div class="tablewrap"><table><caption>Candidates by Mac memory (download sizes), and what we know</caption>
+<thead><tr><th scope="col">Mac memory</th><th scope="col">Models to try</th><th scope="col">Status</th></tr></thead><tbody>
+<tr><th scope="row">8 GB</th><td><code>qwen3:4b</code> (2.5 GB), <code>gemma4:e4b-it-q4_K_M</code> (6.6 GB, tight)</td><td>Not measured. Nothing we ran fits comfortably.</td></tr>
+<tr><th scope="row">16 GB</th><td><code>qwen3:8b</code> (5.2 GB), <code>gemma4:12b-it-q4_K_M</code> (8.0 GB), <code>qwen3:14b</code> (9.3 GB, 13.9 GB loaded, probably too big)</td><td>Measured on a 48 GB Mac, not on a 16 GB one. Real headroom on 16 GB is not checked.</td></tr>
+<tr><th scope="row">32 GB</th><td><code>qwen3-coder:30b</code> (19 GB), <code>qwen3.8:27b</code> (18 GB), <code>qwen3.6:27b</code> (17 GB), <code>gemma4:26b-a4b-it-q4_K_M</code> (18 GB), <code>gpt-oss:20b</code> (14 GB), <code>devstral</code> (14 GB)</td><td>Not measured. The Mac had too little free disk, and a 19 GB download may need around 30 GB when loaded. Planned in <a href="https://github.com/mariotristan/jarvis-tristan/issues/90">#90</a>.</td></tr>
+<tr><th scope="row">48 GB</th><td>The 32 GB list, plus <code>gemma4:31b-it-q4_K_M</code> (20 GB) and <code>qwen3.6:35b-a3b</code> (23 GB)</td><td>Not measured. Planned in <a href="https://github.com/mariotristan/jarvis-tristan/issues/90">#90</a>.</td></tr>
+</tbody></table></div>
+
+    <h3>What we suggest for now</h3>
+    <ul class="plain">
+      <li><b>A good all-round pick on a 16 GB Mac or more: <code>qwen3:8b</code>.</b> It passed all seven tasks, at 36 tokens a second and about 9.5 GB loaded. It is a suggestion from five models and a short test, so it is not yet the default.</li>
+      <li><b>Best quality we measured: <code>qwen3:14b</code>.</b> The same score as the 8B, slower (24 tokens a second) and larger (13.9 GB loaded). We could not tell the two apart on these easy tasks. Round two adds harder ones.</li>
+      <li><b>Fastest that passed everything: <code>gemma4:12b-it-q4_K_M</code></b> at 42 tokens a second. Its memory use is not known.</li>
+      <li><b>The setup script still pulls <code>llama3.1</code>.</b> Changing it touches the scripts and the app, so it waits for round two (<a href="https://github.com/mariotristan/jarvis-tristan/issues/90">#90</a>). To use another model now, run <code>scripts/setup-ollama.sh qwen3:8b</code> and choose it in Configuration.</li>
+      <li><b>When no local model is good enough,</b> stay on a cloud provider. The offline fallback is for when you have no internet, and it still asks before every action. We have not built a rule that refuses risky actions on a weak model, so keep reading the approval cards.</li>
+    </ul>
+
+    <h3>Run it yourself</h3>
+    <p>The benchmark is a manual script, not part of the tests, and the tests never start a real <code>ollama</code>. Start Ollama, pull the models, then run:</p>
+    <pre data-copy>python3 scripts/bench-ollama.py qwen3:8b llama3.1 --runs 3 --json results.json</pre>
+    <p class="note">It needs Python 3 and a running Ollama on this Mac. It does not set <code>num_ctx</code>, so the long-context task needs an Ollama default of at least about 11,000 tokens, or it fails. A full run of the five models took about 50 minutes here, most of it downloading. Pass <code>--only tool_edit,code</code> to run just some tasks.</p>
+  </div>
+</section>
+<section>
   <div class="wrap">
     <h2>How it works inside T.R.I.S.T.A.N.</h2>
 
@@ -100,7 +165,7 @@ pwsh -File scripts\setup-ollama.ps1 -StartOnly      <span class="c"># only start
     </ul>
   </div>
 </section>
-<section>
+<section class="soft">
   <div class="wrap">
     <h2 id="offline">When the internet is down</h2>
 
@@ -117,7 +182,7 @@ pwsh -File scripts\setup-ollama.ps1 -StartOnly      <span class="c"># only start
     <p>Because the local model has no internet either, expect shorter, simpler answers than a cloud model gives, and pick a model that supports tools if you want it to edit files (see above). The same <code>--start-only</code> flag works from a terminal: <code>scripts/setup-ollama.sh --start-only</code> exits 0 when Ollama is running, and 2 when it is not installed.</p>
   </div>
 </section>
-<section class="soft">
+<section>
   <div class="wrap">
     <h2>Troubleshooting</h2>
 <div class="tablewrap"><table><caption>Symptoms and fixes</caption><thead><tr><th scope="col">Symptom</th><th scope="col">Fix</th></tr></thead><tbody>
