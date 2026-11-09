@@ -3,21 +3,27 @@
 # VERSION comes from the VERSION env var, else the VERSION file. Output: ./Tristan.app
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/ui.sh
+
 # SwiftUI macros need the full Xcode toolchain, even if xcode-select points at Command Line Tools.
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; fi
 
 VERSION="${VERSION:-$(cat VERSION 2>/dev/null || echo 0.0.0)}"
 BUILD="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
 
+ui_header "Build"
+ui_step 1 "Compiling Swift package (release)"
 swift build -c release
 APP=Tristan.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+ui_step 2 "Creating application bundle"
 cp .build/release/Tristan "$APP/Contents/MacOS/Tristan"
 # The app runs this to start Ollama when the internet is down.
 cp scripts/setup-ollama.sh "$APP/Contents/Resources/setup-ollama.sh"
 
 # App icon: render the reactor, then build an .icns from it. Never fails the build.
+ui_step 3 "Building application icon"
 ICON_DIR=.build/icon
 rm -rf "$ICON_DIR" && mkdir -p "$ICON_DIR/AppIcon.iconset"
 if .build/release/Tristan --make-icon "$ICON_DIR/icon.png" >/dev/null 2>&1 && [ -f "$ICON_DIR/icon.png" ]; then
@@ -62,5 +68,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 
 # Ad-hoc signature (no developer identity needed). The app is not notarized; see the README for first launch.
+ui_step 4 "Signing application"
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || echo "warning: ad-hoc codesign failed"
-echo "Built $APP (version $VERSION, build $BUILD)"
+ui_success "Built $APP (version $VERSION, build $BUILD)"
+ui_footer

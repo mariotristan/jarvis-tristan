@@ -11,7 +11,9 @@
 # Not touched: Ollama and its models (a separate tool), voices, and this source checkout itself.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+source scripts/ui.sh
 
+ui_header "Uninstall"
 PURGE=0; BUILD=0; DRY=0; YES=0
 for arg in "$@"; do
   case "$arg" in
@@ -64,46 +66,47 @@ fi
 RUNNING=0
 pgrep -x Tristan >/dev/null 2>&1 && RUNNING=1
 
-echo "T.R.I.S.T.A.N. uninstall$([ "$DRY" = 1 ] && echo ' (dry run: nothing will be removed)')"
+ui_step 1 "Analyzing system"
 echo
-[ "$RUNNING" = 1 ] && echo "Will quit the running app."
-[ ${#APPS[@]} -gt 0 ] && { echo "App copies:"; printf '  %s\n' "${APPS[@]}"; }
-[ ${#VOLUMES[@]} -gt 0 ] && { echo "Mounted disk images (will be ejected):"; printf '  %s\n' "${VOLUMES[@]}"; }
-[ ${#BUILD_PATHS[@]} -gt 0 ] && { echo "Build output in this checkout:"; printf '  %s\n' "${BUILD_PATHS[@]}"; }
+[ "$RUNNING" = 1 ] && ui_info "Running app will be quit"
+[ ${#APPS[@]} -gt 0 ] && { echo "$(ui_info 'App copies:')"; printf '  %s\n' "${APPS[@]}"; }
+[ ${#VOLUMES[@]} -gt 0 ] && { echo "$(ui_info 'Mounted disk images (will be ejected):')"; printf '  %s\n' "${VOLUMES[@]}"; }
+[ ${#BUILD_PATHS[@]} -gt 0 ] && { echo "$(ui_info 'Build output in this checkout:')"; printf '  %s\n' "${BUILD_PATHS[@]}"; }
 if [ "$PURGE" = 1 ]; then
-  [ ${#DATA[@]} -gt 0 ] && { echo "Settings, history and caches (${#DATA[@]} items), including:"; printf '  %s\n' "${DATA[@]}" | head -6; [ ${#DATA[@]} -gt 6 ] && echo "  ... and $(( ${#DATA[@]} - 6 )) more"; }
-  [ "$KEYCHAIN" = 1 ] && echo "Keychain entries for service $BUNDLE_ID (pairing secret, API keys)."
+  [ ${#DATA[@]} -gt 0 ] && { echo "$(ui_info 'Settings, history and caches (${#DATA[@]} items):')"; printf '  %s\n' "${DATA[@]}" | head -6; [ ${#DATA[@]} -gt 6 ] && echo "  ... and $(( ${#DATA[@]} - 6 )) more"; }
+  [ "$KEYCHAIN" = 1 ] && ui_info "Keychain entries for service $BUNDLE_ID (pairing secret, API keys)"
 fi
 if [ "$RUNNING" = 0 ] && [ ${#APPS[@]} -eq 0 ] && [ ${#VOLUMES[@]} -eq 0 ] && [ ${#BUILD_PATHS[@]} -eq 0 ] && [ ${#DATA[@]} -eq 0 ] && [ "$KEYCHAIN" = 0 ]; then
-  echo "Nothing to remove."; [ "$PURGE" = 0 ] && echo "(Settings and history are kept unless you pass --purge.)"; exit 0
+  ui_info "Nothing to remove"; [ "$PURGE" = 0 ] && ui_info "(Settings and history are kept unless you pass --purge)"; exit 0
 fi
-[ "$PURGE" = 0 ] && echo && echo "Settings and history are kept (add --purge to remove them too)."
+[ "$PURGE" = 0 ] && echo && ui_info "Settings and history are kept (add --purge to remove them too)"
 [ "$DRY" = 1 ] && exit 0
 
 if [ "$YES" = 0 ]; then
-  echo; printf "Remove these? [y/N] "; read -r answer
-  case "$answer" in y|Y|yes|YES) ;; *) echo "Cancelled."; exit 1 ;; esac
+  echo; printf "${BOLD}Remove these?${NC} [y/N] "; read -r answer
+  case "$answer" in y|Y|yes|YES) ;; *) ui_warn "Cancelled"; exit 1 ;; esac
 fi
 
+ui_step 2 "Removing files"
 echo
 if [ "$RUNNING" = 1 ]; then
   osascript -e "tell application id \"$BUNDLE_ID\" to quit" >/dev/null 2>&1 || true
   sleep 1; pkill -x Tristan >/dev/null 2>&1 || true; sleep 1
-  echo "Quit the app."
+  ui_success "Quit the app"
 fi
-for v in ${VOLUMES[@]+"${VOLUMES[@]}"}; do hdiutil detach "$v" -quiet >/dev/null 2>&1 && echo "Ejected $v" || echo "Could not eject $v (close anything using it)"; done
-for a in ${APPS[@]+"${APPS[@]}"}; do rm -rf "$a" && echo "Removed $a" || echo "Could not remove $a"; done
-for p in ${BUILD_PATHS[@]+"${BUILD_PATHS[@]}"}; do rm -rf "$p" && echo "Removed $p"; done
+for v in ${VOLUMES[@]+"${VOLUMES[@]}"}; do hdiutil detach "$v" -quiet >/dev/null 2>&1 && ui_success "Ejected $v" || ui_error "Could not eject $v (close anything using it)"; done
+for a in ${APPS[@]+"${APPS[@]}"}; do rm -rf "$a" && ui_success "Removed $a" || ui_error "Could not remove $a"; done
+for p in ${BUILD_PATHS[@]+"${BUILD_PATHS[@]}"}; do rm -rf "$p" && ui_success "Removed $p"; done
 if [ "$PURGE" = 1 ]; then
   # Clear the preference domains through cfprefsd first, or it can write the cached values back.
   defaults delete "$BUNDLE_ID" >/dev/null 2>&1 || true
   defaults delete Tristan >/dev/null 2>&1 || true
   for p in ${DATA[@]+"${DATA[@]}"}; do rm -rf "$p"; done
-  [ ${#DATA[@]} -gt 0 ] && echo "Removed ${#DATA[@]} settings, history and cache items."
+  [ ${#DATA[@]} -gt 0 ] && ui_success "Removed ${#DATA[@]} settings, history and cache items"
   n=0; while security delete-generic-password -s "$BUNDLE_ID" >/dev/null 2>&1; do n=$((n+1)); done
-  [ "$n" -gt 0 ] && echo "Removed $n Keychain entries."
+  [ "$n" -gt 0 ] && ui_success "Removed $n Keychain entries"
 fi
 
-echo
-echo "Done. If you had LAUNCH AT LOGIN on, also remove T.R.I.S.T.A.N. under System Settings > General > Login Items."
-echo "Ollama and its models are separate and were left alone (ollama rm <model> removes a model)."
+ui_success "If you had LAUNCH AT LOGIN on, also remove T.R.I.S.T.A.N. under System Settings > General > Login Items"
+ui_success "Ollama and its models are separate and were left alone (ollama rm <model> removes a model)"
+ui_footer

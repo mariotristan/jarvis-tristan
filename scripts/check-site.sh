@@ -10,8 +10,11 @@
 # Prints a warning (does not fail) for an em dash in body text. Runs on bash 3.2 (macOS) and bash 5.
 set -u
 cd "$(dirname "$0")/.." || exit 2
+source scripts/ui.sh
+
+ui_header "Check Website"
 fail=0
-bad() { echo "FAIL: $*"; fail=1; }
+bad() { ui_error "$*"; fail=1; }
 
 pages=$(ls docs/*.html)
 n=$(echo "$pages" | wc -l | tr -d ' ')
@@ -48,10 +51,11 @@ for p in $pages; do
     if grep -o '<img [^>]*>' "$p" | grep -v ' alt=' | grep -q .; then bad "$p: an <img> without alt"; fi
     # a body em dash is a warning: older lines still have them
     body=$(grep -v -e '<title>' -e 'og:title' -e 'og:description' -e 'name="description"' "$p" | grep -c '—')
-    [ "$body" = 0 ] || echo "warn: $p has $body line(s) with an em dash in the body (avoid in new text)"
+    [ "$body" = 0 ] || ui_warn "$p has $body line(s) with an em dash in the body (avoid in new text)"
 done
 
 # Local links and images exist.
+ui_step 2 "Validating internal links"
 for p in $pages; do
     for t in $(grep -o '\(href\|src\|poster\)="[^"]*"' "$p" | sed 's/^[a-z]*="//; s/"$//' | grep -v -e '^https\?:' -e '^mailto:' -e '^#' -e '^$' -e '^data:'); do
         f=${t%%#*}; f=${f%%\?*}
@@ -61,8 +65,9 @@ done
 
 # Optional: words that must not appear anywhere public.
 if [ -n "${FORBIDDEN:-}" ]; then
+    ui_step 3 "Checking for forbidden words"
     hits=$(grep -rIil -E "$FORBIDDEN" docs README.md AGENTS.md CLAUDE.md GEMINI.md CONVENTIONS.md .github .cursor .windsurfrules .clinerules .aider.conf.yml 2>/dev/null)
     [ -z "$hits" ] || bad "a FORBIDDEN word appears in: $(echo $hits)"
 fi
 
-if [ $fail = 0 ]; then echo "check-site.sh: $n pages OK"; else exit 1; fi
+if [ $fail = 0 ]; then ui_success "$n pages OK"; ui_footer; else exit 1; fi

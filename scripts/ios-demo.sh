@@ -6,15 +6,20 @@
 # Needs Xcode. The Mac side is `Tristan --remote-demo`, which prints a pairing link for 127.0.0.1.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/ui.sh
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; fi
 SIM_NAME="${SIM:-iPhone 16 Pro}"
 
+ui_header "iOS Demo"
+ui_step 1 "Building Swift package"
 swift build >/dev/null
+ui_step 2 "Building iOS app"
 (cd ios && xcodebuild build -project TristanIOS.xcodeproj -scheme TristanIOS -destination 'generic/platform=iOS Simulator' \
    -derivedDataPath build -quiet)
 
+ui_step 3 "Launching simulator"
 SIM_ID=$(xcrun simctl list devices available | grep -m1 "$SIM_NAME (" | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
-[ -n "$SIM_ID" ] || { echo "No simulator named '$SIM_NAME'. See: xcrun simctl list devices available"; exit 1; }
+[ -n "$SIM_ID" ] || { ui_error "No simulator named '$SIM_NAME'. See: xcrun simctl list devices available"; exit 1; }
 
 if [ "${MODE:-remote}" = "standalone" ]; then
   xcrun simctl boot "$SIM_ID" 2>/dev/null || true
@@ -22,10 +27,12 @@ if [ "${MODE:-remote}" = "standalone" ]; then
   xcrun simctl bootstatus "$SIM_ID" -b >/dev/null
   xcrun simctl install "$SIM_ID" ios/build/Build/Products/Debug-iphonesimulator/Tristan.app
   xcrun simctl launch "$SIM_ID" com.tristan.ios -tristanStandaloneDemo YES -tristanAutoSubmit "add a login function to the API" >/dev/null
-  echo "Running the standalone demo. Approve the write on the simulator."
+  ui_success "Running the standalone demo. Approve the write on the simulator"
+  ui_footer
   exit 0
 fi
 
+ui_step 4 "Starting demo server"
 LOG=$(mktemp)
 .build/debug/Tristan --remote-demo > "$LOG" 2>&1 &
 SERVER=$!
@@ -38,5 +45,5 @@ open -a Simulator
 xcrun simctl bootstatus "$SIM_ID" -b >/dev/null
 xcrun simctl install "$SIM_ID" ios/build/Build/Products/Debug-iphonesimulator/Tristan.app
 xcrun simctl launch "$SIM_ID" com.tristan.ios -tristanPairURL "$LINK" -tristanAutoSubmit "write a login function for the API" >/dev/null
-echo "Running. Approve the action on the simulator. Press Ctrl+C to stop the demo Mac."
+ui_success "Running. Approve the action on the simulator. Press Ctrl+C to stop the demo Mac"
 wait $SERVER
