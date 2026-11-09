@@ -1,0 +1,427 @@
+{
+  "title": "T.R.I.S.T.A.N. local model benchmark, round two (issue #90)",
+  "machine": "Apple M4 Pro, 48 GB memory",
+  "ollama_version": "0.40.14",
+  "dates": {
+    "first_pass_7_tasks": "2026-11-08",
+    "rerun_9_tasks_and_cloud": "2026-11-09"
+  },
+  "method": {
+    "script": "scripts/bench-ollama.py",
+    "runs_per_task": 3,
+    "local_options": {
+      "temperature": 0,
+      "seed": 1,
+      "num_predict": 2048
+    },
+    "cloud_options": "no temperature or seed sent (reasoning models); max_completion_tokens 4096",
+    "tasks_first_pass": [
+      "tool_read",
+      "tool_edit",
+      "tool_run",
+      "no_tool",
+      "spoken_line",
+      "code",
+      "context"
+    ],
+    "tasks_rerun_adds": [
+      "multi_step",
+      "denied"
+    ],
+    "scoring": "every pass or fail is a rule in the script; no person read the answers",
+    "notes": [
+      "The 3 runs are near-identical repeats at temperature 0 with a fixed seed, so 3/3 shows a steady answer, not three independent samples.",
+      "tokens_per_second is the median over all generated answers; for the cloud models it is the whole call including the network, so it is not comparable with the local figures.",
+      "loaded_gb is what Ollama reported after the long-context task (about 10,000 tokens of context), so it includes working memory.",
+      "cold_start: the model was unloaded, then asked 'Say ok.' once. load_seconds is the load, prompt_seconds the time to read the prompt (the first-token wait).",
+      "Times for warm runs are not published: Ollama's prompt cache made them close to zero.",
+      "The seven original tasks use an edit_file tool the app does not have; multi_step and denied use the app's real four tools, system prompt and denial message."
+    ]
+  },
+  "local_models": [
+    {
+      "model": "gpt-oss:20b",
+      "tag": "gpt-oss:20b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 55.5,
+        "loaded_gb": 12.9,
+        "loaded_gpu_gb": 12.9,
+        "cold_start": {
+          "load_seconds": 1.3,
+          "prompt_seconds": 0.2,
+          "total_seconds": 1.7
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 54.8,
+        "loaded_gb": 12.9,
+        "loaded_gpu_gb": 12.9,
+        "cold_start": {
+          "load_seconds": 1.3,
+          "prompt_seconds": 0.22,
+          "total_seconds": 2.9
+        }
+      }
+    },
+    {
+      "model": "qwen3-coder:30b",
+      "tag": "qwen3-coder:30b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 77.9,
+        "loaded_gb": 21.9,
+        "loaded_gpu_gb": 21.9,
+        "cold_start": {
+          "load_seconds": 1.6,
+          "prompt_seconds": 0.08,
+          "total_seconds": 1.7
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 79.4,
+        "loaded_gb": 21.8,
+        "loaded_gpu_gb": 21.8,
+        "cold_start": {
+          "load_seconds": 1.5,
+          "prompt_seconds": 0.15,
+          "total_seconds": 1.7
+        }
+      }
+    },
+    {
+      "model": "qwen3.6:35b-a3b",
+      "tag": "qwen3.6:35b-a3b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 105.1,
+        "loaded_gb": 26.1,
+        "loaded_gpu_gb": 26.1,
+        "cold_start": {
+          "load_seconds": 6.5,
+          "prompt_seconds": 0.21,
+          "total_seconds": 6.8
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "0/3"
+        },
+        "tokens_per_second": 105.6,
+        "loaded_gb": 30.6,
+        "loaded_gpu_gb": 30.6,
+        "cold_start": {
+          "load_seconds": 7.1,
+          "prompt_seconds": 0.39,
+          "total_seconds": 9.3
+        }
+      }
+    },
+    {
+      "model": "gemma4:26b-a4b",
+      "tag": "gemma4:26b-a4b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "0/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 84.2,
+        "loaded_gb": 18.5,
+        "loaded_gpu_gb": 18.5,
+        "cold_start": {
+          "load_seconds": 4.2,
+          "prompt_seconds": 0.11,
+          "total_seconds": 4.5
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "0/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 80.8,
+        "loaded_gb": 22.0,
+        "loaded_gpu_gb": 22.0,
+        "cold_start": {
+          "load_seconds": 4.2,
+          "prompt_seconds": 0.25,
+          "total_seconds": 4.6
+        }
+      }
+    },
+    {
+      "model": "qwen3.8:27b",
+      "tag": "qwen3.8:27b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 34.3,
+        "loaded_gb": 23.8,
+        "loaded_gpu_gb": 23.8,
+        "cold_start": {
+          "load_seconds": 5.1,
+          "prompt_seconds": 0.23,
+          "total_seconds": 5.8
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 33.4,
+        "loaded_gb": 27.4,
+        "loaded_gpu_gb": 27.4,
+        "cold_start": {
+          "load_seconds": 5.3,
+          "prompt_seconds": 0.54,
+          "total_seconds": 7.1
+        }
+      }
+    },
+    {
+      "model": "gemma4:31b",
+      "tag": "gemma4:31b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 26.5,
+        "loaded_gb": 26.1,
+        "loaded_gpu_gb": 26.1,
+        "cold_start": {
+          "load_seconds": 5.8,
+          "prompt_seconds": 0.35,
+          "total_seconds": 6.7
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 24.7,
+        "loaded_gb": 29.0,
+        "loaded_gpu_gb": 29.0,
+        "cold_start": {
+          "load_seconds": 5.9,
+          "prompt_seconds": 0.64,
+          "total_seconds": 7.7
+        }
+      }
+    },
+    {
+      "model": "qwen3.6:27b",
+      "tag": "qwen3.6:27b",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 31.5,
+        "loaded_gb": 25.3,
+        "loaded_gpu_gb": 25.3,
+        "cold_start": {
+          "load_seconds": 5.6,
+          "prompt_seconds": 0.38,
+          "total_seconds": 6.4
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 32.5,
+        "loaded_gb": 28.1,
+        "loaded_gpu_gb": 28.1,
+        "cold_start": {
+          "load_seconds": 5.0,
+          "prompt_seconds": 0.53,
+          "total_seconds": 6.6
+        }
+      }
+    },
+    {
+      "model": "devstral",
+      "tag": "devstral",
+      "first_pass_7_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3"
+        },
+        "tokens_per_second": 17.8,
+        "loaded_gb": 19.9,
+        "loaded_gpu_gb": 19.9,
+        "cold_start": {
+          "load_seconds": 1.6,
+          "prompt_seconds": 8.58,
+          "total_seconds": 10.3
+        }
+      },
+      "rerun_9_tasks": {
+        "tasks": {
+          "tool_read": "3/3",
+          "tool_edit": "3/3",
+          "tool_run": "3/3",
+          "no_tool": "3/3",
+          "spoken_line": "3/3",
+          "code": "3/3",
+          "context": "3/3",
+          "multi_step": "3/3",
+          "denied": "3/3"
+        },
+        "tokens_per_second": 17.0,
+        "loaded_gb": 19.9,
+        "loaded_gpu_gb": 19.9,
+        "cold_start": {
+          "load_seconds": 2.9,
+          "prompt_seconds": 0.47,
+          "total_seconds": 3.4
+        }
+      }
+    }
+  ],
+  "cloud_models": [
+    {
+      "model": "gpt-5.4-mini",
+      "tasks": {
+        "tool_read": "3/3",
+        "tool_edit": "3/3",
+        "tool_run": "3/3",
+        "no_tool": "3/3",
+        "spoken_line": "3/3",
+        "code": "3/3",
+        "context": "3/3",
+        "multi_step": "3/3",
+        "denied": "3/3"
+      },
+      "tokens_per_second_whole_call": 18.7
+    },
+    {
+      "model": "o4-mini",
+      "tasks": {
+        "tool_read": "3/3",
+        "tool_edit": "3/3",
+        "tool_run": "3/3",
+        "no_tool": "3/3",
+        "spoken_line": "3/3",
+        "code": "3/3",
+        "context": "3/3",
+        "multi_step": "3/3",
+        "denied": "2/3"
+      },
+      "tokens_per_second_whole_call": 35.6
+    }
+  ]
+}

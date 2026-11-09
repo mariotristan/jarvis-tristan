@@ -5,7 +5,7 @@ T.R.I.S.T.A.N. can run on a model that lives on your own Mac, through [Ollama](h
 ## Quick start
 
 ```sh
-scripts/setup-ollama.sh                 # installs Ollama if needed and pulls llama3.1
+scripts/setup-ollama.sh                 # installs Ollama if needed and pulls a model for your memory
 scripts/setup-ollama.sh qwen2.5-coder   # or pull a different model by name
 ```
 
@@ -16,7 +16,7 @@ Then open T.R.I.S.T.A.N., pick `OLLAMA` along the bottom and give it a task. In 
 `scripts/setup-ollama.ps1` does the same job for the `tristan` command (see [Windows](https://mariotristan.github.io/jarvis-tristan/windows.html)):
 
 ```powershell
-pwsh -File scripts\setup-ollama.ps1                 # checks for Ollama, starts it, pulls llama3.1, sets it for tristan
+pwsh -File scripts\setup-ollama.ps1                 # checks for Ollama, starts it, pulls a model for your memory, sets it for tristan
 pwsh -File scripts\setup-ollama.ps1 qwen2.5-coder   # another model
 pwsh -File scripts\setup-ollama.ps1 -StartOnly      # only start an installed Ollama; without Ollama it says so and exits 0 (setup-ollama.sh --start-only exits 2)
 pwsh -File scripts\setup-ollama.ps1 -NoPin          # do not run `tristan config set ollama.model`
@@ -32,7 +32,7 @@ The script is plain bash (`set -euo pipefail`), safe to run again, and prints ea
 |------|--------------|-------------|
 | 1. Find Ollama | Looks for `ollama` on `PATH`. If missing, runs `brew install ollama`. | Without Homebrew it stops and points you to <https://ollama.com/download>. |
 | 2. Start the server | Asks `http://localhost:11434/api/tags`. If nothing answers, it starts `ollama serve` in the background (log: `/tmp/ollama-serve.log`) and waits up to 30 seconds. | Stops and names the log file. |
-| 3. Pull the model | Runs `ollama pull <model>`. The default, `llama3.1`, is about 5 GB the first time; later runs finish at once. | Ollama's own error is shown (for example, an unknown model name). |
+| 3. Pull the model | Runs `ollama pull <model>`. With no model named it picks one for your memory: `qwen3-coder:30b` from 40 GB, `gpt-oss:20b` from 28 GB, `qwen3:8b` from 14 GB, else `llama3.1` (see round two below). The first download is 5 to 19 GB; later runs finish at once. | Ollama's own error is shown (for example, an unknown model name). |
 | 4. Check it answers | Sends one tiny chat request to `/v1/chat/completions` (the same endpoint T.R.I.S.T.A.N. uses) and prints the reply. | Stops and prints the error. |
 | 5. Check tool support | Sends a request that offers a `list_dir` tool. If Ollama replies "does not support tools", it prints a warning. | Only a warning: such a model still works for questions (kids mode) but not for coding. |
 | 6. Summary | Prints `ollama list` and, if the script started the server, how to stop it (`pkill -f 'ollama serve'`). | |
@@ -45,7 +45,7 @@ T.R.I.S.T.A.N. edits files and runs commands through **tool calls**, so a coding
 
 | Model | Good for |
 |-------|----------|
-| `llama3.1` (default) | Handles tool calls well in the round one benchmark below, but it ran a command for a plain question we asked, so expect it to reach for tools when you only wanted an answer. |
+| `llama3.1` (the old default, still used below 14 GB) | Handles tool calls well in the round one benchmark below, but it ran a command for a plain question we asked, so expect it to reach for tools when you only wanted an answer. |
 | `qwen2.5-coder` | Writes good code, but in the round one benchmark below it wrote its tool calls as plain text, so it could not do the file and command tasks. |
 | Any other | Try it. A model without tool support gets a clear message in the log; it still answers plain questions. |
 
@@ -76,12 +76,29 @@ Candidates by Mac memory (Ollama library **download** sizes for the default 4-bi
 |------------|------------------------|--------|
 | 8 GB | `qwen3:4b` (2.5 GB), `gemma4:e4b-it-q4_K_M` (6.6 GB, tight) | Not measured |
 | 16 GB | `qwen3:8b` (5.2 GB), `gemma4:12b-it-q4_K_M` (8.0 GB), `qwen3:14b` (9.3 GB, 13.9 GB loaded, probably too big) | Measured on a 48 GB Mac, headroom on 16 GB not checked |
-| 32 GB | `qwen3-coder:30b` (19 GB), `qwen3.8:27b` (18 GB), `qwen3.6:27b` (17 GB), `gemma4:26b-a4b-it-q4_K_M` (18 GB), `gpt-oss:20b` (14 GB), `devstral` (14 GB) | Not measured, planned in [#90](https://github.com/mariotristan/jarvis-tristan/issues/90) |
-| 48 GB | the 32 GB list plus `gemma4:31b-it-q4_K_M` (20 GB) and `qwen3.6:35b-a3b` (23 GB) | Not measured, planned in #90 |
+| 32 GB | `qwen3-coder:30b` (19 GB), `qwen3.8:27b` (18 GB), `qwen3.6:27b` (17 GB), `gemma4:26b-a4b-it-q4_K_M` (18 GB), `gpt-oss:20b` (14 GB), `devstral` (14 GB) | Measured in round two below, on a 48 GB Mac. Loaded sizes 12.9 to 28.1 GB |
+| 48 GB | the 32 GB list plus `gemma4:31b-it-q4_K_M` (20 GB) and `qwen3.6:35b-a3b` (23 GB) | Measured in round two below. Loaded sizes 29.0 and 30.6 GB |
 
-For now: `qwen3:8b` is a good all-round pick on 16 GB or more (all seven tasks, 36 tokens/s, 9.5 GB loaded), `qwen3:14b` is the best quality measured (same score, slower), and `gemma4:12b-it-q4_K_M` is the fastest that passed everything. These are suggestions from five models and a short test. The setup script still pulls `llama3.1`; to use another model run `scripts/setup-ollama.sh qwen3:8b` and pick it in Configuration. When no local model is good enough, stay on a cloud provider: the offline fallback still asks before every action, and a rule that refuses risky actions on a weak model is not built.
+For the 14 to 27 GB tier: `qwen3:8b` is a good all-round pick on 16 GB or more (all seven tasks, 36 tokens/s, 9.5 GB loaded), `qwen3:14b` is the best quality measured (same score, slower), and `gemma4:12b-it-q4_K_M` is the fastest that passed everything. These are suggestions from five models and a short test. The setup script still pulls `llama3.1`; to use another model run `scripts/setup-ollama.sh qwen3:8b` and pick it in Configuration. When no local model is good enough, stay on a cloud provider: the offline fallback still asks before every action, and a rule that refuses risky actions on a weak model is not built.
 
-To run it yourself (manual, never part of the tests, needs Python 3 and a running Ollama; it does not set `num_ctx`, so the long-context task needs an Ollama default of at least about 11,000 tokens): `python3 scripts/bench-ollama.py qwen3:8b llama3.1 --runs 3 --json results.json`. Pass `--only tool_edit,code` to run some tasks. Round two is in #90.
+To run it yourself (manual, never part of the tests, needs Python 3 and a running Ollama; it does not set `num_ctx`, so the long-context task needs an Ollama default of at least about 11,000 tokens): `python3 scripts/bench-ollama.py qwen3:8b llama3.1 --runs 3 --cold --json results.json`. Pass `--only tool_edit,code` to run some tasks. Round two is in #90.
+
+## Round two, 8 and 9 November 2026 (issue [#90](https://github.com/mariotristan/jarvis-tristan/issues/90))
+
+All eight models from the 32 GB and 48 GB shortlist were run on the same M4 Pro (48 GB, Ollama 0.40.14), one at a time, three runs per task, then again on two harder tasks that use the app's real tools, system prompt and denial message, with a cold-start timing. Two small cloud models ran the same tasks as a reference. The full tables, the method and what was not checked are on the [project page](https://mariotristan.github.io/jarvis-tristan/local-models.html#round-two); the raw numbers are in [`docs/data/local-models-round-two.json`](data/local-models-round-two.json).
+
+| Model | Tasks passed (of 9) | Speed | Loaded size | Cold start (load + first token) |
+|-------|---------------------|-------|-------------|---------------------------------|
+| `qwen3.6:35b-a3b` | 8 (fails `denied` 0/3) | 105.6 tokens/s | 30.6 GB | 7.1 s + 0.39 s |
+| `gemma4:26b-a4b` | 8 (fails `tool_read` 0/3) | 80.8 tokens/s | 22.0 GB | 4.2 s + 0.25 s |
+| `qwen3-coder:30b` | 9 | 79.4 tokens/s | 21.8 GB | 1.5 s + 0.15 s |
+| `gpt-oss:20b` | 9 | 54.8 tokens/s | 12.9 GB | 1.3 s + 0.22 s |
+| `qwen3.8:27b` | 9 | 33.4 tokens/s | 27.4 GB | 5.3 s + 0.54 s |
+| `qwen3.6:27b` | 9 | 32.5 tokens/s | 28.1 GB | 5.0 s + 0.53 s |
+| `gemma4:31b` | 9 | 24.7 tokens/s | 29.0 GB | 5.9 s + 0.64 s |
+| `devstral` | 9 | 17.0 tokens/s | 19.9 GB | 2.9 s + 0.47 s |
+
+Defaults now chosen by the setup scripts when no model is named: `qwen3-coder:30b` from 40 GB, `gpt-oss:20b` from 28 GB, `qwen3:8b` from 14 GB, `llama3.1` below that. On Windows the largest one is left out, because nothing was measured on Windows. Everything was measured on one 48 GB Mac, so the smaller tiers are not checked on a machine of that size. The app's own "no model installed" messages still say `ollama pull llama3.1`.
 
 ## How it works inside T.R.I.S.T.A.N.
 
