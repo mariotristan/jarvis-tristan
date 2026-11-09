@@ -11,10 +11,10 @@
 [![CI](https://github.com/mariotristan/jarvis-tristan/actions/workflows/ci.yml/badge.svg)](https://github.com/mariotristan/jarvis-tristan/actions/workflows/ci.yml) [![Secret scan](https://github.com/mariotristan/jarvis-tristan/actions/workflows/secret-scan.yml/badge.svg)](https://github.com/mariotristan/jarvis-tristan/actions/workflows/secret-scan.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Swift](https://img.shields.io/badge/Swift-5.9+-F05138?logo=swift&logoColor=white) ![SwiftUI](https://img.shields.io/badge/SwiftUI-native-0A84FF?logo=swift&logoColor=white) ![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white) ![Claude Code](https://img.shields.io/badge/Claude_Code-supported-D97757?logo=anthropic&logoColor=white) ![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-supported-FF9900?logo=amazonwebservices&logoColor=white) ![iOS](https://img.shields.io/badge/iPhone_%26_iPad-remote-000000?logo=ios&logoColor=white) ![Spotify](https://img.shields.io/badge/Spotify-controls_the_desktop_app-1DB954?logo=spotify&logoColor=white) ![Azure OpenAI](https://img.shields.io/badge/Azure_OpenAI-supported-0078D4?logo=microsoftazure&logoColor=white) ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-supported-6e40c9?logo=githubcopilot&logoColor=white) ![Ollama](https://img.shields.io/badge/Ollama-local_models-000000?logo=ollama&logoColor=white)
 
 <p align="center">
-  <a href="https://mariotristan.github.io/jarvis-tristan/"><img alt="Website" src="https://img.shields.io/badge/WEBSITE-open-B80F1F?style=for-the-badge&logo=safari&logoColor=white"></a>
+  <a href="https://mariotristan.github.io/jarvis-tristan/"><img alt="Website" src="https://img.shields.io/badge/WEBSITE-open-3F51D8?style=for-the-badge&logo=safari&logoColor=white"></a>
   <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest"><img alt="Download the latest release" src="https://img.shields.io/github/v/release/mariotristan/jarvis-tristan?style=for-the-badge&label=DOWNLOAD&color=F5B82E&labelColor=1A0A0D&logo=apple&logoColor=white"></a>
   <a href="https://mariotristan.github.io/jarvis-tristan/install.html"><img alt="Install guide" src="https://img.shields.io/badge/INSTALL-guide-1A0A0D?style=for-the-badge&logo=gitbook&logoColor=F5B82E"></a>
-  <a href="https://github.com/mariotristan/jarvis-tristan/issues/21"><img alt="Backlog" src="https://img.shields.io/badge/BACKLOG-issue_%2321-B80F1F?style=for-the-badge&logo=github&logoColor=white"></a>
+  <a href="https://github.com/mariotristan/jarvis-tristan/issues/21"><img alt="Backlog" src="https://img.shields.io/badge/BACKLOG-issue_%2321-3F51D8?style=for-the-badge&logo=github&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -24,9 +24,11 @@
   <a href="https://mariotristan.github.io/jarvis-tristan/local-models.html">Local models</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/kids-mode.html">Kids safe mode</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/themes.html">Themes</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/screens.html">Screens</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/iphone-ipad.html">iPhone and iPad</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/install.html">Install</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/windows.html">Windows</a> ·
+  <a href="https://mariotristan.github.io/jarvis-tristan/tested.html">What’s tested</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/backlog.html">Backlog</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/how-we-build.html">How we build</a> ·
   <a href="https://mariotristan.github.io/jarvis-tristan/audio-crackle.html">Audio crackle bug</a>

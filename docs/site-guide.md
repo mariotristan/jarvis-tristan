@@ -17,8 +17,8 @@ T.R.I.S.T.A.N. is a just-for-fun family learning project. The site is for people
 
 | What | Where |
 |------|-------|
-| The pages | `docs/*.html` (plain HTML, one file per page) |
-| Shared style and script | `docs/assets/site.css`, `docs/assets/site.js` |
+| The pages | `docs/*.html` (plain HTML, one file per page). The home page is short on purpose: long material lives on `screens.html`, `tested.html` and the other guides |
+| Shared style and script | `docs/assets/site.css` (palette tokens at the top), `docs/assets/site.js`, `docs/assets/hero.js` (the animated network) |
 | Images and icons | `docs/assets/`, screenshots in `docs/screenshots/` |
 | Demo videos (tracked, MP4) | `docs/demo/` |
 | Long notes that are not pages | `docs/*.md` (this guide, `ci-and-release.md`, `ollama.md`) |
@@ -34,7 +34,7 @@ Copy the head, header, footer and script tag of a recent guide page (`docs/backl
 
 - `<title>`: `Name—T.R.I.S.T.A.N.` with one em dash and no spaces. The Open Graph title is the same. These are the only places a new page uses an em dash.
 - `<meta name="description">`, `<link rel="canonical">`, the `og:` tags and the icons, all with the page's own URL.
-- A skip link, the **Fork me on GitHub** ribbon, the brand link and the main menu (`<nav aria-label="Main">`) with `aria-current="page"` on the current page only.
+- A skip link, then the floating menu (`<div class="floatnav"><div class="pill wide">` with the brand link and `<nav aria-label="Main">`, `aria-current="page"` on the current page only), then the header with the **Fork me on GitHub** ribbon. The header also holds the faint network canvas (`<canvas id="hero-net" class="sub-net" aria-hidden="true">`) and loads `assets/hero.js`.
 - A title box: an `eyebrow` ("Guide · Name"), one `<h1>` and a `lead` sentence.
 - `<main id="main" class="doc">` with sections made of `<section>` and `<div class="wrap">`. Alternate plain and `class="soft"` sections. Use `<h2>` for sections and `<h3>` below them, never skip a level.
 - A pager at the end (`← Previous` and `Next →`) and the standard footer with the same links as the menu, then the legal line.

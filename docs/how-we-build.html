@@ -8,7 +8,7 @@
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/how-we-build.html">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<meta name="theme-color" content="#1A0A0D">
+<meta name="theme-color" content="#0B1020">
 <meta property="og:type" content="website">
 <meta property="og:title" content="How we build—T.R.I.S.T.A.N.">
 <meta property="og:description" content="How T.R.I.S.T.A.N. was built, with a timeline from the first commit.">
@@ -18,25 +18,30 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
+<div class="floatnav">
+  <div class="pill wide">
+    <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30"><span>T.R.I.S.T.A.N.</span></a>
+    <nav aria-label="Main">
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="themes.html">Themes</a>
+      <a href="screens.html">Screens</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="tested.html">What’s tested</a>
+      <a href="backlog.html">Backlog</a>
+      <a href="how-we-build.html" aria-current="page">How we build</a>
+    </nav>
+  </div>
+</div>
+
 <header class="subhero">
   <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
   <div class="wrap">
-    <div class="topbar">
-      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
-      <nav aria-label="Main">
-        <a href="index.html">Home</a>
-        <a href="providers.html">Providers</a>
-        <a href="approvals.html">Approvals</a>
-        <a href="local-models.html">Local models</a>
-        <a href="kids-mode.html">Kids safe mode</a>
-        <a href="themes.html">Themes</a>
-        <a href="iphone-ipad.html">iPhone and iPad</a>
-        <a href="install.html">Install</a>
-        <a href="windows.html">Windows</a>
-        <a href="backlog.html">Backlog</a>
-        <a href="how-we-build.html" aria-current="page">How we build</a>
-      </nav>
-    </div>
+    <canvas id="hero-net" class="sub-net" aria-hidden="true"></canvas>
     <div class="titlebox">
       <span class="eyebrow">Guide · How we build</span>
       <h1>How T.R.I.S.T.A.N. gets built.</h1>
@@ -53,14 +58,17 @@
       <ol>
         <li><a href="#numbers">The project in numbers</a></li>
         <li><a href="#timeline">Timeline</a></li>
-        <li><a href="#mac">Notes on the Mac app</a>
-          <ol>
-            <li><a href="#mac-what">What it is</a></li>
-            <li><a href="#mac-order">The order it was built in</a></li>
-            <li><a href="#mac-code">Where the code lives</a></li>
-            <li><a href="#mac-windows">What Windows reuses</a></li>
-            <li><a href="#mac-limits">What is still missing</a></li>
-          </ol>
+        <li class="has-sub"><a href="#mac">Notes on the Mac app</a>
+          <details>
+            <summary>5 sections</summary>
+            <ol>
+              <li><a href="#mac-what">What it is</a></li>
+              <li><a href="#mac-order">The order it was built in</a></li>
+              <li><a href="#mac-code">Where the code lives</a></li>
+              <li><a href="#mac-windows">What Windows reuses</a></li>
+              <li><a href="#mac-limits">What is still missing</a></li>
+            </ol>
+          </details>
         </li>
         <li><a href="#rules">The rules we follow</a></li>
         <li><a href="#join">Pick up the work</a></li>
@@ -217,15 +225,18 @@
       <a href="windows.html">Windows</a>
       <a href="backlog.html">Backlog</a>
       <a href="how-we-build.html">How we build</a>
+      <a href="screens.html">Screens</a>
+      <a href="tested.html">What’s tested</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
     </div>
-    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The glowing blue look is a nod to a certain suit of armor.</p>
   </div>
 </footer>
 <script src="assets/site.js"></script>
+<script src="assets/hero.js"></script>
 <script src="assets/backlog.js"></script>
 </body>
 </html>
