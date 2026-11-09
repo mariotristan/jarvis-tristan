@@ -7,7 +7,9 @@
 #   scripts/install-voices.sh en_US      # another language, for example for Kids safe mode
 #   scripts/install-voices.sh --check    # only report what is installed
 set -euo pipefail
+source "$(dirname "$0")/ui.sh"
 
+ui_header "Install Voice"
 CHECK=0
 LOCALE="en_GB"
 for arg in "$@"; do
@@ -27,14 +29,15 @@ report() {
 
 found="$(good_voices)"
 if [ -n "$found" ]; then
-  echo "Good news: a higher quality voice is already installed for ${LOCALE}:"
+  ui_success "Higher quality voice already installed for ${LOCALE}:"
   echo "$found" | sed 's/#.*//' | sed 's/^/  /'
+  ui_footer
   exit 0
 fi
 
 report
 echo
-echo "No Enhanced or Premium voice for ${LOCALE} yet (only the compact ones, which can crackle)."
+ui_warn "No Enhanced or Premium voice for ${LOCALE} yet (only compact ones)"
 [ "$CHECK" = 1 ] && exit 1
 
 cat <<'TXT'
@@ -53,12 +56,13 @@ for _ in $(seq 1 360); do   # up to 30 minutes
   if [ -n "$found" ]; then
     name="$(echo "$found" | head -1 | sed -E 's/[[:space:]]+[a-z]{2}_[A-Z]{2}[[:space:]].*//')"
     echo
-    echo "Installed: ${name}. Playing a sample..."
+    ui_success "Installed: ${name}. Playing a sample..."
     say -v "$name" "Good evening, sir. All systems are operational."
-    echo "Restart T.R.I.S.T.A.N. and it will use this voice."
+    ui_success "Restart T.R.I.S.T.A.N. and it will use this voice"
+    ui_footer
     exit 0
   fi
   sleep 5
 done
-echo "Timed out waiting for a voice. Run this script again after downloading one."
+ui_error "Timed out waiting for a voice. Run this script again after downloading one."
 exit 1

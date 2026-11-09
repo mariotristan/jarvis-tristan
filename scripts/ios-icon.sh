@@ -2,8 +2,13 @@
 # Renders the iOS app icon (opaque, full-bleed 1024x1024) into the asset catalog.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+source scripts/ui.sh
 if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app ]; then export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; fi
+
+ui_header "Render iOS Icon"
+ui_step 1 "Building Swift package"
 swift build >/dev/null
+ui_step 2 "Rendering icon"
 SET=ios/App/Assets.xcassets/AppIcon.appiconset
 mkdir -p "$SET"
 TMP=$(mktemp -d)
@@ -20,4 +25,5 @@ cat > ios/App/Assets.xcassets/Contents.json <<JSON
 { "info": { "author": "xcode", "version": 1 } }
 JSON
 rm -rf "$TMP"
-echo "Wrote $SET/icon-1024.png"
+ui_success "Wrote $SET/icon-1024.png"
+ui_footer
