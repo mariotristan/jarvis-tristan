@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 # Sets up Ollama for Tristan: installs it if missing, starts the server, pulls a model and checks that it answers.
-#   scripts/setup-ollama.sh               pulls llama3.1 (good all-round, handles tools)
+#   scripts/setup-ollama.sh               pulls a default for this Mac's memory (see below)
 #   scripts/setup-ollama.sh qwen2.5-coder pulls another model by name
 #   scripts/setup-ollama.sh --start-only  only starts the server if Ollama is installed (no install, no download).
 #                                         Tristan runs this when the internet is down. Exit 2 means not installed.
+# With no model named, the default depends on memory (measured on one 48 GB Mac, issue #90; docs/local-models.html):
+#   40 GB or more  qwen3-coder:30b   28 to 39 GB  gpt-oss:20b   14 to 27 GB  qwen3:8b   less than 14 GB  llama3.1 (nothing measured fits)
 set -euo pipefail
 source "$(dirname "$0")/ui.sh"
 
 ui_header "Setup Ollama"
 START_ONLY=0
 if [ "${1:-}" = "--start-only" ]; then START_ONLY=1; shift; fi
-MODEL="${1:-llama3.1}"
+MEMORY_GB=$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1073741824 ))
+default_model() {
+  if   [ "$MEMORY_GB" -ge 40 ]; then echo "qwen3-coder:30b"
+  elif [ "$MEMORY_GB" -ge 28 ]; then echo "gpt-oss:20b"
+  elif [ "$MEMORY_GB" -ge 14 ]; then echo "qwen3:8b"
+  else echo "llama3.1"; fi
+}
+MODEL="${1:-$(default_model)}"
 # An app launched from the Dock has a short PATH, so look where Ollama usually lives.
 export PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:/Applications/Ollama.app/Contents/Resources"
 HOST="http://localhost:11434"
@@ -24,6 +33,7 @@ else
   ui_step 1 "Checking Ollama version"
 fi
 ui_info "Ollama $(ollama --version 2>&1 | tail -1)"
+[ -n "${1:-}" ] || ui_info "No model named: using $MODEL for a Mac with $MEMORY_GB GB of memory (name one to choose another)"
 
 STARTED=""
 if ! curl -fsS -m 2 "$HOST/api/tags" >/dev/null 2>&1; then

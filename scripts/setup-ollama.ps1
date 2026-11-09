@@ -3,11 +3,15 @@ Sets up Ollama for the `tristan` command on Windows: checks that Ollama is insta
 checks that it answers and whether it can use tools, and sets it as tristan's model. The Windows twin of
 scripts/setup-ollama.sh.
 
-  pwsh -File scripts\setup-ollama.ps1                  pulls llama3.1 (good all-round, handles tools)
+  pwsh -File scripts\setup-ollama.ps1                  pulls a default for this PC's memory (see below)
   pwsh -File scripts\setup-ollama.ps1 qwen2.5-coder    pulls another model by name
   pwsh -File scripts\setup-ollama.ps1 -StartOnly       only starts the server if Ollama is installed (no download).
                                                        Without Ollama it says so and exits 0: there is nothing to start.
   pwsh -File scripts\setup-ollama.ps1 -NoPin           does not run `tristan config set ollama.model <model>`
+
+With no model named, the default depends on memory: 28 GB or more gpt-oss:20b, 14 to 27 GB qwen3:8b, less than 14 GB
+llama3.1. The numbers behind this were measured on a Mac (issue #90), and nothing was measured on Windows, so the
+largest Mac default (qwen3-coder:30b) is not used here: a PC with a lot of memory but a small graphics card would run it slowly.
 
 It never installs anything by itself: when Ollama is missing it prints the winget command to run and stops.
 It needs no secrets and sends nothing anywhere except the model download from Ollama's registry.
@@ -16,12 +20,21 @@ Works in PowerShell 7 (pwsh) and Windows PowerShell 5.1.
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Position = 0)][string]$Model = 'llama3.1',
+    [Parameter(Position = 0)][string]$Model,
     [switch]$StartOnly,
     [switch]$NoPin
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+$ModelNamed = $PSBoundParameters.ContainsKey('Model')
+$MemoryGb = 0
+try { $MemoryGb = [int][math]::Floor((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB) } catch { $MemoryGb = 0 }
+if (-not $ModelNamed) {
+    if ($MemoryGb -ge 28) { $Model = 'gpt-oss:20b' }
+    elseif ($MemoryGb -ge 14) { $Model = 'qwen3:8b' }
+    else { $Model = 'llama3.1' }
+}
 
 # The address tristan uses by default (`tristan config get ollama.host`). 127.0.0.1 rather than localhost, because
 # localhost can resolve to ::1 first while Ollama listens on IPv4.
@@ -68,6 +81,7 @@ if (-not $ollama) {
     Fail "Ollama is not installed. Install it with: $WingetHint (or from https://ollama.com/download), open a new terminal and run this again." 2
 }
 Say "Ollama: $ollama"
+if (-not $ModelNamed) { Say "No model named: using $Model for a PC with $MemoryGb GB of memory (name one to choose another)" }
 
 $process = $null
 $log = Join-Path ([System.IO.Path]::GetTempPath()) 'ollama-serve.log'
