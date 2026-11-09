@@ -8,7 +8,7 @@
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<meta name="theme-color" content="#1A0A0D">
+<meta name="theme-color" content="#0B1020">
 <meta property="og:type" content="website">
 <meta property="og:title" content="T.R.I.S.T.A.N.—run your AI coding agents and approve every move">
 <meta property="og:description" content="Claude Code, Copilot, Bedrock, Azure OpenAI and local Ollama models side by side, with you approving each action. A Mac app with an iPhone and iPad companion.">
@@ -21,46 +21,45 @@
 <body>
 <a class="skip" href="#main">Skip to the content</a>
 
-<header class="hero">
+<div class="floatnav">
+  <div class="pill">
+    <a class="brand" href="#top" id="top"><img src="assets/icon-48.png" alt="" width="30" height="30"><span>T.R.I.S.T.A.N.</span></a>
+    <nav aria-label="Main">
+      <a href="#features">What you get</a>
+      <a href="#demo">Demo</a>
+      <a href="#guides">Guides</a>
+      <a href="#install">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="#roadmap">Roadmap</a>
+    </nav>
+  </div>
+</div>
+
+<header class="hero hero2">
   <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
   <div class="wrap">
-    <div class="topbar wide">
-      <a class="brand" href="#top" id="top"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
-      <nav aria-label="Main">
-        <a href="#features">What you get</a>
-        <a href="#demo">Demo</a>
-        <a href="#screens">Screens</a>
-        <a href="#control">Stay in charge</a>
-        <a href="#offline">Offline</a>
-        <a href="#guides">Guides</a>
-        <a href="#install">Install</a>
-        <a href="windows.html">Windows</a>
-        <a href="backlog.html">Backlog</a>
-        <a href="how-we-build.html">How we build</a>
-        <a href="#status">What’s tested</a>
-        <a href="#roadmap">Roadmap</a>
-      </nav>
-    </div>
-
-    <div class="hero-grid">
-      <div>
-        <div class="reactor" aria-hidden="true"><i class="ring"></i><i class="arc"></i><i class="core"></i></div>
+    <div class="hero2-grid">
+      <div class="hero2-art"><canvas id="hero-net" role="img" aria-label="Animation of a glowing network around an arc reactor, with signals travelling between connected points"></canvas></div>
+      <div class="hero2-text">
         <span class="eyebrow">A Mac app for AI coding agents</span>
-        <h1>Run your coding agents. Approve every move.</h1>
+        <h1>Run your coding agents. <em>Approve every move.</em></h1>
         <p class="lead">T.R.I.S.T.A.N. runs Claude Code, Copilot, Amazon Bedrock, Azure OpenAI and local Ollama models side by side. You see what each one is doing, and by default it asks before it acts. Take it with you on your iPhone or iPad.</p>
-        <p class="meta small" style="max-width: 34em;"><b>T.R.I.S.T.A.N.</b> stands for <b>T</b>actical <b>R</b>easoning <b>I</b>nterface for <b>S</b>upervising <b>T</b>asks, <b>A</b>gents and <b>N</b>etworks. In plain words: one control panel where you watch your AI agents work and decide what they are allowed to do.</p>
+        <ul class="chips" aria-label="Works with">
+          <li>Claude Code</li><li>Copilot</li><li>Bedrock</li><li>Azure OpenAI</li><li>Ollama</li>
+        </ul>
         <div class="cta">
           <a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Mac</a>
           <a class="btn" href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download for Windows</a>
           <a class="btn ghost" href="#install">How to install</a>
         </div>
-        <p class="meta small" style="max-width: 34em;"><b>Just for fun.</b> T.R.I.S.T.A.N. is a hobby and a learning experiment I’m building with my kids. They help pick the features and the themes, which is why there’s a kids mode and a lot of sound effects.</p>
         <p class="meta small">Version 0.7.1 · Mac: Apple Silicon, macOS 14 or later · Windows: terminal version, installer or zip, x64 · free and open source (MIT license)</p>
       </div>
-      <div>
-        <img class="shot" src="assets/hud-sessions.png" width="1400" height="924"
-             alt="The T.R.I.S.T.A.N. window: three session tabs for Claude, Copilot and Bedrock, an amber banner saying Session 2 is waiting for approval, and a code stream showing a heading, a table and a code card.">
-      </div>
+    </div>
+    <img class="shot hero2-shot" src="assets/hud-sessions.png" width="1400" height="924"
+         alt="The T.R.I.S.T.A.N. window: three session tabs for Claude, Copilot and Bedrock, an amber banner saying Session 2 is waiting for approval, and a code stream showing a heading, a table and a code card.">
+    <div class="hero2-notes">
+      <p class="meta small"><b>T.R.I.S.T.A.N.</b> stands for <b>T</b>actical <b>R</b>easoning <b>I</b>nterface for <b>S</b>upervising <b>T</b>asks, <b>A</b>gents and <b>N</b>etworks. In plain words: one control panel where you watch your AI agents work and decide what they are allowed to do.</p>
+      <p class="meta small"><b>Just for fun.</b> T.R.I.S.T.A.N. is a hobby and a learning experiment I’m building with my kids. They help pick the features and the themes, which is why there’s a kids mode and a lot of sound effects.</p>
     </div>
   </div>
 </header>
@@ -70,7 +69,7 @@
 <section id="features">
   <div class="wrap">
     <span class="eyebrow">What you get</span>
-    <h2>Your agents work. You stay in the loop.</h2>
+    <h2>Your agents work. You <em>stay in the loop</em>.</h2>
     <p class="intro">Coding agents are quick, and sometimes too quick. T.R.I.S.T.A.N. gives you a calm place to watch them, steer them and say yes or no.</p>
 
     <div class="cards">
@@ -132,7 +131,7 @@
 <section id="demo">
   <div class="wrap">
     <span class="eyebrow">Demo</span>
-    <h2>See it work.</h2>
+    <h2>See it <em>work</em>.</h2>
     <p class="intro">Two short recordings of the real app, running on the built-in demo provider. No account, no tokens, and nothing is changed on the Mac.</p>
 
     <div class="gallery">
@@ -157,7 +156,7 @@
 <section id="screens" class="soft">
   <div class="wrap">
     <span class="eyebrow">Screens</span>
-    <h2>Built for glancing, made to be trusted.</h2>
+    <h2>Built for glancing, made to be <em>trusted</em>.</h2>
     <p class="intro">A dark, calm window with one glowing reactor that tells you at a glance whether anything needs you.</p>
 
     <div class="gallery">
@@ -171,60 +170,20 @@
              alt="An approval card asking Allow Bash? for the command npm test, with Deny, Approve and Always allow buttons.">
         <figcaption>Approve, deny or “always allow” a narrow rule, such as one program in one folder.</figcaption>
       </figure>
-      <figure>
-        <img class="shot" loading="lazy" decoding="async" src="assets/hud-fullscreen.png" width="1400" height="905"
-             alt="The same window in full screen: edge to edge, with larger text and no rounded border.">
-        <figcaption>Full screen starts below the camera notch and makes the text larger.</figcaption>
-      </figure>
-      <figure>
-        <img class="shot" loading="lazy" decoding="async" src="assets/hud-history.png" width="1400" height="924"
-             alt="Mission history: four past missions with their provider, mode and outcome, and a Re-run button on each.">
-        <figcaption>Every mission is saved—just the task and a short summary, never your code—and can be re-run.</figcaption>
-      </figure>
     </div>
-
-    <div class="phones">
-      <figure>
-        <img class="shot" loading="lazy" decoding="async" src="assets/ios-iphone-approval.png" width="639" height="1390"
-             alt="The iPhone app showing an authorization card for writing Sources/auth.ts, with large Deny and Approve buttons.">
-        <figcaption>Approve from your phone.</figcaption>
-      </figure>
-      <figure>
-        <img class="shot" loading="lazy" decoding="async" src="assets/ios-iphone-code.png" width="639" height="1390"
-             alt="The iPhone app showing the code stream of a finished mission.">
-        <figcaption>Watch the code stream.</figcaption>
-      </figure>
-      <figure>
-        <img class="shot" loading="lazy" decoding="async" src="assets/ios-standalone-approval.png" width="639" height="1390"
-             alt="The iPhone app running on its own, asking to write api/login.ts.">
-        <figcaption>Or run on the phone itself.</figcaption>
-      </figure>
-      <figure>
-        <img class="shot" loading="lazy" decoding="async" src="assets/ios-standalone-done.png" width="639" height="1390"
-             alt="The iPhone app after a finished mission, showing rendered prose and a code card with a copy button.">
-        <figcaption>Rendered markdown, same as on the Mac.</figcaption>
-      </figure>
-    </div>
-
-    <div class="ipad">
-      <figure style="margin:0">
-        <img class="shot" loading="lazy" decoding="async" src="assets/ios-ipad.png" width="965" height="1400"
-             alt="The iPad app with the mission log and the code stream side by side.">
-      </figure>
-      <p class="small" style="color: var(--muted); max-width: 30em;">On iPad the log and the code stream sit side by side. The iPhone and iPad app has run in the simulator so far—see <a href="#status">what’s tested</a>.</p>
-    </div>
+    <p class="actions"><a class="btn" href="screens.html">See all the screens</a></p>
   </div>
 </section>
 
 <section id="control">
   <div class="wrap">
     <span class="eyebrow">Stay in charge</span>
-    <h2>You decide how much to trust.</h2>
+    <h2>You decide <em>how much to trust</em>.</h2>
     <p class="intro">Three modes, one switch. The default is the careful one.</p>
 
     <div class="modes">
       <div class="mode"><span class="tag">Ask · the default</span><h3>T.R.I.S.T.A.N. asks first</h3><p>You get a card before each action that needs permission. Nothing changes until you say yes.</p></div>
-      <div class="mode gold"><span class="tag">Auto</span><h3>Routine goes through</h3><p>Everyday, low-risk actions go ahead. Risky ones are blocked or still ask.</p></div>
+      <div class="mode alt"><span class="tag">Auto</span><h3>Routine goes through</h3><p>Everyday, low-risk actions go ahead. Risky ones are blocked or still ask.</p></div>
       <div class="mode"><span class="tag">Yolo</span><h3>No questions asked</h3><p>Only for folders you can afford to lose. It needs a clear confirmation, and your phone can’t switch it on.</p></div>
     </div>
 
@@ -241,48 +200,21 @@
 <section id="offline" class="soft">
   <div class="wrap">
     <span class="eyebrow">Offline</span>
-    <h2>If the internet goes down, work carries on.</h2>
-    <p class="intro">Cloud providers need a connection. When the Mac loses it, T.R.I.S.T.A.N. moves your next mission to a model on your own Mac and tells you it did. Here is exactly what happens.</p>
-
-    <ol class="steps">
-      <li><b>It notices.</b> macOS reports that the Mac has no route to the internet. An amber <b>NO INTERNET · USING OLLAMA</b> note appears in the header, and it disappears when the connection is back.</li>
-      <li><b>You send a task as usual.</b> If the chosen provider is Claude Code, Copilot, Amazon Bedrock or Azure OpenAI, that mission is switched to Ollama, the local-model runner. The status reads <code>NO INTERNET: FALLBACK TO OLLAMA</code> and the mission log says why.</li>
-      <li><b>It checks that Ollama is ready.</b> If Ollama is running and has a model, the mission starts right away.</li>
-      <li><b>If Ollama is off, it starts it.</b> The status shows <code>STARTING OLLAMA</code> and the log says it is working on the fallback. T.R.I.S.T.A.N. runs its bundled <code>setup-ollama.sh --start-only</code>, which only starts the server: it installs nothing and downloads nothing, because there is no internet to fetch anything with.</li>
-      <li><b>The mission runs on this Mac.</b> It uses the same approval mode you chose (Ask still asks) and the same sandboxed file and command tools. Nothing leaves the machine.</li>
-      <li><b>When the connection returns,</b> the note goes away and your next mission uses the provider you picked again.</li>
-    </ol>
-
-    <div class="tablewrap">
-    <table>
-      <caption>What you see in each situation</caption>
-      <thead><tr><th scope="col">Situation</th><th scope="col">What happens</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">Ollama is running and has a model</th><td>The mission runs on it straight away, with a line in the log: “No internet connection. Falling back to the local model (Ollama) for this mission.”</td></tr>
-        <tr><th scope="row">Ollama is installed but stopped</th><td>It shows <code>STARTING OLLAMA</code>, starts it, logs “Ollama is running”, then the mission runs.</td></tr>
-        <tr><th scope="row">Ollama is not installed</th><td>The mission stops with <code>FALLBACK FAILED</code> and tells you to run <code>scripts/setup-ollama.sh</code> once you are online. Nothing is sent anywhere.</td></tr>
-        <tr><th scope="row">Ollama has no model</th><td>It stops and tells you to run <code>ollama pull llama3.1</code> when you are online.</td></tr>
-        <tr><th scope="row">Ollama will not start</th><td>It stops and suggests running <code>ollama serve</code> in a terminal to see why.</td></tr>
-        <tr><th scope="row">You chose Ollama, or the demo</th><td>Nothing changes: they never needed the internet.</td></tr>
-        <tr><th scope="row">Kids safe mode is on</th><td>Nothing changes: kids questions already go to the local model.</td></tr>
-      </tbody>
-    </table>
-    </div>
-
+    <h2>If the internet goes down, <em>work carries on</em>.</h2>
+    <p class="intro">Cloud providers need a connection. When the Mac loses it, T.R.I.S.T.A.N. moves your next mission to a model on your own Mac and tells you it did. Nothing leaves the machine.</p>
     <ul class="plain">
-      <li><b>Get ready while you are online.</b> Run <code>scripts/setup-ollama.sh</code> once. It installs Ollama and downloads a model, and after that the fallback works without any internet.</li>
-      <li><b>A running mission is not moved.</b> The switch happens when you send a task. If the connection drops in the middle of a cloud mission, that mission fails on its own; send it again and it uses the fallback.</li>
-      <li><b>Expect different answers.</b> A small local model is not as capable as a cloud model. For coding tasks pick a model that supports tools, such as <code>llama3.1</code>.</li>
-      <li><b>“Offline” means no route.</b> A Wi-Fi network that is connected but has no real internet behind it may not be noticed.</li>
+      <li><b>You see it.</b> An amber <b>NO INTERNET · USING OLLAMA</b> note appears in the header, and the mission log says why.</li>
+      <li><b>It uses the same approval mode</b> you chose. Ask still asks.</li>
+      <li><b>Get ready while you are online.</b> Run <code>scripts/setup-ollama.sh</code> once, and the fallback works without any internet.</li>
     </ul>
-    <p><a href="local-models.html#offline">Read the full guide</a></p>
+    <p class="actions"><a class="btn" href="local-models.html#offline">How the fallback works</a></p>
   </div>
 </section>
 
 <section id="guides">
   <div class="wrap">
     <span class="eyebrow">Guides</span>
-    <h2>Go deeper.</h2>
+    <h2>Go <em>deeper</em>.</h2>
     <p class="intro">Each guide covers one part of T.R.I.S.T.A.N. in full: how it works, how to set it up, and what has and hasn’t been tested.</p>
     <div class="guides">
       <a class="card" href="providers.html"><h3>Providers</h3><p>Claude Code, Copilot, Bedrock, Azure OpenAI and Ollama: setup, limits and what ran for real.</p><p class="more">Read the guide →</p></a>
@@ -290,10 +222,12 @@
       <a class="card" href="local-models.html"><h3>Local models</h3><p>Run on your Mac with Ollama. One script sets it up, and nothing leaves the machine.</p><p class="more">Read the guide →</p></a>
       <a class="card" href="kids-mode.html"><h3>Kids safe mode</h3><p>Questions stay on the Mac, a parent approves anything else, and T.R.I.S.T.A.N. sounds friendlier.</p><p class="more">Read the guide →</p></a>
       <a class="card" href="themes.html"><h3>Themes</h3><p>All 32 looks, from the original cyan to Pride, pop culture and editor classics, with a screenshot of each.</p><p class="more">See them all →</p></a>
+      <a class="card" href="screens.html"><h3>Screens</h3><p>The window on the Mac, iPhone and iPad: a mission in progress, approvals, full screen and history.</p><p class="more">See the screens →</p></a>
       <a class="card" href="iphone-ipad.html"><h3>iPhone and iPad</h3><p>Pair with a QR code, how the link is secured, standalone mode and its limits.</p><p class="more">Read the guide →</p></a>
       <a class="card" href="audio-crackle.html"><h3>The crackling voice</h3><p>A bug report: six causes, how each was measured, what fixed it and what is still unproven.</p><p class="more">Read the report →</p></a>
       <a class="card" href="install.html"><h3>Install</h3><p>Requirements, the download, building from source and every script in the repo.</p><p class="more">Read the guide →</p></a>
       <a class="card" href="windows.html"><h3>Windows</h3><p>The <code>tristan</code> terminal command: install, providers, approvals, what is verified, what is next, and how we build it in the open.</p><p class="more">Read the guide →</p></a>
+      <a class="card" href="tested.html"><h3>What’s tested</h3><p>Part by part: what has run against the real service, and what has only run with stand-ins.</p><p class="more">See the table →</p></a>
       <a class="card" href="backlog.html"><h3>Backlog</h3><p>Every open issue, sized in AI tokens and dollars, smallest first, so you can pick one up.</p><p class="more">See the backlog →</p></a>
       <a class="card" href="how-we-build.html"><h3>How we build</h3><p>A timeline from the first commit, notes on the Mac app and the rules we follow.</p><p class="more">Read the guide →</p></a>
     </div>
@@ -303,8 +237,8 @@
 <section id="install" class="soft">
   <div class="wrap">
     <span class="eyebrow">Install</span>
-    <h2>Up and running in a few minutes.</h2>
-    <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task. On Windows there is a terminal version instead, with an installer: see <a href="#install-windows">the Windows steps</a> below and the <a href="windows.html">Windows guide</a>.</p>
+    <h2>Up and running in <em>a few minutes</em>.</h2>
+    <p class="intro">You need a Mac with Apple Silicon and macOS 14 or later. No accounts are needed to try it: pick <b>DEMO</b> in the window and type any task. On Windows there is a terminal version instead: see the <a href="windows.html">Windows guide</a>.</p>
 
     <ol class="steps">
       <li><b>Download.</b> Get <code>Tristan-0.7.1.dmg</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
@@ -326,96 +260,36 @@ xattr -dr com.apple.quarantine /Applications/Tristan.app
 <span class="c"># 4. Open it</span>
 open /Applications/Tristan.app</pre>
 
-    <h3 id="install-windows">On Windows: the <code>tristan</code> terminal command</h3>
-    <p>This is a terminal version, not a window. It comes as an installer (recommended) or as a portable zip, and it is x64 only, for Windows 10 or 11. MSIX, winget and code signing are on the roadmap.</p>
-    <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.7.1-windows-x64-setup.exe</code> and <code>Tristan-0.7.1-windows-x64-setup.exe.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>.</li>
-      <li><b>Check it.</b> Compare the hash PowerShell prints with the one inside the <code>.sha256</code> file (upper or lower case does not matter).</li>
-      <li><b>Run it.</b> If Windows SmartScreen warns, that is because the installer is not code-signed; we have not seen what it shows on a real desktop (the zip was run once on Windows 11, but the installer and SmartScreen were not). It installs for you alone, without administrator rights.</li>
-      <li><b>Leave “Add Tristan to my PATH” ticked</b>, then open a <em>new</em> terminal window.</li>
-      <li><b>Try it.</b> <code>tristan --version</code> prints 0.7.1, and <code>tristan providers</code> shows which providers are ready.</li>
-    </ol>
-    <pre data-copy>cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.7.1-windows-x64-setup.exe).Hash
-Get-Content Tristan-0.7.1-windows-x64-setup.exe.sha256
-.\Tristan-0.7.1-windows-x64-setup.exe
-<span class="c"># then, in a new terminal window:</span>
-tristan --version
-tristan providers</pre>
-    <p><b>Silent install</b> (no wizard; per user, with the PATH entry):</p>
-    <pre data-copy>.\Tristan-0.7.1-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"</pre>
-    <p><b>Uninstall</b> in Settings, Apps. Your settings and history in <code>%APPDATA%\Tristan</code> and your stored secrets are kept. If you want them gone, delete that folder and run <code>tristan secret delete azure-openai-key</code> (and any other key you stored) before you uninstall.</p>
-    <p><b>Portable, no install:</b> the zip <code>Tristan-0.7.1-windows-x64.zip</code> holds the same files.</p>
-    <ol class="steps">
-      <li><b>Download</b> <code>Tristan-0.7.1-windows-x64.zip</code> and <code>Tristan-0.7.1-windows-x64.zip.sha256</code> from the <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">latest release</a>, and check it the same way.</li>
-      <li><b>Extract it</b> to a folder and add that folder to your <code>PATH</code>.</li>
-      <li><b>Try it.</b> <code>tristan --version</code> prints 0.7.1.</li>
-    </ol>
-    <pre data-copy>cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.7.1-windows-x64.zip).Hash
-Get-Content Tristan-0.7.1-windows-x64.zip.sha256
-Expand-Archive Tristan-0.7.1-windows-x64.zip -DestinationPath $HOME\Tristan
-$env:Path += ";$HOME\Tristan"      <span class="c"># this window only; add the folder to PATH in Settings to keep it</span>
-tristan --version
-tristan providers</pre>
-    <p class="meta small">Neither file is code-signed. In CI the installer was tested only with silent installs, on Windows Server 2025; nobody has gone through the wizard screens, and nothing has run on a Windows 10 or 11 desktop. Details and limits are in the <a href="windows.html">Windows guide</a>.</p>
-
     <p>Rather build the Mac app yourself? You need Xcode.</p>
     <pre data-copy>git clone https://github.com/mariotristan/jarvis-tristan.git
 cd jarvis-tristan
 scripts/install.sh</pre>
-    <h3 style="margin-top: 2em;">Optional: run on a local model</h3>
-    <p>Want T.R.I.S.T.A.N. to work offline, or keep a child’s questions on the Mac? One script sets up <a href="https://ollama.com">Ollama</a> for you.</p>
-    <pre data-copy>scripts/setup-ollama.sh                 <span class="c"># installs Ollama if needed, pulls llama3.1</span>
-scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span></pre>
-    <ol class="steps">
-      <li><b>Finds or installs Ollama</b> (with Homebrew).</li>
-      <li><b>Starts the server</b> if it isn’t running.</li>
-      <li><b>Pulls the model</b>, about 5 GB the first time.</li>
-      <li><b>Checks that it answers,</b> and whether it can use tools. Tools are needed for coding, not for questions.</li>
-    </ol>
-    <p>Then pick <b>OLLAMA</b> at the bottom of the window. Settings lists your installed models; click one to use it. Nothing leaves your Mac. The script is short and readable, and the <a href="local-models.html">Local models guide</a> explains every step, how kids mode uses it, and troubleshooting.</p>
-    <p class="small" style="color: var(--muted)">The full install guide is <a href="install.html">here</a>, and the iPhone and iPad app is covered in <a href="iphone-ipad.html">its own guide</a>.</p>
-  </div>
-</section>
+    <ul class="plain">
+      <li><b>Windows:</b> the <code>tristan</code> terminal command comes as an installer or a zip. Steps, checks and limits are in the <a href="install.html#windows">install guide</a> and the <a href="windows.html">Windows guide</a>.</li>
+      <li><b>Local model:</b> one script sets up <a href="https://ollama.com">Ollama</a>. See the <a href="local-models.html">Local models guide</a>.</li>
+      <li><b>iPhone and iPad:</b> <a href="iphone-ipad.html">its own guide</a>.</li>
+    </ul>
+    <p class="actions"><a class="btn" href="install.html">Full install guide</a></p>
+  </section>
 
 <section id="status">
   <div class="wrap">
     <span class="eyebrow">What’s tested</span>
-    <h2>What we’ve checked for real, and what we haven’t.</h2>
-    <p class="intro">T.R.I.S.T.A.N. is an early release. Everything below has automated tests. This table shows which parts have also run against the real thing.</p>
-
-    <div class="tablewrap">
-    <table>
-      <caption>Tested with the real service, or with stand-ins only</caption>
-      <thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">Claude Code</th><td><span class="pill ok">Tested for real</span></td><td>Approvals on every action, and two sessions running at once.</td></tr>
-        <tr><th scope="row">Copilot, two sessions in Auto mode</th><td><span class="pill ok">Tested for real</span></td><td>Each session wrote its own file in its own folder, at the same time.</td></tr>
-        <tr><th scope="row">Copilot in Ask mode</th><td><span class="pill">Stand-in only</span></td><td>It needs blanket permission, so we haven’t run it live. <a href="https://github.com/mariotristan/jarvis-tristan/issues/5">Issue 5</a></td></tr>
-        <tr><th scope="row">Amazon Bedrock</th><td><span class="pill">Stand-in only</span></td><td>Request signing matches Amazon’s published examples. <a href="https://github.com/mariotristan/jarvis-tristan/issues/1">Issue 1</a></td></tr>
-        <tr><th scope="row">Azure OpenAI on the Mac</th><td><span class="pill ok">Tested for real</span></td><td>Streaming and tool calls worked against a real deployment, signed in with an API key.</td></tr>
-        <tr><th scope="row">Azure OpenAI with Azure CLI sign-in, and on iPhone</th><td><span class="pill">Stand-in only</span></td><td>Entra ID sign-in and the phone’s standalone mode are not yet tried live. <a href="https://github.com/mariotristan/jarvis-tristan/issues/2">Issue 2</a></td></tr>
-        <tr><th scope="row">Ollama and kids-mode local answers</th><td><span class="pill">Stand-in only</span></td><td>The routing, the refusal and the one-time parent approval are tested with a scripted model. We haven’t run it against a real local model yet.</td></tr>
-        <tr><th scope="row">Offline fallback to Ollama</th><td><span class="pill ok">Tested for real</span></td><td>With the Wi-Fi off, a cloud mission ran on the local model and the note showed. Starting a stopped Ollama is covered by tests and a manual run of the script, but we haven’t watched the whole flow in the app. <a href="local-models.html#offline">How it works</a></td></tr>
-        <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
-        <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
-        <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>
-        <tr><th scope="row">Windows terminal version</th><td><span class="pill">Windows CI only</span></td><td>Released in 0.6.1 as an installer and a zip. Built and tested on Windows Server 2025 in GitHub Actions, against fake provider CLIs and a mocked Ollama. The 0.7.1 zip has been run once, by hand, on Windows 11 for ARM64 in a virtual machine (version, providers and help, under x64 emulation); the installer has not been run on a Windows 10 or 11 desktop, and no provider has run against a live account on Windows. <a href="windows.html#support">What is verified</a></td></tr>
-        <tr><th scope="row">Voice, wake word, notifications, Spotify</th><td><span class="pill">Stand-in only</span></td><td>The logic is tested; nobody has used them end to end yet. <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">Issue 4</a></td></tr>
-      </tbody>
-    </table>
-    </div>
-
-    <p style="margin-top: 28px; max-width: 46em; color: var(--muted)">A few limits to know about: the Mac download is for Apple Silicon only and isn’t notarized yet, the Windows download is a terminal version, as an installer or a zip (x64 only, not code-signed), and iPhone approvals only arrive while the app is open in front.</p>
-    <p><a class="btn" href="https://github.com/mariotristan/jarvis-tristan/issues?q=is%3Aopen+label%3Avalidation">Help us check these</a></p>
+    <h2>What we’ve checked <em>for real</em>, and what we haven’t.</h2>
+    <p class="intro">T.R.I.S.T.A.N. is an early release. Everything has automated tests, and some parts have also run against the real thing.</p>
+    <ul class="plain">
+      <li><b>Tested for real:</b> Claude Code, two Copilot sessions in Auto mode, Azure OpenAI on the Mac with an API key, and the offline fallback to Ollama.</li>
+      <li><b>Stand-ins only so far:</b> Amazon Bedrock, Copilot in Ask mode, Ollama answers in kids mode, session memory, voice, and the Windows terminal version on a real desktop.</li>
+      <li><b>Simulator only:</b> the iPhone and iPad app has not run on a real phone yet.</li>
+    </ul>
+    <p class="actions"><a class="btn" href="tested.html">See the full table</a></p>
   </div>
 </section>
 
 <section id="roadmap" class="soft">
   <div class="wrap">
     <span class="eyebrow">Roadmap</span>
-    <h2>What’s next.</h2>
+    <h2>What’s <em>next</em>.</h2>
     <p class="intro">Every item is a GitHub issue with a short brief, so anyone can pick one up. The first two are the easiest places to start.</p>
 
     <ul class="roadmap">
@@ -432,7 +306,7 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/26">Kids mode rules in markdown files</a><small>Parents shape it without code</small></li>
       <li><a href="https://github.com/mariotristan/jarvis-tristan/issues/12">Per-device pairing keys</a><small>Revoke one phone at a time</small></li>
     </ul>
-    <p><a href="backlog.html">See every open issue, sized</a> · <a href="https://github.com/mariotristan/jarvis-tristan/issues/21">the backlog on GitHub</a></p>
+    <p class="actions"><a class="btn" href="backlog.html">See every open issue, sized</a><a class="btn outline" href="https://github.com/mariotristan/jarvis-tristan/issues/21">Backlog on GitHub</a></p>
   </div>
 </section>
 
@@ -451,16 +325,19 @@ scripts/setup-ollama.sh qwen2.5-coder   <span class="c"># or another model</span
       <a href="windows.html">Windows</a>
       <a href="backlog.html">Backlog</a>
       <a href="how-we-build.html">How we build</a>
+      <a href="screens.html">Screens</a>
+      <a href="tested.html">What’s tested</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/releases/latest">Download</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
     </div>
-    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft or Amazon. The red-and-gold look is a nod to a certain suit of armor.</p>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft or Amazon. The glowing blue look is a nod to a certain suit of armor.</p>
   </div>
 </footer>
 
 <script src="assets/site.js"></script>
+<script src="assets/hero.js"></script>
 </body>
 </html>

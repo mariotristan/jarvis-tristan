@@ -8,7 +8,7 @@
 <link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/windows.html">
 <link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<meta name="theme-color" content="#1A0A0D">
+<meta name="theme-color" content="#0B1020">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Windows—T.R.I.S.T.A.N.">
 <meta property="og:description" content="The tristan command on Windows: install and first run, how we ported it, what is verified and what is not, what is next, and how we build it in the open.">
@@ -18,25 +18,30 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to the content</a>
+<div class="floatnav">
+  <div class="pill wide">
+    <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30"><span>T.R.I.S.T.A.N.</span></a>
+    <nav aria-label="Main">
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="themes.html">Themes</a>
+      <a href="screens.html">Screens</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html" aria-current="page">Windows</a>
+      <a href="tested.html">What’s tested</a>
+      <a href="backlog.html">Backlog</a>
+      <a href="how-we-build.html">How we build</a>
+    </nav>
+  </div>
+</div>
+
 <header class="subhero">
   <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
   <div class="wrap">
-    <div class="topbar">
-      <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30">T.R.I.S.T.A.N.</a>
-      <nav aria-label="Main">
-        <a href="index.html">Home</a>
-        <a href="providers.html">Providers</a>
-        <a href="approvals.html">Approvals</a>
-        <a href="local-models.html">Local models</a>
-        <a href="kids-mode.html">Kids safe mode</a>
-        <a href="themes.html">Themes</a>
-        <a href="iphone-ipad.html">iPhone and iPad</a>
-        <a href="install.html">Install</a>
-        <a href="windows.html" aria-current="page">Windows</a>
-        <a href="backlog.html">Backlog</a>
-        <a href="how-we-build.html">How we build</a>
-      </nav>
-    </div>
+    <canvas id="hero-net" class="sub-net" aria-hidden="true"></canvas>
     <div class="titlebox">
       <span class="eyebrow">Guide · Windows</span>
       <h1>T.R.I.S.T.A.N. in a Windows terminal.</h1>
@@ -53,37 +58,43 @@
     <nav class="toc" aria-labelledby="toc-title">
       <h2 id="toc-title" class="toc-title">On this page</h2>
       <ol>
-        <li><a href="#install">Install and first run</a>
-          <ol>
-            <li><a href="#download">Download and verify</a></li>
-            <li><a href="#first-run">First run</a></li>
-            <li><a href="#configure">Set up each provider</a></li>
-            <li><a href="#run">Run a mission</a></li>
-            <li><a href="#approvals">Approvals in the terminal</a></li>
-            <li><a href="#exit-codes">Exit codes</a></li>
-            <li><a href="#kids">Kids mode</a></li>
-            <li><a href="#history">History and sessions</a></li>
-            <li><a href="#git-bash">Git Bash and mintty</a></li>
-            <li><a href="#uninstall">Uninstall</a></li>
-          </ol>
+        <li class="has-sub"><a href="#install">Install and first run</a>
+          <details>
+            <summary>10 sections</summary>
+            <ol>
+              <li><a href="#download">Download and verify</a></li>
+              <li><a href="#first-run">First run</a></li>
+              <li><a href="#configure">Set up each provider</a></li>
+              <li><a href="#run">Run a mission</a></li>
+              <li><a href="#approvals">Approvals in the terminal</a></li>
+              <li><a href="#exit-codes">Exit codes</a></li>
+              <li><a href="#kids">Kids mode</a></li>
+              <li><a href="#history">History and sessions</a></li>
+              <li><a href="#git-bash">Git Bash and mintty</a></li>
+              <li><a href="#uninstall">Uninstall</a></li>
+            </ol>
+          </details>
         </li>
         <li><a href="#port">How we ported it</a></li>
         <li><a href="#support">What is supported</a></li>
         <li><a href="#next">What is next</a></li>
-        <li><a href="#how-we-build">How we build</a>
-          <ol>
-            <li><a href="#process">The process</a></li>
-            <li><a href="#timeline">Timeline</a></li>
-            <li><a href="#bugs">Bugs the reviews and the runner caught</a></li>
-            <li><a href="#lessons">Process lessons</a></li>
-            <li><a href="#numbers">Numbers</a></li>
-            <li><a href="#build-from-source">Build, test and package from source</a></li>
-            <li><a href="#ci">How CI is wired</a></li>
-            <li><a href="#releases">How releases are cut</a></li>
-            <li><a href="#ci-limits">What CI cannot prove</a></li>
-            <li><a href="#differently">What we would do differently</a></li>
-            <li><a href="#follow">Follow along or reproduce it</a></li>
-          </ol>
+        <li class="has-sub"><a href="#how-we-build">How we build</a>
+          <details>
+            <summary>11 sections</summary>
+            <ol>
+              <li><a href="#process">The process</a></li>
+              <li><a href="#timeline">Timeline</a></li>
+              <li><a href="#bugs">Bugs the reviews and the runner caught</a></li>
+              <li><a href="#lessons">Process lessons</a></li>
+              <li><a href="#numbers">Numbers</a></li>
+              <li><a href="#build-from-source">Build, test and package from source</a></li>
+              <li><a href="#ci">How CI is wired</a></li>
+              <li><a href="#releases">How releases are cut</a></li>
+              <li><a href="#ci-limits">What CI cannot prove</a></li>
+              <li><a href="#differently">What we would do differently</a></li>
+              <li><a href="#follow">Follow along or reproduce it</a></li>
+            </ol>
+          </details>
         </li>
       </ol>
     </nav>
@@ -171,7 +182,7 @@ tristan run --provider azure --folder C:\code\other "add a README"</pre>
     <h3 id="approvals">Approvals in the terminal</h3>
     <div class="modes">
       <div class="mode"><span class="tag">Default</span><h4>Ask</h4><p>Every action that needs approval stops and asks: <code>[y]es / [n]o / [a]lways</code>. Anything other than <code>y</code>, <code>yes</code>, <code>a</code> or <code>always</code> is a no.</p></div>
-      <div class="mode gold"><span class="tag">--yes-routine</span><h4>Auto</h4><p>Routine actions run without asking. Anything else still asks.</p></div>
+      <div class="mode alt"><span class="tag">--yes-routine</span><h4>Auto</h4><p>Routine actions run without asking. Anything else still asks.</p></div>
       <div class="mode"><span class="tag">--yolo</span><h4>Yolo</h4><p>Nothing asks. Use it only in a folder you can afford to lose. It cannot be combined with <code>--yes-routine</code>.</p></div>
     </div>
     <ul class="plain">
@@ -498,7 +509,7 @@ pwsh -NoProfile -File scripts\package-windows-installer.ps1 -Version 0.0.0-local
     <p style="margin-top:18px">The code is on <a href="https://github.com/mariotristan/jarvis-tristan/tree/main">main</a>, and every Windows run is public on the <a href="https://github.com/mariotristan/jarvis-tristan/actions/workflows/windows.yml">Actions page</a>. Questions and findings are welcome as <a href="https://github.com/mariotristan/jarvis-tristan/issues">issues</a>.</p>
   </div>
 </section>
-  <div class="wrap"><div class="pager"><a href="install.html">← Install</a><a href="index.html">Home →</a></div></div>
+  <div class="wrap"><div class="pager"><a href="install.html">← Install</a><a href="tested.html">What’s tested →</a></div></div>
 </main>
 
 <footer>
@@ -515,14 +526,17 @@ pwsh -NoProfile -File scripts\package-windows-installer.ps1 -Version 0.0.0-local
       <a href="windows.html">Windows</a>
       <a href="backlog.html">Backlog</a>
       <a href="how-we-build.html">How we build</a>
+      <a href="screens.html">Screens</a>
+      <a href="tested.html">What’s tested</a>
       <a href="audio-crackle.html">Audio crackle bug</a>
       <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
       <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
     </div>
-    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The red-and-gold look is a nod to a certain suit of armor.</p>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The glowing blue look is a nod to a certain suit of armor.</p>
   </div>
 </footer>
 <script src="assets/site.js"></script>
+<script src="assets/hero.js"></script>
 </body>
 </html>

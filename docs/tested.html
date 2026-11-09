@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What’s tested—T.R.I.S.T.A.N.</title>
+<meta name="description" content="What T.R.I.S.T.A.N. has been checked against for real, and what has only run with stand-ins, part by part.">
+<link rel="canonical" href="https://mariotristan.github.io/jarvis-tristan/tested.html">
+<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="theme-color" content="#0B1020">
+<meta property="og:type" content="website">
+<meta property="og:title" content="What’s tested—T.R.I.S.T.A.N.">
+<meta property="og:description" content="What has run against the real service and what has only run with stand-ins.">
+<meta property="og:url" content="https://mariotristan.github.io/jarvis-tristan/tested.html">
+<meta property="og:image" content="https://mariotristan.github.io/jarvis-tristan/assets/hud-sessions.png">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<div class="floatnav">
+  <div class="pill wide">
+    <a class="brand" href="index.html"><img src="assets/icon-48.png" alt="" width="30" height="30"><span>T.R.I.S.T.A.N.</span></a>
+    <nav aria-label="Main">
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="themes.html">Themes</a>
+      <a href="screens.html">Screens</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="tested.html" aria-current="page">What’s tested</a>
+      <a href="backlog.html">Backlog</a>
+      <a href="how-we-build.html">How we build</a>
+    </nav>
+  </div>
+</div>
+
+<header class="subhero">
+  <div class="ribbon"><a href="https://github.com/mariotristan/jarvis-tristan" aria-label="Fork T.R.I.S.T.A.N. on GitHub">Fork me on GitHub</a></div>
+  <div class="wrap">
+    <canvas id="hero-net" class="sub-net" aria-hidden="true"></canvas>
+    <div class="titlebox">
+      <span class="eyebrow">Guide · What’s tested</span>
+      <h1>What we’ve checked for real, and what we haven’t.</h1>
+      <p class="lead">T.R.I.S.T.A.N. is an early release. Everything below has automated tests. This table shows which parts have also run against the real thing.</p>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="doc">
+<section>
+<div class="wrap">
+
+    <div class="tablewrap">
+    <table>
+      <caption>Tested with the real service, or with stand-ins only</caption>
+      <thead><tr><th scope="col">Part</th><th scope="col">Status</th><th scope="col">Notes</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Claude Code</th><td><span class="pill ok">Tested for real</span></td><td>Approvals on every action, and two sessions running at once.</td></tr>
+        <tr><th scope="row">Copilot, two sessions in Auto mode</th><td><span class="pill ok">Tested for real</span></td><td>Each session wrote its own file in its own folder, at the same time.</td></tr>
+        <tr><th scope="row">Copilot in Ask mode</th><td><span class="pill">Stand-in only</span></td><td>It needs blanket permission, so we haven’t run it live. <a href="https://github.com/mariotristan/jarvis-tristan/issues/5">Issue 5</a></td></tr>
+        <tr><th scope="row">Amazon Bedrock</th><td><span class="pill">Stand-in only</span></td><td>Request signing matches Amazon’s published examples. <a href="https://github.com/mariotristan/jarvis-tristan/issues/1">Issue 1</a></td></tr>
+        <tr><th scope="row">Azure OpenAI on the Mac</th><td><span class="pill ok">Tested for real</span></td><td>Streaming and tool calls worked against a real deployment, signed in with an API key.</td></tr>
+        <tr><th scope="row">Azure OpenAI with Azure CLI sign-in, and on iPhone</th><td><span class="pill">Stand-in only</span></td><td>Entra ID sign-in and the phone’s standalone mode are not yet tried live. <a href="https://github.com/mariotristan/jarvis-tristan/issues/2">Issue 2</a></td></tr>
+        <tr><th scope="row">Ollama and kids-mode local answers</th><td><span class="pill">Stand-in only</span></td><td>The routing, the refusal and the one-time parent approval are tested with a scripted model. We haven’t run it against a real local model yet.</td></tr>
+        <tr><th scope="row">Offline fallback to Ollama</th><td><span class="pill ok">Tested for real</span></td><td>With the Wi-Fi off, a cloud mission ran on the local model and the note showed. Starting a stopped Ollama is covered by tests and a manual run of the script, but we haven’t watched the whole flow in the app. <a href="local-models.html#offline">How it works</a></td></tr>
+        <tr><th scope="row">Session memory</th><td><span class="pill">Stand-in only</span></td><td>Tested with scripted models; not yet tried live across several real missions.</td></tr>
+        <tr><th scope="row">Kids safe mode and the quiet microphone</th><td><span class="pill">Stand-in only</span></td><td>The PIN lock, the relock and the microphone rules are tested, and the PIN screen is in the demo video. Unlocking with Touch ID or the Mac password has not been tried live.</td></tr>
+        <tr><th scope="row">iPhone and iPad app</th><td><span class="pill">Simulator only</span></td><td>The secure link is tested end to end on one machine. Not yet on a real phone. <a href="https://github.com/mariotristan/jarvis-tristan/issues/3">Issue 3</a></td></tr>
+        <tr><th scope="row">Windows terminal version</th><td><span class="pill">Windows CI only</span></td><td>Released in 0.6.1 as an installer and a zip. Built and tested on Windows Server 2025 in GitHub Actions, against fake provider CLIs and a mocked Ollama. The 0.7.1 zip has been run once, by hand, on Windows 11 for ARM64 in a virtual machine (version, providers and help, under x64 emulation); the installer has not been run on a Windows 10 or 11 desktop, and no provider has run against a live account on Windows. <a href="windows.html#support">What is verified</a></td></tr>
+        <tr><th scope="row">Voice, wake word, notifications, Spotify</th><td><span class="pill">Stand-in only</span></td><td>The logic is tested; nobody has used them end to end yet. <a href="https://github.com/mariotristan/jarvis-tristan/issues/4">Issue 4</a></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p style="margin-top: 28px; max-width: 46em; color: var(--muted)">A few limits to know about: the Mac download is for Apple Silicon only and isn’t notarized yet, the Windows download is a terminal version, as an installer or a zip (x64 only, not code-signed), and iPhone approvals only arrive while the app is open in front.</p>
+    <p><a class="btn" href="https://github.com/mariotristan/jarvis-tristan/issues?q=is%3Aopen+label%3Avalidation">Help us check these</a></p>
+  </div>
+</section>
+  <div class="wrap"><div class="pager"><a href="windows.html">← Windows</a><a href="backlog.html">Backlog →</a></div></div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="cols">
+      <a href="index.html">Home</a>
+      <a href="providers.html">Providers</a>
+      <a href="approvals.html">Approvals</a>
+      <a href="local-models.html">Local models</a>
+      <a href="kids-mode.html">Kids safe mode</a>
+      <a href="themes.html">Themes</a>
+      <a href="iphone-ipad.html">iPhone and iPad</a>
+      <a href="install.html">Install</a>
+      <a href="windows.html">Windows</a>
+      <a href="backlog.html">Backlog</a>
+      <a href="how-we-build.html">How we build</a>
+      <a href="screens.html">Screens</a>
+      <a href="tested.html">What’s tested</a>
+      <a href="audio-crackle.html">Audio crackle bug</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan">GitHub</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/issues">Issues</a>
+      <a href="https://github.com/mariotristan/jarvis-tristan/blob/main/LICENSE">MIT license</a>
+    </div>
+    <p>© 2026 Mario Tristan. T.R.I.S.T.A.N. is an independent, just-for-fun project that I build with my kids. It isn’t affiliated with or endorsed by Marvel, Anthropic, GitHub, Microsoft, Amazon or Ollama. The glowing blue look is a nod to a certain suit of armor.</p>
+  </div>
+</footer>
+<script src="assets/site.js"></script>
+<script src="assets/hero.js"></script>
+</body>
+</html>
