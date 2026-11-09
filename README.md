@@ -217,9 +217,9 @@ The full guide, with every script and troubleshooting, is [Install](https://mari
 **From a release (no Xcode needed).** Download `Tristan-<version>.dmg` from the [Releases page](https://github.com/mariotristan/jarvis-tristan/releases), then:
 
 ```bash
-cd ~/Downloads && shasum -a 256 -c Tristan-0.6.2.dmg.sha256      # optional: check the download
-hdiutil attach ~/Downloads/Tristan-0.6.2.dmg
-cp -R "/Volumes/Tristan 0.6.2/Tristan.app" /Applications/
+cd ~/Downloads && shasum -a 256 -c Tristan-0.7.0.dmg.sha256      # optional: check the download
+hdiutil attach ~/Downloads/Tristan-0.7.0.dmg
+cp -R "/Volumes/Tristan 0.7.0/Tristan.app" /Applications/
 xattr -dr com.apple.quarantine /Applications/Tristan.app          # Tristan is ad-hoc signed, not notarized
 open /Applications/Tristan.app
 ```
@@ -246,32 +246,32 @@ Maintainers: `scripts/make-dmg.sh` builds the DMG and `git tag vX.Y.Z && git pus
 
 On Windows, T.R.I.S.T.A.N. is a terminal command, `tristan`, not a window. It runs the same core as the Mac app (the agent loop, all five providers and the approval rules) and asks about each action in Windows Terminal, PowerShell or cmd. **It is released as 0.6.1, as an installer (recommended) and as a portable zip.** It is built and tested on GitHub Actions Windows Server 2025 against fake provider CLIs and a mocked Ollama. The installer has not been run on a real Windows 10 or 11 desktop, and no provider has run against a live account on Windows. The 0.6.2 zip was run once, by hand, on Windows 11 for ARM64 in a virtual machine (it printed its version and listed its providers under x64 emulation; no mission ran).
 
-**Install (recommended).** Get `Tristan-0.6.2-windows-x64-setup.exe` and its `.sha256` file from [the latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest), check it, run it, leave "Add Tristan to my PATH" ticked, then open a **new** terminal:
+**Install (recommended).** Get `Tristan-0.7.0-windows-x64-setup.exe` and its `.sha256` file from [the latest release](https://github.com/mariotristan/jarvis-tristan/releases/latest), check it, run it, leave "Add Tristan to my PATH" ticked, then open a **new** terminal:
 
 ```powershell
 cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64-setup.exe).Hash   # compare with the hash inside Tristan-0.6.2-windows-x64-setup.exe.sha256 (hex case does not matter)
-.\Tristan-0.6.2-windows-x64-setup.exe                                       # the installer; SmartScreen may warn, see below
-tristan --version                                                       # in a new terminal: prints 0.6.2
+(Get-FileHash -Algorithm SHA256 Tristan-0.7.0-windows-x64-setup.exe).Hash   # compare with the hash inside Tristan-0.7.0-windows-x64-setup.exe.sha256 (hex case does not matter)
+.\Tristan-0.7.0-windows-x64-setup.exe                                       # the installer; SmartScreen may warn, see below
+tristan --version                                                       # in a new terminal: prints 0.7.0
 tristan providers
 ```
 
 It installs for you alone by default (into `%LocalAppData%\Programs\Tristan`, no administrator rights); choose all users in the dialog or pass `/ALLUSERS` for everyone. For a silent install:
 
 ```powershell
-.\Tristan-0.6.2-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"
+.\Tristan-0.7.0-windows-x64-setup.exe /VERYSILENT /CURRENTUSER /TASKS="addtopath"
 ```
 
 Uninstall in Settings, Apps. Your settings and history in `%APPDATA%\Tristan` and your stored secrets are kept; to remove them too, delete that folder and run `tristan secret delete azure-openai-key` (and any other key you stored) before uninstalling.
 
-**Portable, no install.** Get `Tristan-0.6.2-windows-x64.zip` and its `.sha256` file from the same release, then in PowerShell:
+**Portable, no install.** Get `Tristan-0.7.0-windows-x64.zip` and its `.sha256` file from the same release, then in PowerShell:
 
 ```powershell
 cd ~\Downloads
-(Get-FileHash -Algorithm SHA256 Tristan-0.6.2-windows-x64.zip).Hash   # compare with the hash inside Tristan-0.6.2-windows-x64.zip.sha256
-Expand-Archive Tristan-0.6.2-windows-x64.zip -DestinationPath $HOME\Tristan
+(Get-FileHash -Algorithm SHA256 Tristan-0.7.0-windows-x64.zip).Hash   # compare with the hash inside Tristan-0.7.0-windows-x64.zip.sha256
+Expand-Archive Tristan-0.7.0-windows-x64.zip -DestinationPath $HOME\Tristan
 $env:Path += ";$HOME\Tristan"                 # this window only; add the folder to PATH in Settings to keep it
-tristan --version                              # prints 0.6.2
+tristan --version                              # prints 0.7.0
 tristan providers
 ```
 
