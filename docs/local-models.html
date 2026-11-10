@@ -198,7 +198,7 @@ pwsh -File scripts\setup-ollama.ps1 -StartOnly      <span class="c"># only start
 </tbody></table></div>
     <ul class="plain">
       <li><b>Speed</b> is the median of generated tokens per second over all tasks. For the cloud models it is the whole call including the network, so do not compare it with the local figures.</li>
-      <li><b>Loaded size</b> is what Ollama reported after the long-context task, with about 10,000 tokens of context. It was 0.9 to 1.7 times the download size. For the same model it differed between the two passes by up to 4.6 GB (<code>qwen3.6:35b-a3b</code> was 26.1 GB and then 30.6 GB). We did not find out why, so treat it as a range and leave room. The table shows the later, larger figure. Both are in the data file.</li>
+      <li><b>Loaded size</b> is what Ollama reported after the long-context task, with about 10,000 tokens of context. It was 0.9 to 1.7 times the download size. For the same model it differed between the two passes by up to 4.5 GB (<code>qwen3.6:35b-a3b</code> was 26.1 GB and then 30.6 GB). We did not find out why, so treat it as a range and leave room. The table shows the later, larger figure. Both are in the data file.</li>
       <li><b>Cold start</b> is the load time plus the time to read the prompt, measured once per model. The second number is the wait for the first word. <code>devstral</code> showed 8.6 s for it in the first pass and 0.5 s in the re-run, so one cold measurement can be off by a lot.</li>
     </ul>
 
